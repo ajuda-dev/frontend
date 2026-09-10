@@ -32,16 +32,24 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
-  it("com sessão a home mostra o wordmark", () => {
+  it("com sessão a home mostra o shell autenticado", () => {
     seedSession();
     renderAt("/");
-    expect(screen.getByRole("heading", { name: "<AJUDA.DEV/>" })).toBeInTheDocument();
-    expect(screen.getByText("Comunidades, eventos e mentoria — em breve.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Você entrou" })).toBeInTheDocument();
+    expect(screen.getByText("<AJUDA.DEV/>")).toBeInTheDocument();
   });
 
-  it("rota inexistente mostra página não encontrada", () => {
+  it("rota inexistente logado mostra o 404 dentro do shell", () => {
+    seedSession();
     renderAt("/rota-inexistente");
     expect(screen.getByText("Página não encontrada.")).toBeInTheDocument();
+    expect(screen.getByText("<AJUDA.DEV/>")).toBeInTheDocument();
+  });
+
+  it("rota inexistente sem sessão vai para o login", () => {
+    renderAt("/rota-inexistente");
+    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.queryByText("Página não encontrada.")).not.toBeInTheDocument();
   });
 
   it("registro é acessível sem sessão", () => {
@@ -52,6 +60,6 @@ describe("AppRoutes", () => {
   it("com sessão o login redireciona para a home", () => {
     seedSession();
     renderAt("/login");
-    expect(screen.getByRole("heading", { name: "<AJUDA.DEV/>" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Você entrou" })).toBeInTheDocument();
   });
 });

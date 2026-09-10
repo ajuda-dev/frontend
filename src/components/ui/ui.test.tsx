@@ -1,0 +1,108 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { describe, expect, it, vi } from "vitest";
+import { Badge } from "./Badge";
+import { Button } from "./Button";
+import { Field } from "./Field";
+import { Input } from "./Input";
+import { Modal } from "./Modal";
+
+describe("Button", () => {
+  it("aplica a classe da variante escolhida", () => {
+    render(<Button variant="danger">Excluir</Button>);
+    expect(screen.getByRole("button", { name: "Excluir" })).toHaveClass("bg-danger");
+  });
+
+  it("em loading fica desabilitado e não dispara o clique", async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(
+      <Button loading onClick={onClick}>
+        Salvar
+      </Button>,
+    );
+
+    const button = screen.getByRole("button", { name: "Salvar" });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute("aria-busy", "true");
+    await user.click(button);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+});
+
+describe("Field", () => {
+  it("mostra o erro com role alert", () => {
+    render(
+      <Field label="Nome" htmlFor="name" error="Nome inválido">
+        <Input id="name" />
+      </Field>,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Nome inválido");
+  });
+
+  it("mostra a dica quando não há erro", () => {
+    render(
+      <Field label="CEP" htmlFor="zip" hint="Somente números">
+        <Input id="zip" />
+      </Field>,
+    );
+    expect(screen.getByText("Somente números")).toBeInTheDocument();
+  });
+});
+
+describe("Badge", () => {
+  it("usa a cor do tom informado", () => {
+    render(<Badge tone="warning">Pendente</Badge>);
+    expect(screen.getByText("Pendente")).toHaveClass("text-warning");
+  });
+});
+
+describe("Modal", () => {
+  it("renderiza o conteúdo quando aberto", () => {
+    render(
+      <Modal open title="Confirmar exclusão" onClose={() => {}}>
+        <p>Tem certeza?</p>
+      </Modal>,
+    );
+    expect(screen.getByRole("dialog")).toHaveAccessibleName("Confirmar exclusão");
+    expect(screen.getByText("Tem certeza?")).toBeInTheDocument();
+  });
+
+  it("não renderiza nada quando fechado", () => {
+    render(
+      <Modal open={false} title="Confirmar exclusão" onClose={() => {}}>
+        <p>Tem certeza?</p>
+      </Modal>,
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("fecha no Esc", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Modal open title="Confirmar" onClose={onClose}>
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("fecha no clique do backdrop e não no clique do painel", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <Modal open title="Confirmar" onClose={onClose}>
+        <p>Conteúdo</p>
+      </Modal>,
+    );
+
+    await user.click(screen.getByText("Conteúdo"));
+    expect(onClose).not.toHaveBeenCalled();
+
+    await user.click(screen.getByTestId("modal-backdrop"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});

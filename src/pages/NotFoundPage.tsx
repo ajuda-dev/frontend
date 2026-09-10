@@ -1,13 +1,19 @@
 import { Link } from "react-router";
+import { EmptyState } from "../components/ui/EmptyState";
 
 export function NotFoundPage() {
   return (
-    <main className="bg-bg text-ink flex min-h-svh flex-col items-center justify-center gap-4">
+    <div className="flex flex-col gap-6">
       <h1 className="font-mono text-brand text-2xl">404</h1>
-      <p className="text-ink-muted">Página não encontrada.</p>
-      <Link to="/" className="text-brand hover:underline">
-        Voltar para o início
-      </Link>
-    </main>
+      <EmptyState
+        title="Página não encontrada."
+        description="O endereço acessado não existe ou foi movido."
+        action={
+          <Link to="/" className="text-brand text-sm hover:underline">
+            Voltar para o início
+          </Link>
+        }
+      />
+    </div>
   );
 }
