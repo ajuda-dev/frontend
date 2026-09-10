@@ -24,6 +24,12 @@ export interface Community {
   owner?: UserSummary | null;
 }
 
+export interface CommunityUser {
+  id: string;
+  community_id: string;
+  user_id: string;
+}
+
 export interface Pageable<T> {
   data: T[];
   has_next: boolean;
@@ -83,6 +89,67 @@ export interface AuthUser {
 export interface Session {
   token: string;
   user: AuthUser;
+}
+
+export interface LoginUserInput {
+  email: string;
+  password: string;
+}
+
+export interface RegisterUserInput {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface RegisterCommunityInput {
+  id?: string;
+  name: string;
+  description: string;
+  owner_id?: string;
+  address_id?: string;
+}
+
+export interface RegisterEventInput {
+  id?: string;
+  category: EventCategory;
+  type: EventType;
+  title: string;
+  description: string;
+  start_at: string;
+  duration_min: number;
+  max_slots?: number | null;
+  meeting_link?: string;
+  owner_id?: string;
+  community_id?: string;
+  address_id?: string;
+}
+
+export interface RegisterSkillInput {
+  id?: string;
+  name: string;
+}
+
+export interface UpdateSkillInput {
+  name: string;
+}
+
+export interface AddParticipantInput {
+  user_id: string;
+  role: ParticipationRole;
+}
+
+export interface JoinEventInput {
+  user_id: string;
+}
+
+export interface UpdateParticipantStatusInput {
+  status: ParticipationStatus;
+}
+
+export interface AssignSkillInput {
+  user_id: string;
+  level: SkillLevel;
 }
 
 export interface ApiCause {

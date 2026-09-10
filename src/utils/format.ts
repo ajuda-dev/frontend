@@ -1,3 +1,4 @@
+// Fuso fixo do app: formatação determinística, independente da máquina.
 const APP_TIME_ZONE = "America/Sao_Paulo";
 
 export function formatDateTime(iso: string): string {
@@ -10,7 +11,10 @@ export function formatDateTime(iso: string): string {
 
 export function formatDate(iso: string): string {
   return new Intl.DateTimeFormat("pt-BR", {
-    dateStyle: "long",
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
     timeZone: APP_TIME_ZONE,
   }).format(new Date(iso));
 }
