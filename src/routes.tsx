@@ -1,11 +1,12 @@
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 import { GuestRoute } from "./components/auth/GuestRoute";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
-import { HomePage } from "./pages/HomePage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
+import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
+import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPage";
 
 export function AppRoutes() {
   return (
@@ -17,7 +18,9 @@ export function AppRoutes() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<HomePage />} />
+          <Route path="/" element={<Navigate to="/comunidades" replace />} />
+          <Route path="/comunidades" element={<ExploreCommunitiesPage />} />
+          <Route path="/comunidades/:id" element={<CommunityDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

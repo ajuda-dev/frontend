@@ -59,6 +59,12 @@ describe("AppLayout", () => {
     expect(screen.getByText("Conteúdo")).toBeInTheDocument();
   });
 
+  it("mostra o item de nav habilitado (Comunidades)", () => {
+    seedSession();
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Comunidades" })).toBeInTheDocument();
+  });
+
   it("não exibe itens de nav desabilitados (rotas ainda inexistentes)", () => {
     seedSession();
     renderLayout();

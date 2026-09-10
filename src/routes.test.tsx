@@ -32,10 +32,10 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
   });
 
-  it("com sessão a home mostra o shell autenticado", () => {
+  it("com sessão a home redireciona para as comunidades", () => {
     seedSession();
     renderAt("/");
-    expect(screen.getByRole("heading", { name: "Você entrou" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Comunidades" })).toBeInTheDocument();
     expect(screen.getByText("<AJUDA.DEV/>")).toBeInTheDocument();
   });
 
@@ -57,9 +57,9 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: "Criar conta" })).toBeInTheDocument();
   });
 
-  it("com sessão o login redireciona para a home", () => {
+  it("com sessão o login redireciona para as comunidades", () => {
     seedSession();
     renderAt("/login");
-    expect(screen.getByRole("heading", { name: "Você entrou" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Comunidades" })).toBeInTheDocument();
   });
 });

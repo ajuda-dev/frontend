@@ -2,8 +2,18 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, visibleNavItems } from "./navItems";
 
 describe("visibleNavItems", () => {
+  it("mostra o item Comunidades habilitado pelo plano 04", () => {
+    expect(visibleNavItems("USER").map((item) => item.label)).toEqual(["Comunidades"]);
+  });
+
   it("esconde itens desabilitados (rota ainda não existe)", () => {
-    expect(visibleNavItems("USER")).toEqual([]);
+    const disabled = NAV_ITEMS.filter((item) => !item.enabled);
+    expect(disabled.map((item) => item.label)).toEqual([
+      "Eventos",
+      "Skills",
+      "Pessoas",
+      "Meu perfil",
+    ]);
   });
 
   it("mostra item habilitado sem restrição de cargo", () => {
