@@ -1,17 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { ConfirmModal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
-import { findEventById } from "../../services/event";
+import { deleteEvent, findEventById } from "../../services/event";
+import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
+import { canAtLeast } from "../../utils/roles";
 
 interface DetailLocationState {
   event?: EventItem;
@@ -20,6 +24,7 @@ interface DetailLocationState {
 export function EventDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
 
   const fromList = (location.state as DetailLocationState | null)?.event;
@@ -29,6 +34,9 @@ export function EventDetailPage() {
   const [loading, setLoading] = useState(!event);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Evento vindo da navegação (state da lista) já está carregado.
@@ -53,6 +61,25 @@ export function EventDetailPage() {
   }, [id, attempt, event]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  const handleDelete = useCallback(async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteEvent(id);
+      navigate("/eventos", { replace: true });
+    } catch (caught) {
+      setConfirmingDelete(false);
+      // 404 = já removido: o resultado desejado foi alcançado, então volta para a lista.
+      if (isApiError(caught) && caught.response?.status === 404) {
+        navigate("/eventos", { replace: true });
+        return;
+      }
+      setDeleteError(apiErrorMessage(caught));
+    } finally {
+      setDeleting(false);
+    }
+  }, [id, navigate]);
 
   if (loading) return <PageSpinner />;
 
@@ -97,6 +124,9 @@ export function EventDetailPage() {
 
   const isOwner = Boolean(user && event.owner && event.owner.id === user.id);
   const isOnline = event.type === "ONLINE";
+  // O backend não checa dono/cargo no delete (assimetria conhecida): a UI restringe
+  // a owner ou ≥ MODERATOR.
+  const canDelete = isOwner || canAtLeast(user?.role, "MODERATOR");
 
   return (
     <div className="flex flex-col gap-6">
@@ -172,6 +202,30 @@ export function EventDetailPage() {
           </Link>
         ) : null}
       </Card>
+
+      {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
+
+      {canDelete ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+            Excluir evento
+          </Button>
+        </div>
+      ) : null}
+
+      <ConfirmModal
+        open={confirmingDelete}
+        title="Excluir evento"
+        description={
+          isOwner
+            ? "Excluir evento? Esta ação não pode ser desfeita."
+            : "Você está excluindo um evento que não é seu. Esta ação não pode ser desfeita."
+        }
+        confirmLabel="Excluir"
+        loading={deleting}
+        onConfirm={() => void handleDelete()}
+        onClose={() => setConfirmingDelete(false)}
+      />
 
       <Link to="/eventos" className="text-brand text-sm hover:underline">
         Voltar para a lista

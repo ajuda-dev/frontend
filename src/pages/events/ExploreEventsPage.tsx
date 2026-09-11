@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { EventCard } from "../../components/event/EventCard";
 import { EventFiltersBar } from "../../components/event/EventFiltersBar";
 import { Alert } from "../../components/ui/Alert";
@@ -59,6 +59,11 @@ export function ExploreEventsPage() {
       <PageHeader
         title="Eventos"
         description="Encontros, mentorias e webinars da comunidade dev/tech."
+        actions={
+          <Link to="/eventos/novo" className="text-brand text-sm hover:underline">
+            Criar evento
+          </Link>
+        }
       />
 
       <EventFiltersBar />

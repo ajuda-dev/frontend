@@ -1,4 +1,10 @@
-import type { EventCategory, EventItem, EventType, Pageable } from "../types/api";
+import type {
+  EventCategory,
+  EventItem,
+  EventType,
+  Pageable,
+  RegisterEventInput,
+} from "../types/api";
 import { api, isApiError } from "./api";
 
 export interface ListEventsParams {
@@ -47,4 +53,42 @@ export async function findEventById(id: string, signal?: AbortSignal): Promise<E
     if (isApiError(error) && error.response?.status === 404) return null;
     throw error;
   }
+}
+
+export interface CreateEventInput {
+  title: string;
+  description: string;
+  category: EventCategory;
+  type: EventType;
+  start_at: string;
+  duration_min: number;
+  meeting_link?: string;
+  max_slots?: number | null;
+  community_id?: string;
+  address_id?: string;
+}
+
+// POST /v1/event/register. Campos opcionais vazios são omitidos do body: o backend
+// rejeita `address_id` em eventos ONLINE e trata `max_slots` nulo como "sem limite".
+export async function createEvent(input: CreateEventInput): Promise<EventItem> {
+  const body: RegisterEventInput = {
+    title: input.title,
+    description: input.description,
+    category: input.category,
+    type: input.type,
+    start_at: input.start_at,
+    duration_min: input.duration_min,
+  };
+  const meetingLink = input.meeting_link?.trim();
+  if (meetingLink) body.meeting_link = meetingLink;
+  if (input.max_slots != null) body.max_slots = input.max_slots;
+  if (input.community_id) body.community_id = input.community_id;
+  // ONLINE nunca leva endereço: o backend responde 400 se o campo vier preenchido.
+  if (input.address_id && input.type !== "ONLINE") body.address_id = input.address_id;
+  const { data } = await api.post<EventItem>("/event/register", body);
+  return data;
+}
+
+export async function deleteEvent(eventId: string): Promise<void> {
+  await api.delete(`/event/${eventId}`);
 }

@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../context/AuthContext";
@@ -8,11 +9,14 @@ import { EventDetailPage } from "./EventDetailPage";
 vi.mock("../../services/event", () => ({
   findEventById: vi.fn(),
   listEvents: vi.fn(),
+  createEvent: vi.fn(),
+  deleteEvent: vi.fn(),
 }));
 
-import { findEventById } from "../../services/event";
+import { deleteEvent, findEventById } from "../../services/event";
 
 const mockedFind = vi.mocked(findEventById);
+const mockedDelete = vi.mocked(deleteEvent);
 
 const EVENT: EventItem = {
   id: "e1",
@@ -145,5 +149,84 @@ describe("EventDetailPage", () => {
 
     expect(await screen.findByText("Evento online — link será divulgado.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Acessar link da reunião" })).not.toBeInTheDocument();
+  });
+
+  it("não-owner sem cargo não vê o botão de excluir", async () => {
+    renderDetail({ event: EVENT });
+
+    await screen.findByRole("heading", { name: "Meetup Dev SP" });
+    expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
+  });
+
+  it("owner vê o botão e a confirmação exclui e navega para a lista", async () => {
+    seedSession("owner-1");
+    mockedDelete.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+    expect(screen.getByText("Excluir evento? Esta ação não pode ser desfeita.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(await screen.findByText("Lista de eventos")).toBeInTheDocument();
+    expect(mockedDelete).toHaveBeenCalledWith("e1");
+  });
+
+  it("moderador excluindo evento alheio vê confirmação reforçada", async () => {
+    localStorage.setItem("ajudadev.token", "token-123");
+    localStorage.setItem(
+      "ajudadev.user",
+      JSON.stringify({
+        id: "u9",
+        name: "Mod",
+        email: "mod@ajudadev.dev",
+        role: "MODERATOR",
+      }),
+    );
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+
+    expect(
+      screen.getByText(
+        "Você está excluindo um evento que não é seu. Esta ação não pode ser desfeita.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("404 no delete é tratado como já excluído e navega", async () => {
+    seedSession("owner-1");
+    mockedDelete.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 404",
+      response: { status: 404, data: { message: "event not found", code: 404 } },
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(await screen.findByText("Lista de eventos")).toBeInTheDocument();
+  });
+
+  it("erro inesperado no delete mantém a tela com Alert", async () => {
+    seedSession("owner-1");
+    mockedDelete.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 500",
+      response: { status: 500, data: { message: "internal server error", code: 500 } },
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(await screen.findByText("Erro interno no servidor")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Meetup Dev SP" })).toBeInTheDocument();
+    expect(screen.queryByText("Lista de eventos")).not.toBeInTheDocument();
   });
 });

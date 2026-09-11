@@ -1,0 +1,363 @@
+import { useState } from "react";
+import type { FormEvent } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router";
+import { AddressPicker } from "../../components/address/AddressPicker";
+import { Alert } from "../../components/ui/Alert";
+import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
+import { Card } from "../../components/ui/Card";
+import { Field } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Input";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { Select } from "../../components/ui/Select";
+import { Textarea } from "../../components/ui/Textarea";
+import { useAuth } from "../../context/useAuth";
+import { useAddresses } from "../../hooks/useAddresses";
+import { createEvent } from "../../services/event";
+import { EVENT_CATEGORIES, EVENT_TYPES } from "../../types/api";
+import type { Address, EventCategory, EventType } from "../../types/api";
+import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
+import { EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
+
+interface FieldErrors {
+  title?: string;
+  description?: string;
+  category?: string;
+  type?: string;
+  start_at?: string;
+  duration_min?: string;
+  max_slots?: string;
+  meeting_link?: string;
+  address_id?: string;
+  community_id?: string;
+}
+
+// `datetime-local` trabalha em hora local do navegador; o backend compara instantes,
+// então o valor vai como ISO (UTC) e o `min` do input já bloqueia o passado.
+function nowLocalInputValue(): string {
+  const now = new Date();
+  const offsetMs = now.getTimezoneOffset() * 60_000;
+  return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function needsAddress(type: EventType): boolean {
+  return type === "INPERSON" || type === "HYBRID";
+}
+
+function allowsMeetingLink(type: EventType): boolean {
+  return type === "ONLINE" || type === "HYBRID";
+}
+
+function allowsMaxSlots(category: EventCategory): boolean {
+  return category !== "MENTORING";
+}
+
+export function NewEventPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const addresses = useAddresses(user?.id);
+
+  const communityId = searchParams.get("community_id") ?? "";
+
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState<EventCategory>("COMMUNITY_EVENT");
+  const [type, setType] = useState<EventType>("ONLINE");
+  const [startAt, setStartAt] = useState("");
+  const [durationMin, setDurationMin] = useState("");
+  const [maxSlots, setMaxSlots] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [address, setAddress] = useState<Address | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const showAddress = needsAddress(type);
+  const showMeetingLink = allowsMeetingLink(type);
+  const showMaxSlots = allowsMaxSlots(category);
+
+  function handleTypeChange(next: EventType) {
+    setType(next);
+    // ONLINE nunca leva endereço: limpar evita enviar um id que o backend rejeita.
+    if (!needsAddress(next)) setAddress(null);
+    if (!allowsMeetingLink(next)) setMeetingLink("");
+    setErrors((previous) => ({ ...previous, address_id: undefined, meeting_link: undefined }));
+  }
+
+  function handleCategoryChange(next: EventCategory) {
+    setCategory(next);
+    if (!allowsMaxSlots(next)) setMaxSlots("");
+    setErrors((previous) => ({ ...previous, max_slots: undefined }));
+  }
+
+  function validate(): FieldErrors {
+    const next: FieldErrors = {};
+    if (!title.trim()) next.title = "Informe o título do evento";
+    if (!description.trim()) next.description = "Informe a descrição do evento";
+
+    if (!startAt) {
+      next.start_at = "Informe a data e a hora do evento";
+    } else if (new Date(startAt).getTime() <= Date.now()) {
+      next.start_at = "A data do evento precisa ser no futuro";
+    }
+
+    const duration = Number(durationMin);
+    if (!durationMin.trim() || !Number.isFinite(duration) || duration <= 0) {
+      next.duration_min = "Informe uma duração maior que zero";
+    }
+
+    if (showMaxSlots && maxSlots.trim()) {
+      const slots = Number(maxSlots);
+      if (!Number.isInteger(slots) || slots <= 0) {
+        next.max_slots = "Informe um número de vagas maior que zero";
+      }
+    }
+
+    if (showAddress && !address) {
+      next.address_id = "Busque ou selecione o endereço do evento";
+    }
+
+    return next;
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    setDetail(null);
+
+    const localErrors = validate();
+    setErrors(localErrors);
+    if (Object.keys(localErrors).length > 0) return;
+
+    setSubmitting(true);
+    try {
+      const created = await createEvent({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        type,
+        start_at: new Date(startAt).toISOString(),
+        duration_min: Number(durationMin),
+        meeting_link: showMeetingLink ? meetingLink : "",
+        max_slots: showMaxSlots && maxSlots.trim() ? Number(maxSlots) : null,
+        community_id: communityId || undefined,
+        address_id: showAddress && address ? address.id : undefined,
+      });
+      // O 201 não traz owner/community/address aninhados: o detalhe busca pelo id.
+      navigate(`/eventos/${created.id}`, { replace: true });
+    } catch (error) {
+      const fields = apiErrorFields(error);
+      setErrors({
+        title: fields.title,
+        description: fields.description,
+        category: fields.category,
+        type: fields.type,
+        start_at: fields.start_at,
+        duration_min: fields.duration_min,
+        max_slots: fields.max_slots,
+        meeting_link: fields.meeting_link,
+        address_id: fields.address_id,
+        community_id: fields.community_id,
+      });
+      if (Object.keys(fields).length === 0) {
+        setFormError(apiErrorMessage(error));
+        setDetail(apiErrorDetail(error));
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title="Novo evento"
+        description="Descreva o encontro, escolha o formato e publique no catálogo."
+      />
+
+      {communityId ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="info">Evento vinculado a uma comunidade</Badge>
+          <span className="text-ink-muted text-xs">
+            Este evento será publicado na comunidade de origem.
+          </span>
+        </div>
+      ) : null}
+
+      <Card>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+          <h2 className="text-ink text-base font-semibold">Dados do evento</h2>
+
+          <Field label="Título" htmlFor="title" error={errors.title}>
+            <Input
+              id="title"
+              name="title"
+              value={title}
+              invalid={Boolean(errors.title)}
+              onChange={(event) => setTitle(event.target.value)}
+            />
+          </Field>
+
+          <Field label="Descrição" htmlFor="description" error={errors.description}>
+            <Textarea
+              id="description"
+              name="description"
+              rows={4}
+              value={description}
+              invalid={Boolean(errors.description)}
+              onChange={(event) => setDescription(event.target.value)}
+            />
+          </Field>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Categoria" htmlFor="category" error={errors.category}>
+              <Select
+                id="category"
+                name="category"
+                value={category}
+                onChange={(event) => handleCategoryChange(event.target.value as EventCategory)}
+              >
+                {EVENT_CATEGORIES.map((value) => (
+                  <option key={value} value={value}>
+                    {EVENT_CATEGORY_LABEL[value]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            <Field label="Formato" htmlFor="type" error={errors.type}>
+              <Select
+                id="type"
+                name="type"
+                value={type}
+                onChange={(event) => handleTypeChange(event.target.value as EventType)}
+              >
+                {EVENT_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {EVENT_TYPE_LABEL[value]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          </div>
+
+          {category === "MENTORING" ? (
+            <Alert variant="info" title="Mentoria 1:1">
+              Você entra como mentor(a) e a vaga é única para um mentorado convidado. A API fixa
+              duas posições (mentor e mentorado) automaticamente.
+            </Alert>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Data e hora" htmlFor="start_at" error={errors.start_at}>
+              <Input
+                id="start_at"
+                name="start_at"
+                type="datetime-local"
+                min={nowLocalInputValue()}
+                value={startAt}
+                invalid={Boolean(errors.start_at)}
+                onChange={(event) => setStartAt(event.target.value)}
+              />
+            </Field>
+
+            <Field label="Duração (minutos)" htmlFor="duration_min" error={errors.duration_min}>
+              <Input
+                id="duration_min"
+                name="duration_min"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={durationMin}
+                invalid={Boolean(errors.duration_min)}
+                onChange={(event) => setDurationMin(event.target.value)}
+              />
+            </Field>
+          </div>
+
+          {showMaxSlots ? (
+            <Field
+              label="Vagas"
+              htmlFor="max_slots"
+              error={errors.max_slots}
+              hint="Deixe em branco para não limitar as vagas."
+            >
+              <Input
+                id="max_slots"
+                name="max_slots"
+                type="number"
+                min={1}
+                inputMode="numeric"
+                value={maxSlots}
+                invalid={Boolean(errors.max_slots)}
+                onChange={(event) => setMaxSlots(event.target.value)}
+              />
+            </Field>
+          ) : (
+            <p className="text-ink-muted text-sm">Vaga única para mentorado.</p>
+          )}
+
+          {showMeetingLink ? (
+            <Field
+              label="Link do encontro"
+              htmlFor="meeting_link"
+              error={errors.meeting_link}
+              hint="Opcional — pode ser divulgado depois."
+            >
+              <Input
+                id="meeting_link"
+                name="meeting_link"
+                type="url"
+                placeholder="https://"
+                value={meetingLink}
+                invalid={Boolean(errors.meeting_link)}
+                onChange={(event) => setMeetingLink(event.target.value)}
+              />
+            </Field>
+          ) : null}
+
+          {!showAddress && errors.address_id ? (
+            <p role="alert" className="text-danger text-xs">
+              {errors.address_id}
+            </p>
+          ) : null}
+
+          {formError ? (
+            <Alert variant="error">
+              {formError}
+              {detail ? <span className="block text-xs">{detail}</span> : null}
+            </Alert>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="submit" loading={submitting}>
+              Criar evento
+            </Button>
+            <Link to="/eventos" className="text-brand text-sm hover:underline">
+              Cancelar
+            </Link>
+          </div>
+        </form>
+      </Card>
+
+      {showAddress ? (
+        <Card className="flex flex-col gap-4">
+          <h2 className="text-ink text-base font-semibold">Endereço do evento</h2>
+          <AddressPicker
+            addresses={addresses.addresses}
+            onSave={addresses.save}
+            findByKey={addresses.findByKey}
+            onAddress={setAddress}
+          />
+          {errors.address_id ? (
+            <p role="alert" className="text-danger text-xs">
+              {errors.address_id}
+            </p>
+          ) : null}
+        </Card>
+      ) : null}
+    </div>
+  );
+}

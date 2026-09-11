@@ -41,7 +41,15 @@ function CommunityEventsSection({ communityId }: { communityId: string }) {
 
   return (
     <section className="flex flex-col gap-4">
-      <h2 className="text-ink text-base font-semibold">Eventos desta comunidade</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-ink text-base font-semibold">Eventos desta comunidade</h2>
+        <Link
+          to={`/eventos/novo?community_id=${communityId}`}
+          className="text-brand text-sm hover:underline"
+        >
+          Novo evento
+        </Link>
+      </div>
 
       {loading && items.length === 0 ? <PageSpinner /> : null}
 
