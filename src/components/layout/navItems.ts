@@ -10,7 +10,7 @@ export interface NavItem {
 
 export const NAV_ITEMS: NavItem[] = [
   { to: "/comunidades", label: "Comunidades", enabled: true },
-  { to: "/eventos", label: "Eventos", enabled: false },
+  { to: "/eventos", label: "Eventos", enabled: true },
   { to: "/skills", label: "Skills", enabled: false },
   { to: "/pessoas", label: "Pessoas", enabled: false },
   { to: "/perfil", label: "Meu perfil", enabled: false },

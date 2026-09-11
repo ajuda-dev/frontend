@@ -65,6 +65,12 @@ describe("AppLayout", () => {
     expect(screen.getByRole("link", { name: "Comunidades" })).toBeInTheDocument();
   });
 
+  it("mostra o item de nav Eventos habilitado pelo plano 06", () => {
+    seedSession();
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Eventos" })).toBeInTheDocument();
+  });
+
   it("não exibe itens de nav desabilitados (rotas ainda inexistentes)", () => {
     seedSession();
     renderLayout();

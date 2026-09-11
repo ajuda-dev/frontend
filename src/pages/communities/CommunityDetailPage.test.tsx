@@ -14,17 +14,23 @@ vi.mock("../../services/community", () => ({
   deleteCommunity: vi.fn(),
 }));
 
+vi.mock("../../services/event", () => ({
+  listEvents: vi.fn(),
+}));
+
 import {
   deleteCommunity,
   findCommunityById,
   joinCommunity,
   leaveCommunity,
 } from "../../services/community";
+import { listEvents } from "../../services/event";
 
 const mockedFind = vi.mocked(findCommunityById);
 const mockedJoin = vi.mocked(joinCommunity);
 const mockedLeave = vi.mocked(leaveCommunity);
 const mockedDelete = vi.mocked(deleteCommunity);
+const mockedListEvents = vi.mocked(listEvents);
 
 const COMMUNITY: Community = {
   id: "c1",
@@ -60,6 +66,7 @@ describe("CommunityDetailPage", () => {
     localStorage.clear();
     vi.clearAllMocks();
     seedSession();
+    mockedListEvents.mockResolvedValue({ data: [], has_next: false });
   });
 
   it("com state da lista não chama a API", async () => {
@@ -213,5 +220,36 @@ describe("CommunityDetailPage", () => {
     expect(
       await screen.findByText("Você não tem permissão para esta ação"),
     ).toBeInTheDocument();
+  });
+
+  it("seção de eventos lista por community_id", async () => {
+    mockedListEvents.mockResolvedValue({
+      data: [
+        {
+          id: "e1",
+          title: "Meetup Dev SP",
+          description: "Encontro mensal",
+          category: "COMMUNITY_EVENT",
+          type: "ONLINE",
+          start_at: "2026-10-01T18:00:00-03:00",
+          duration_min: 60,
+        },
+      ],
+      has_next: false,
+    });
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByText("Eventos desta comunidade")).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Meetup Dev SP" })).toHaveAttribute(
+      "href",
+      "/eventos/e1",
+    );
+    expect(mockedListEvents).toHaveBeenCalledWith({ page: 1, communityId: "c1" });
+  });
+
+  it("seção de eventos vazia mostra EmptyState", async () => {
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByText("Nenhum evento por aqui ainda.")).toBeInTheDocument();
   });
 });

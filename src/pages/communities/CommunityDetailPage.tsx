@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { EventCard } from "../../components/event/EventCard";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { LoadMoreButton } from "../../components/ui/LoadMoreButton";
 import { ConfirmModal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
 import { useMemberships } from "../../hooks/useMemberships";
+import { usePageable } from "../../hooks/usePageable";
 import { deleteCommunity, findCommunityById } from "../../services/community";
+import { listEvents } from "../../services/event";
 import type { Community } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
@@ -26,6 +30,54 @@ interface DetailLocationState {
 // vez de renderizar a tela com esses campos vazios.
 function isHydrated(community: Community | undefined): boolean {
   return Boolean(community?.address && community?.owner);
+}
+
+function CommunityEventsSection({ communityId }: { communityId: string }) {
+  const fetcher = useCallback(
+    (page: number) => listEvents({ page, communityId }),
+    [communityId],
+  );
+  const { items, hasNext, loading, error, loadMore, reset } = usePageable(fetcher);
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-ink text-base font-semibold">Eventos desta comunidade</h2>
+
+      {loading && items.length === 0 ? <PageSpinner /> : null}
+
+      {error && items.length === 0 ? (
+        <Alert
+          variant="error"
+          title="Não foi possível carregar os eventos"
+          action={
+            <button type="button" onClick={reset} className="text-brand text-sm hover:underline">
+              Tentar novamente
+            </button>
+          }
+        >
+          {apiErrorMessage(error)}
+        </Alert>
+      ) : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <EmptyState title="Nenhum evento por aqui ainda." />
+      ) : null}
+
+      {items.length > 0 ? (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((event) => (
+            <li key={event.id}>
+              <EventCard event={event} compact />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {items.length > 0 ? (
+        <LoadMoreButton hasNext={hasNext} loading={loading} onLoadMore={loadMore} />
+      ) : null}
+    </section>
+  );
 }
 
 export function CommunityDetailPage() {
@@ -222,6 +274,8 @@ export function CommunityDetailPage() {
         onConfirm={() => void handleDelete()}
         onClose={() => setConfirmingDelete(false)}
       />
+
+      <CommunityEventsSection communityId={community.id} />
 
       <Link to="/comunidades" className="text-brand text-sm hover:underline">
         Voltar para a lista

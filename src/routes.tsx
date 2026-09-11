@@ -8,6 +8,8 @@ import { RegisterPage } from "./pages/auth/RegisterPage";
 import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
 import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPage";
 import { NewCommunityPage } from "./pages/communities/NewCommunityPage";
+import { EventDetailPage } from "./pages/events/EventDetailPage";
+import { ExploreEventsPage } from "./pages/events/ExploreEventsPage";
 
 export function AppRoutes() {
   return (
@@ -23,6 +25,8 @@ export function AppRoutes() {
           <Route path="/comunidades" element={<ExploreCommunitiesPage />} />
           <Route path="/comunidades/nova" element={<NewCommunityPage />} />
           <Route path="/comunidades/:id" element={<CommunityDetailPage />} />
+          <Route path="/eventos" element={<ExploreEventsPage />} />
+          <Route path="/eventos/:id" element={<EventDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
