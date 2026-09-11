@@ -11,13 +11,20 @@ vi.mock("../../services/community", () => ({
   findCommunityById: vi.fn(),
   joinCommunity: vi.fn(),
   leaveCommunity: vi.fn(),
+  deleteCommunity: vi.fn(),
 }));
 
-import { findCommunityById, joinCommunity, leaveCommunity } from "../../services/community";
+import {
+  deleteCommunity,
+  findCommunityById,
+  joinCommunity,
+  leaveCommunity,
+} from "../../services/community";
 
 const mockedFind = vi.mocked(findCommunityById);
 const mockedJoin = vi.mocked(joinCommunity);
 const mockedLeave = vi.mocked(leaveCommunity);
+const mockedDelete = vi.mocked(deleteCommunity);
 
 const COMMUNITY: Community = {
   id: "c1",
@@ -27,11 +34,11 @@ const COMMUNITY: Community = {
   owner: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
 };
 
-function seedSession(id = "u1") {
+function seedSession(id = "u1", role: "USER" | "MODERATOR" | "ADMIN" = "USER") {
   localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
+    JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role }),
   );
 }
 
@@ -66,6 +73,28 @@ describe("CommunityDetailPage", () => {
   it("sem state busca pelo id (acesso direto/refresh)", async () => {
     mockedFind.mockResolvedValue(COMMUNITY);
     renderDetail();
+
+    expect(await screen.findByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
+    expect(mockedFind).toHaveBeenCalledWith("c1", expect.anything());
+  });
+
+  it("state incompleto (sem address/owner) cai na busca e hidrata a tela", async () => {
+    // Guarda defensiva: um state parcial nunca deve renderizar a tela com os
+    // campos de endereço/responsável vazios — melhor buscar por id.
+    mockedFind.mockResolvedValue(COMMUNITY);
+    renderDetail({ community: { id: "c1", name: "Dev SP", description: "Encontros de dev" } });
+
+    expect(await screen.findByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
+    expect(mockedFind).toHaveBeenCalledWith("c1", expect.anything());
+    // Hidratado: endereço e responsável aparecem (sem isso a tela mostra "—"/"não informado").
+    expect((await screen.findAllByText(/São Paulo\/SP/)).length).toBeGreaterThan(0);
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.getByText("ana@ajudadev.dev")).toBeInTheDocument();
+  });
+
+  it("state de outra comunidade é ignorado", async () => {
+    mockedFind.mockResolvedValue(COMMUNITY);
+    renderDetail({ community: { ...COMMUNITY, id: "c9" } });
 
     expect(await screen.findByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
     expect(mockedFind).toHaveBeenCalledWith("c1", expect.anything());
@@ -108,5 +137,81 @@ describe("CommunityDetailPage", () => {
 
     expect(await screen.findByRole("button", { name: "Entrar" })).toBeInTheDocument();
     expect(mockedLeave).toHaveBeenCalledWith("c1");
+  });
+
+  it("USER que não é owner não vê o botão de excluir", async () => {
+    renderDetail({ community: COMMUNITY });
+
+    await screen.findByRole("heading", { name: "Dev SP" });
+    expect(screen.queryByRole("button", { name: "Excluir comunidade" })).not.toBeInTheDocument();
+  });
+
+  it("owner vê o botão e a confirmação exclui e volta para a lista", async () => {
+    seedSession("owner-1");
+    localStorage.setItem("ajudadev.memberships.owner-1", JSON.stringify(["c1"]));
+    mockedDelete.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir comunidade" }));
+    expect(screen.getByText(/Esta ação é irreversível/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(await screen.findByText("Lista de comunidades")).toBeInTheDocument();
+    expect(mockedDelete).toHaveBeenCalledWith("c1");
+    expect(localStorage.getItem("ajudadev.memberships.owner-1")).toBe(JSON.stringify([]));
+  });
+
+  it("MODERATOR vê o botão em comunidade alheia com aviso reforçado", async () => {
+    seedSession("mod-1", "MODERATOR");
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir comunidade" }));
+
+    expect(
+      screen.getByText(/Você está excluindo uma comunidade que não é sua/),
+    ).toBeInTheDocument();
+  });
+
+  it("400 com membros ativos alerta e permanece na página", async () => {
+    seedSession("owner-1");
+    mockedDelete.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: { message: "cannot delete community with active members", code: 400 },
+      },
+    });
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir comunidade" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(
+      await screen.findByText("Não é possível excluir uma comunidade com membros ativos"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
+  });
+
+  it("403 alerta que não pode excluir a comunidade", async () => {
+    seedSession("owner-1");
+    mockedDelete.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 403",
+      response: { status: 403, data: { message: "forbidden", code: 403 } },
+    });
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Excluir comunidade" }));
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
+
+    expect(
+      await screen.findByText("Você não tem permissão para esta ação"),
+    ).toBeInTheDocument();
   });
 });

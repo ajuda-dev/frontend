@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router";
 import { CommunityCard } from "../../components/community/CommunityCard";
 import { Alert } from "../../components/ui/Alert";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -45,6 +46,11 @@ export function ExploreCommunitiesPage() {
       <PageHeader
         title="Comunidades"
         description="Encontre comunidades dev/tech perto de você e participe."
+        actions={
+          <Link to="/comunidades/nova" className="text-brand text-sm hover:underline">
+            Nova comunidade
+          </Link>
+        }
       />
 
       <Field

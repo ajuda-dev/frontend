@@ -55,6 +55,7 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "user is not a member of this community": "Você não é membro desta comunidade",
   "membership not found": "Você não é membro desta comunidade",
   "community not found": "Comunidade não encontrada",
+  "community already exists": "Já existe uma comunidade com este nome",
   "unauthorized": "Sessão expirada",
   "forbidden": "Você não tem permissão para esta ação",
   "not found": "Registro não encontrado",

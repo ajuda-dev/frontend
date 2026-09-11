@@ -102,6 +102,12 @@ export interface RegisterUserInput {
   password: string;
 }
 
+export interface RegisterAddressInput {
+  zip_code: string;
+  number: string;
+  complement?: string;
+}
+
 export interface RegisterCommunityInput {
   id?: string;
   name: string;

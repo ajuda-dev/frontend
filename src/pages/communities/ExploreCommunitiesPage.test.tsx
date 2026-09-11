@@ -128,4 +128,14 @@ describe("ExploreCommunitiesPage", () => {
 
     expect(await screen.findByText("Endereço não informado")).toBeInTheDocument();
   });
+
+  it("mostra o atalho para criar comunidade", async () => {
+    mockedList.mockResolvedValue(page([], false));
+    renderPage();
+
+    expect(await screen.findByRole("link", { name: "Nova comunidade" })).toHaveAttribute(
+      "href",
+      "/comunidades/nova",
+    );
+  });
 });

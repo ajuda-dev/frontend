@@ -7,6 +7,7 @@ import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
 import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
 import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPage";
+import { NewCommunityPage } from "./pages/communities/NewCommunityPage";
 
 export function AppRoutes() {
   return (
@@ -20,6 +21,7 @@ export function AppRoutes() {
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/comunidades" replace />} />
           <Route path="/comunidades" element={<ExploreCommunitiesPage />} />
+          <Route path="/comunidades/nova" element={<NewCommunityPage />} />
           <Route path="/comunidades/:id" element={<CommunityDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

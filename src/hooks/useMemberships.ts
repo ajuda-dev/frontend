@@ -13,6 +13,7 @@ export interface UseMembershipsResult {
   isMember: (communityId: string) => boolean;
   join: (communityId: string) => Promise<void>;
   leave: (communityId: string) => Promise<void>;
+  forget: (communityId: string) => void;
   pendingId: string | null;
   notice: MembershipNotice | null;
   dismissNotice: () => void;
@@ -127,8 +128,17 @@ export function useMemberships(userId: string | null | undefined): UseMembership
 
   const dismissNotice = useCallback(() => setNotice(null), []);
 
+  // Usado após excluir a comunidade: o id deixa de existir no backend.
+  const forget = useCallback(
+    (communityId: string) => {
+      if (!ids.includes(communityId)) return;
+      persist(ids.filter((id) => id !== communityId));
+    },
+    [ids, persist],
+  );
+
   return useMemo(
-    () => ({ isMember, join, leave, pendingId, notice, dismissNotice }),
-    [isMember, join, leave, pendingId, notice, dismissNotice],
+    () => ({ isMember, join, leave, forget, pendingId, notice, dismissNotice }),
+    [isMember, join, leave, forget, pendingId, notice, dismissNotice],
   );
 }

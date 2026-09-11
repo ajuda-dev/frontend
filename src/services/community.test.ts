@@ -1,15 +1,32 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Community, Pageable } from "../types/api";
 import { api } from "./api";
-import { findCommunityById, joinCommunity, leaveCommunity, listCommunities } from "./community";
+import {
+  createCommunity,
+  deleteCommunity,
+  findCommunityById,
+  joinCommunity,
+  leaveCommunity,
+  listCommunities,
+} from "./community";
 
-vi.mock("./api", () => ({
-  api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() },
-}));
+// `isApiError` precisa ser o real (a implementação de findCommunityById depende dele
+// para mapear 404 → null); só a instância `api` é dublada.
+vi.mock("./api", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./api")>();
+  return { ...actual, api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } };
+});
 
 const mockedGet = vi.mocked(api.get);
 const mockedPost = vi.mocked(api.post);
 const mockedDelete = vi.mocked(api.delete);
+
+function axiosErrorWithStatus(status: number) {
+  return Object.assign(new Error(`Request failed with status code ${status}`), {
+    isAxiosError: true,
+    response: { status, data: { message: "erro", code: status } },
+  });
+}
 
 function community(id: string): Community {
   return { id, name: `Comunidade ${id}`, description: "descrição" };
@@ -102,54 +119,77 @@ describe("leaveCommunity", () => {
   });
 });
 
+describe("createCommunity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz POST em /community/register com nome, descrição e endereço", async () => {
+    mockedPost.mockResolvedValue({ data: community("c1") });
+
+    const result = await createCommunity({
+      name: "Dev SP",
+      description: "Encontros de dev",
+      address_id: "a1",
+    });
+
+    expect(mockedPost).toHaveBeenCalledWith("/community/register", {
+      name: "Dev SP",
+      description: "Encontros de dev",
+      address_id: "a1",
+    });
+    expect(result.id).toBe("c1");
+  });
+});
+
+describe("deleteCommunity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz DELETE no path da comunidade", async () => {
+    mockedDelete.mockResolvedValue({ data: undefined });
+
+    await deleteCommunity("c1");
+
+    expect(mockedDelete).toHaveBeenCalledWith("/community/c1");
+  });
+});
+
 describe("findCommunityById", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("encontra na primeira página", async () => {
-    mockedGet.mockResolvedValue({ data: page([community("c1"), community("c2")], true) });
+  it("busca direto na rota por id, em uma única requisição", async () => {
+    const found = community("c2");
+    mockedGet.mockResolvedValue({ data: found });
 
-    const found = await findCommunityById("c2");
+    const result = await findCommunityById("c2");
 
-    expect(found?.id).toBe("c2");
+    expect(result).toEqual(found);
     expect(mockedGet).toHaveBeenCalledTimes(1);
-    expect(mockedGet).toHaveBeenCalledWith("/community", {
-      params: { page: 1, limit: 100 },
-      signal: undefined,
-    });
+    expect(mockedGet).toHaveBeenCalledWith("/community/c2", { signal: undefined });
   });
 
-  it("encontra em uma página seguinte", async () => {
-    mockedGet
-      .mockResolvedValueOnce({ data: page([community("c1")], true) })
-      .mockResolvedValueOnce({ data: page([community("c9")], false) });
+  it("repassa o AbortSignal", async () => {
+    mockedGet.mockResolvedValue({ data: community("c1") });
+    const controller = new AbortController();
 
-    const found = await findCommunityById("c9");
+    await findCommunityById("c1", controller.signal);
 
-    expect(found?.id).toBe("c9");
-    expect(mockedGet).toHaveBeenCalledTimes(2);
-    expect(mockedGet).toHaveBeenLastCalledWith("/community", {
-      params: { page: 2, limit: 100 },
-      signal: undefined,
-    });
+    expect(mockedGet).toHaveBeenCalledWith("/community/c1", { signal: controller.signal });
   });
 
-  it("para quando has_next é falso e devolve null", async () => {
-    mockedGet.mockResolvedValue({ data: page([community("c1")], false) });
+  it("traduz 404 em null (inexistente ou arquivada)", async () => {
+    mockedGet.mockRejectedValue(axiosErrorWithStatus(404));
 
-    const found = await findCommunityById("inexistente");
-
-    expect(found).toBeNull();
-    expect(mockedGet).toHaveBeenCalledTimes(1);
+    await expect(findCommunityById("inexistente")).resolves.toBeNull();
   });
 
-  it("desiste após 20 páginas", async () => {
-    mockedGet.mockResolvedValue({ data: page([community("c1")], true) });
+  it("propaga outros erros para a página exibir o alerta", async () => {
+    mockedGet.mockRejectedValue(axiosErrorWithStatus(500));
 
-    const found = await findCommunityById("inexistente");
-
-    expect(found).toBeNull();
-    expect(mockedGet).toHaveBeenCalledTimes(20);
+    await expect(findCommunityById("c1")).rejects.toBeTruthy();
   });
 });

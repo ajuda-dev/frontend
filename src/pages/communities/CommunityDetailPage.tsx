@@ -1,36 +1,50 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useLocation, useParams } from "react-router";
+import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { ConfirmModal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
 import { useMemberships } from "../../hooks/useMemberships";
-import { findCommunityById } from "../../services/community";
+import { deleteCommunity, findCommunityById } from "../../services/community";
 import type { Community } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
+import { canAtLeast } from "../../utils/roles";
 
 interface DetailLocationState {
   community?: Community;
 }
 
+// A tela depende de `address` e `owner` (CEP, cidade, responsável e ações de dono).
+// O state só é aceito quando traz os dois — hoje tanto a listagem quanto o 201 do
+// register devolvem a comunidade completa; um state parcial cai na busca por id, em
+// vez de renderizar a tela com esses campos vazios.
+function isHydrated(community: Community | undefined): boolean {
+  return Boolean(community?.address && community?.owner);
+}
+
 export function CommunityDetailPage() {
   const { id = "" } = useParams();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const memberships = useMemberships(user?.id);
 
   const fromList = (location.state as DetailLocationState | null)?.community;
   const [community, setCommunity] = useState<Community | null>(
-    fromList && fromList.id === id ? fromList : null,
+    fromList && fromList.id === id && isHydrated(fromList) ? fromList : null,
   );
   const [loading, setLoading] = useState(!community);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     // Comunidade vinda da navegação (state da lista) já está carregada.
@@ -55,6 +69,21 @@ export function CommunityDetailPage() {
   }, [id, attempt, community]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  const handleDelete = useCallback(async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await deleteCommunity(id);
+      memberships.forget(id);
+      navigate("/comunidades", { replace: true });
+    } catch (caught) {
+      setConfirmingDelete(false);
+      setDeleteError(apiErrorMessage(caught));
+    } finally {
+      setDeleting(false);
+    }
+  }, [id, memberships, navigate]);
 
   if (loading) return <PageSpinner />;
 
@@ -98,6 +127,7 @@ export function CommunityDetailPage() {
   }
 
   const isOwner = Boolean(user && community.owner && community.owner.id === user.id);
+  const canDelete = isOwner || canAtLeast(user?.role, "MODERATOR");
   const member = memberships.isMember(community.id);
   const pending = memberships.pendingId === community.id;
 
@@ -147,6 +177,8 @@ export function CommunityDetailPage() {
         </Alert>
       ) : null}
 
+      {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
+
       {isOwner ? (
         <p className="text-ink-muted text-sm">
           Você criou esta comunidade, então não há entrada para participar.
@@ -168,6 +200,28 @@ export function CommunityDetailPage() {
           )}
         </div>
       )}
+
+      {canDelete ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
+            Excluir comunidade
+          </Button>
+        </div>
+      ) : null}
+
+      <ConfirmModal
+        open={confirmingDelete}
+        title="Excluir comunidade"
+        description={
+          isOwner
+            ? "Esta ação é irreversível: a comunidade será removida do catálogo."
+            : "Você está excluindo uma comunidade que não é sua. Esta ação é irreversível."
+        }
+        confirmLabel="Excluir"
+        loading={deleting}
+        onConfirm={() => void handleDelete()}
+        onClose={() => setConfirmingDelete(false)}
+      />
 
       <Link to="/comunidades" className="text-brand text-sm hover:underline">
         Voltar para a lista

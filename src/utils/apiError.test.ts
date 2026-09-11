@@ -18,6 +18,13 @@ describe("translateApiMessage", () => {
     );
     expect(translateApiMessage("Email already exists")).toBe("Este e-mail já está cadastrado");
     expect(translateApiMessage("Address already exists")).toBe("Este endereço já está cadastrado");
+    expect(translateApiMessage("Community already exists")).toBe(
+      "Já existe uma comunidade com este nome",
+    );
+    expect(translateApiMessage("cannot delete community with active members")).toBe(
+      "Não é possível excluir uma comunidade com membros ativos",
+    );
+    expect(translateApiMessage("forbidden")).toBe("Você não tem permissão para esta ação");
     expect(translateApiMessage("invalid credentials")).toBe("E-mail ou senha inválidos");
     expect(translateApiMessage("only admins can delete users")).toBe(
       "Apenas administradores podem excluir usuários",

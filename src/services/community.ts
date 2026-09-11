@@ -1,5 +1,5 @@
 import type { Community, CommunityUser, Pageable } from "../types/api";
-import { api } from "./api";
+import { api, isApiError } from "./api";
 
 export interface ListCommunitiesParams {
   page: number;
@@ -28,27 +28,37 @@ export async function joinCommunity(communityId: string): Promise<CommunityUser>
   return data;
 }
 
+export interface CreateCommunityInput {
+  name: string;
+  description: string;
+  address_id: string;
+}
+
+export async function createCommunity(input: CreateCommunityInput): Promise<Community> {
+  const { data } = await api.post<Community>("/community/register", input);
+  return data;
+}
+
+export async function deleteCommunity(communityId: string): Promise<void> {
+  await api.delete(`/community/${communityId}`);
+}
+
 export async function leaveCommunity(communityId: string): Promise<void> {
   await api.delete(`/community/${communityId}/leave`);
 }
 
-const SEARCH_PAGE_LIMIT = 100;
-const SEARCH_MAX_PAGES = 20;
-
-// Não existe GET /v1/community/:id no backend: o detalhe por acesso direto
-// percorre as páginas da listagem até encontrar a comunidade.
+// GET /v1/community/:id (endpoint dedicado do backend): o detalhe resolve em uma
+// requisição. Antes dele, a busca varria a listagem página a página (limit 100).
 export async function findCommunityById(
   id: string,
   signal?: AbortSignal,
 ): Promise<Community | null> {
-  for (let page = 1; page <= SEARCH_MAX_PAGES; page += 1) {
-    const { data } = await api.get<Pageable<Community>>("/community", {
-      params: { page, limit: SEARCH_PAGE_LIMIT },
-      signal,
-    });
-    const found = data.data.find((community) => community.id === id);
-    if (found) return found;
-    if (!data.has_next) return null;
+  try {
+    const { data } = await api.get<Community>(`/community/${id}`, { signal });
+    return data;
+  } catch (error) {
+    // 404 = inexistente ou soft-deletada: a página mostra o estado "não encontrada".
+    if (isApiError(error) && error.response?.status === 404) return null;
+    throw error;
   }
-  return null;
 }
