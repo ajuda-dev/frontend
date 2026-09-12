@@ -96,7 +96,12 @@ describe("ExploreCommunitiesPage", () => {
 
     expect(await screen.findByRole("link", { name: "Dev RJ" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Carregar mais" })).not.toBeInTheDocument();
-    expect(mockedList).toHaveBeenLastCalledWith({ page: 2, city: "" });
+    expect(mockedList).toHaveBeenLastCalledWith({
+      page: 2,
+      city: "",
+      name: "",
+      ownerId: undefined,
+    });
   });
 
   it("sem has_next não mostra Carregar mais", async () => {
@@ -116,8 +121,85 @@ describe("ExploreCommunitiesPage", () => {
     await user.type(screen.getByLabelText("Filtrar por cidade"), "Recife");
 
     await waitFor(() =>
-      expect(mockedList).toHaveBeenLastCalledWith({ page: 1, city: "Recife" }),
+      expect(mockedList).toHaveBeenLastCalledWith({
+        page: 1,
+        city: "Recife",
+        name: "",
+        ownerId: undefined,
+      }),
     );
+  });
+
+  it("busca pelo nome vai com debounce e reseta para a página 1", async () => {
+    mockedList.mockResolvedValue(page([community("c1", "Dev SP")], false));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("link", { name: "Dev SP" });
+    await user.type(screen.getByLabelText("Buscar pelo nome"), "Dev");
+
+    await waitFor(() =>
+      expect(mockedList).toHaveBeenLastCalledWith({
+        page: 1,
+        city: "",
+        name: "Dev",
+        ownerId: undefined,
+      }),
+    );
+  });
+
+  it('"Minhas comunidades" restringe a busca ao owner logado', async () => {
+    mockedList.mockResolvedValue(page([community("c1", "Dev SP")], false));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole("link", { name: "Dev SP" });
+    await user.click(screen.getByRole("checkbox", { name: "Mostrar apenas as comunidades que eu criei" }));
+
+    await waitFor(() =>
+      expect(mockedList).toHaveBeenLastCalledWith({
+        page: 1,
+        city: "",
+        name: "",
+        ownerId: "u1",
+      }),
+    );
+  });
+
+  it('desligar "Minhas comunidades" volta a listar todas', async () => {
+    mockedList.mockResolvedValue(page([community("c1", "Dev SP")], false));
+    const user = userEvent.setup();
+    renderPage();
+
+    const toggle = await screen.findByRole("checkbox", {
+      name: "Mostrar apenas as comunidades que eu criei",
+    });
+    await user.click(toggle);
+    await user.click(toggle);
+
+    await waitFor(() =>
+      expect(mockedList).toHaveBeenLastCalledWith({
+        page: 1,
+        city: "",
+        name: "",
+        ownerId: undefined,
+      }),
+    );
+  });
+
+  it("com filtro ativo a lista vazia fala em filtros", async () => {
+    mockedList.mockResolvedValue(page([], false));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("Nenhuma comunidade encontrada.");
+    await user.type(screen.getByLabelText("Buscar pelo nome"), "zzz");
+
+    expect(
+      await screen.findByText(
+        "Nenhuma comunidade corresponde aos filtros. Tente outro trecho ou limpe os filtros.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("card sem endereço mostra Endereço não informado", async () => {

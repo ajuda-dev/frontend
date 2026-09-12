@@ -75,6 +75,61 @@ describe("listCommunities", () => {
     });
   });
 
+  it("envia o nome em minúsculas (busca por substring no backend)", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listCommunities({ page: 1, name: "  Dev SP " });
+
+    expect(mockedGet).toHaveBeenCalledWith("/community", {
+      params: { page: 1, limit: 10, name: "dev sp" },
+      signal: undefined,
+    });
+  });
+
+  it("nome vazio não vira filtro", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listCommunities({ page: 1, name: "  " });
+
+    expect(mockedGet).toHaveBeenCalledWith("/community", {
+      params: { page: 1, limit: 10 },
+      signal: undefined,
+    });
+  });
+
+  it("envia owner_id para o recorte minhas comunidades", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listCommunities({ page: 1, ownerId: "u1" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/community", {
+      params: { page: 1, limit: 10, owner_id: "u1" },
+      signal: undefined,
+    });
+  });
+
+  it("ownerId vazio não vira filtro", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listCommunities({ page: 1, ownerId: "" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/community", {
+      params: { page: 1, limit: 10 },
+      signal: undefined,
+    });
+  });
+
+  it("combina cidade, nome e owner_id no mesmo request", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listCommunities({ page: 3, city: "Sao Paulo", name: "Dev", ownerId: "u1" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/community", {
+      params: { page: 3, limit: 10, city: "sao paulo", name: "dev", owner_id: "u1" },
+      signal: undefined,
+    });
+  });
+
   it("repassa o AbortSignal", async () => {
     mockedGet.mockResolvedValue({ data: page([], false) });
     const controller = new AbortController();

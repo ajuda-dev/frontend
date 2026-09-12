@@ -4,20 +4,32 @@ import { api, isApiError } from "./api";
 export interface ListCommunitiesParams {
   page: number;
   city?: string;
+  name?: string;
+  ownerId?: string;
   signal?: AbortSignal;
 }
 
 export async function listCommunities({
   page,
   city,
+  name,
+  ownerId,
   signal,
 }: ListCommunitiesParams): Promise<Pageable<Community>> {
   const params: Record<string, string | number> = { page, limit: 10 };
   const trimmedCity = city?.trim();
   if (trimmedCity) {
-    // O backend busca a cidade por substring (addresses.city LIKE %city%), então o
-    // termo vai em minúsculas para casar com o valor gravado pelo ViaCEP.
+    // O backend busca a cidade por substring, ignorando caixa e acentos
+    // (unaccent(addresses.city) LIKE unaccent(?)), então o termo pode ir como digitado.
     params.city = trimmedCity.toLowerCase();
+  }
+  const trimmedName = name?.trim();
+  if (trimmedName) {
+    params.name = trimmedName.toLowerCase();
+  }
+  if (ownerId) {
+    // Recorte "minhas comunidades": o backend filtra community.owner_id.
+    params.owner_id = ownerId;
   }
   const { data } = await api.get<Pageable<Community>>("/community", { params, signal });
   return data;

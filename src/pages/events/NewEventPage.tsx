@@ -1,21 +1,23 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { AddressPicker } from "../../components/address/AddressPicker";
+import { CommunityPicker } from "../../components/community/CommunityPicker";
 import { Alert } from "../../components/ui/Alert";
-import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { Field } from "../../components/ui/Field";
 import { Input } from "../../components/ui/Input";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { Select } from "../../components/ui/Select";
+import { Spinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useAddresses } from "../../hooks/useAddresses";
+import { findCommunityById } from "../../services/community";
 import { createEvent } from "../../services/event";
 import { EVENT_CATEGORIES, EVENT_TYPES } from "../../types/api";
-import type { Address, EventCategory, EventType } from "../../types/api";
+import type { Address, Community, EventCategory, EventType } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
 import { EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
 
@@ -59,6 +61,37 @@ export function NewEventPage() {
   const addresses = useAddresses(user?.id);
 
   const communityId = searchParams.get("community_id") ?? "";
+
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [communityNotice, setCommunityNotice] = useState<string | null>(null);
+  const [loadingCommunity, setLoadingCommunity] = useState(Boolean(communityId));
+
+  useEffect(() => {
+    if (!communityId) return;
+    let active = true;
+    findCommunityById(communityId)
+      .then((found) => {
+        if (!active) return;
+        if (found) {
+          setCommunity(found);
+          return;
+        }
+        // 404: a comunidade saiu do ar. O vínculo é opcional, então avisa e segue.
+        setCommunityNotice(
+          "A comunidade informada não foi encontrada. O evento será criado sem vínculo.",
+        );
+      })
+      .catch(() => {
+        if (!active) return;
+        setCommunityNotice("Não foi possível carregar a comunidade informada. Escolha outra abaixo.");
+      })
+      .finally(() => {
+        if (active) setLoadingCommunity(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [communityId]);
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -142,7 +175,7 @@ export function NewEventPage() {
         duration_min: Number(durationMin),
         meeting_link: showMeetingLink ? meetingLink : "",
         max_slots: showMaxSlots && maxSlots.trim() ? Number(maxSlots) : null,
-        community_id: communityId || undefined,
+        community_id: community?.id,
         address_id: showAddress && address ? address.id : undefined,
       });
       // O 201 não traz owner/community/address aninhados: o detalhe busca pelo id.
@@ -176,15 +209,6 @@ export function NewEventPage() {
         title="Novo evento"
         description="Descreva o encontro, escolha o formato e publique no catálogo."
       />
-
-      {communityId ? (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="info">Evento vinculado a uma comunidade</Badge>
-          <span className="text-ink-muted text-xs">
-            Este evento será publicado na comunidade de origem.
-          </span>
-        </div>
-      ) : null}
 
       <Card>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
@@ -340,6 +364,21 @@ export function NewEventPage() {
             </Link>
           </div>
         </form>
+      </Card>
+
+      <Card className="flex flex-col gap-4">
+        <h2 className="text-ink text-base font-semibold">Comunidade</h2>
+
+        {communityNotice ? <Alert variant="info">{communityNotice}</Alert> : null}
+        {errors.community_id ? <Alert variant="error">{errors.community_id}</Alert> : null}
+
+        {loadingCommunity ? (
+          <div className="flex justify-center py-4">
+            <Spinner />
+          </div>
+        ) : user?.id ? (
+          <CommunityPicker ownerId={user.id} selected={community} onSelect={setCommunity} />
+        ) : null}
       </Card>
 
       {showAddress ? (

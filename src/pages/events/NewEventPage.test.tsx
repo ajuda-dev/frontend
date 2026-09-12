@@ -1,9 +1,9 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../context/AuthContext";
-import type { Address, EventItem } from "../../types/api";
+import type { Address, Community, EventItem, Pageable } from "../../types/api";
 import { NewEventPage } from "./NewEventPage";
 
 vi.mock("../../services/address", () => ({ createAddress: vi.fn() }));
@@ -13,12 +13,30 @@ vi.mock("../../services/event", () => ({
   findEventById: vi.fn(),
   listEvents: vi.fn(),
 }));
+vi.mock("../../services/community", () => ({
+  findCommunityById: vi.fn(),
+  listCommunities: vi.fn(),
+}));
 
 import { createAddress } from "../../services/address";
+import { findCommunityById, listCommunities } from "../../services/community";
 import { createEvent } from "../../services/event";
 
 const mockedCreateAddress = vi.mocked(createAddress);
 const mockedCreateEvent = vi.mocked(createEvent);
+const mockedFindCommunity = vi.mocked(findCommunityById);
+const mockedListCommunities = vi.mocked(listCommunities);
+
+const COMMUNITY: Community = {
+  id: "c1",
+  name: "Comunidade de origem",
+  description: "comunidade de testes",
+  address: { id: "a-c1", zip_code: "01001000", city: "São Paulo", state: "SP" },
+};
+
+function emptyPage(): Pageable<Community> {
+  return { data: [], has_next: false };
+}
 
 const ADDRESS: Address = {
   id: "a1",
@@ -81,6 +99,8 @@ describe("NewEventPage", () => {
     seedSession();
     mockedCreateAddress.mockResolvedValue(ADDRESS);
     mockedCreateEvent.mockResolvedValue(CREATED);
+    mockedFindCommunity.mockResolvedValue(null);
+    mockedListCommunities.mockResolvedValue(emptyPage());
   });
 
   it("título e descrição vazios são barrados localmente sem chamar a API", async () => {
@@ -200,17 +220,89 @@ describe("NewEventPage", () => {
     expect(new Date(payload.start_at).getTime()).toBeGreaterThan(Date.now());
   });
 
-  it("?community_id na URL associa o evento à comunidade", async () => {
+  it("?community_id na URL pré-seleciona a comunidade e envia o vínculo", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
     const user = userEvent.setup();
     renderPage("/eventos/novo?community_id=c1");
 
-    expect(screen.getByText("Evento vinculado a uma comunidade")).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Comunidade de origem/ })).toBeChecked();
+    expect(mockedFindCommunity).toHaveBeenCalledWith("c1");
 
     await fillRequired(user);
     await user.click(screen.getByRole("button", { name: "Criar evento" }));
 
     expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
     expect(mockedCreateEvent.mock.calls[0][0].community_id).toBe("c1");
+  });
+
+  it("sem ?community_id o evento nasce avulso", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText("Sem vínculo: o evento será publicado de forma avulsa.")).toBeInTheDocument();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
+  });
+
+  it("escolher uma comunidade no picker envia o community_id", async () => {
+    mockedListCommunities.mockResolvedValue({ data: [COMMUNITY], has_next: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("radio", { name: /Comunidade de origem/ }));
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBe("c1");
+  });
+
+  it("escolher e depois limpar o vínculo volta a criar evento avulso", async () => {
+    mockedListCommunities.mockResolvedValue({ data: [COMMUNITY], has_next: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("radio", { name: /Comunidade de origem/ }));
+    await user.click(screen.getByRole("radio", { name: /Sem comunidade/ }));
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
+  });
+
+  it("o picker só lista comunidades do usuário logado", async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(mockedListCommunities).toHaveBeenCalledWith({
+        page: 1,
+        name: "",
+        ownerId: "u1",
+      }),
+    );
+  });
+
+  it("comunidade da URL não encontrada avisa e cria sem vínculo", async () => {
+    mockedFindCommunity.mockResolvedValue(null);
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=sumida");
+
+    expect(
+      await screen.findByText(
+        "A comunidade informada não foi encontrada. O evento será criado sem vínculo.",
+      ),
+    ).toBeInTheDocument();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
   });
 
   it("vagas preenchidas vão como número no payload", async () => {
