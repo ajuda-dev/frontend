@@ -182,14 +182,24 @@ describe("CommunityDetailPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("400 com membros ativos alerta e permanece na página", async () => {
+  it("400 com membros ativos mostra a causa e permanece na página", async () => {
     seedSession("owner-1");
     mockedDelete.mockRejectedValue({
       isAxiosError: true,
       message: "Request failed with status code 400",
       response: {
         status: 400,
-        data: { message: "cannot delete community with active members", code: 400 },
+        data: {
+          message: "Invalid delete",
+          error: "bad_request",
+          code: 400,
+          causes: [
+            {
+              field: "members",
+              message: "community has associated members; remove them before deleting",
+            },
+          ],
+        },
       },
     });
     const user = userEvent.setup();
@@ -199,17 +209,26 @@ describe("CommunityDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(
-      await screen.findByText("Não é possível excluir uma comunidade com membros ativos"),
+      await screen.findByText(
+        "Esta comunidade ainda tem membros; remova todos antes de excluir",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
   });
 
-  it("403 alerta que não pode excluir a comunidade", async () => {
+  it("403 alerta que só o responsável pode excluir a comunidade", async () => {
     seedSession("owner-1");
     mockedDelete.mockRejectedValue({
       isAxiosError: true,
       message: "Request failed with status code 403",
-      response: { status: 403, data: { message: "forbidden", code: 403 } },
+      response: {
+        status: 403,
+        data: {
+          message: "only the community owner can delete this community",
+          error: "forbidden",
+          code: 403,
+        },
+      },
     });
     const user = userEvent.setup();
     renderDetail({ community: COMMUNITY });
@@ -218,7 +237,9 @@ describe("CommunityDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(
-      await screen.findByText("Você não tem permissão para esta ação"),
+      await screen.findByText(
+        "Apenas o responsável, moderadores e administradores podem excluir esta comunidade",
+      ),
     ).toBeInTheDocument();
   });
 

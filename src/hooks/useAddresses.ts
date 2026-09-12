@@ -71,8 +71,10 @@ function keyOf(address: Address): string {
   });
 }
 
-// Não existe endpoint de listagem de endereços: o cache local por usuário é a
-// única forma de reusar um endereço já criado (limitação 3 do plano 05).
+// O GET /v1/address existe, mas é um catálogo GLOBAL (a tabela addresses não tem
+// user_id): não serve para listar "meus endereços". O cache local por usuário
+// continua sendo essa lista; o endpoint só é usado para recuperar o id de um
+// endereço que já existe (plano 15).
 export function useAddresses(userId: string | null | undefined): UseAddressesResult {
   const [state, setState] = useState<{ userId: string | null; addresses: Address[] }>(() => ({
     userId: userId ?? null,

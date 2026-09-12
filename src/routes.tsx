@@ -11,6 +11,7 @@ import { NewCommunityPage } from "./pages/communities/NewCommunityPage";
 import { EventDetailPage } from "./pages/events/EventDetailPage";
 import { ExploreEventsPage } from "./pages/events/ExploreEventsPage";
 import { NewEventPage } from "./pages/events/NewEventPage";
+import { SkillsPage } from "./pages/skills/SkillsPage";
 
 export function AppRoutes() {
   return (
@@ -29,6 +30,7 @@ export function AppRoutes() {
           <Route path="/eventos" element={<ExploreEventsPage />} />
           <Route path="/eventos/novo" element={<NewEventPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>

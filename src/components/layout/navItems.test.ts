@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, visibleNavItems } from "./navItems";
 
 describe("visibleNavItems", () => {
-  it("mostra os itens Comunidades e Eventos habilitados pelos planos 04 e 06", () => {
-    expect(visibleNavItems("USER").map((item) => item.label)).toEqual(["Comunidades", "Eventos"]);
+  it("mostra os itens Comunidades, Eventos e Skills habilitados pelos planos 04, 06 e 08", () => {
+    expect(visibleNavItems("USER").map((item) => item.label)).toEqual([
+      "Comunidades",
+      "Eventos",
+      "Skills",
+    ]);
   });
 
   it("esconde itens desabilitados (rota ainda não existe)", () => {
     const disabled = NAV_ITEMS.filter((item) => !item.enabled);
-    expect(disabled.map((item) => item.label)).toEqual(["Skills", "Pessoas", "Meu perfil"]);
+    expect(disabled.map((item) => item.label)).toEqual(["Pessoas", "Meu perfil"]);
   });
 
   it("mostra item habilitado sem restrição de cargo", () => {
@@ -16,7 +20,7 @@ describe("visibleNavItems", () => {
       item.to === "/comunidades" ? { ...item, enabled: true } : item,
     );
     const visible = items.filter((item) => item.enabled && !item.roles);
-    expect(visible.map((item) => item.label)).toEqual(["Comunidades", "Eventos"]);
+    expect(visible.map((item) => item.label)).toEqual(["Comunidades", "Eventos", "Skills"]);
   });
 
   it("esconde item restrito a ADMIN para USER", () => {

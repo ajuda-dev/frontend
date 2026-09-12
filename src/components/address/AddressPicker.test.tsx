@@ -137,6 +137,28 @@ describe("AddressPicker", () => {
     expect(props.onAddress).toHaveBeenLastCalledWith(null);
   });
 
+  it("400 de CEP inexistente não é tratado como endereço duplicado", async () => {
+    const user = userEvent.setup();
+    const props = renderPicker({
+      onSave: vi.fn().mockRejectedValue({
+        isAxiosError: true,
+        message: "Request failed with status code 400",
+        response: {
+          status: 400,
+          data: { message: "invalid search address data", error: "bad_request", code: 400 },
+        },
+      }),
+    });
+
+    await user.type(screen.getByLabelText("CEP"), "99999999");
+    await user.type(screen.getByLabelText("Número"), "1000");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+
+    expect(await screen.findByText("Não foi possível localizar este CEP")).toBeInTheDocument();
+    expect(screen.queryByText(/já está cadastrado/)).not.toBeInTheDocument();
+    expect(props.onAddress).toHaveBeenLastCalledWith(null);
+  });
+
   it("erro genérico (ViaCEP fora do ar) mostra a mensagem traduzida", async () => {
     const user = userEvent.setup();
     const props = renderPicker({

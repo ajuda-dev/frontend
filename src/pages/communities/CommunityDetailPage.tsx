@@ -16,7 +16,7 @@ import { usePageable } from "../../hooks/usePageable";
 import { deleteCommunity, findCommunityById } from "../../services/community";
 import { listEvents } from "../../services/event";
 import type { Community } from "../../types/api";
-import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
 import { canAtLeast } from "../../utils/roles";
 
@@ -139,7 +139,10 @@ export function CommunityDetailPage() {
       navigate("/comunidades", { replace: true });
     } catch (caught) {
       setConfirmingDelete(false);
-      setDeleteError(apiErrorMessage(caught));
+      // A reason do 400 vem nas causes (ex.: "ainda tem membros"); sem isto o usuário
+      // só veria a mensagem genérica e tentaria excluir de novo indefinidamente.
+      const causes = Object.values(apiErrorFields(caught));
+      setDeleteError(causes.length > 0 ? causes.join(" ") : apiErrorMessage(caught));
     } finally {
       setDeleting(false);
     }

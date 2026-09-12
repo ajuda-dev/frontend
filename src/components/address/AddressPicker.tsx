@@ -5,7 +5,7 @@ import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
-import { isApiError } from "../../services/api";
+import { apiErrorBody, isApiError } from "../../services/api";
 import type { Address } from "../../types/api";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
@@ -33,8 +33,13 @@ function maskCep(value: string): string {
   return `${digits.slice(0, 5)}-${digits.slice(5)}`;
 }
 
+// O register devolve 400 tanto para endereço duplicado quanto para CEP inexistente
+// no ViaCEP; só o primeiro merece a mensagem de "já cadastrado".
 function isDuplicateError(error: unknown): boolean {
-  return isApiError(error) && error.response?.status === 400;
+  if (!isApiError(error) || error.response?.status !== 400) return false;
+  const body = apiErrorBody(error);
+  const messages = [body?.message, ...(body?.causes ?? []).map((cause) => cause.message)];
+  return messages.some((message) => message?.trim().toLowerCase() === "address already exists");
 }
 
 export function AddressPicker({ addresses, onSave, findByKey, onAddress }: AddressPickerProps) {
