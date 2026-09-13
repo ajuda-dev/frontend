@@ -8,6 +8,7 @@ import {
   listUsers,
   removeUserSkill,
   updateUserName,
+  updateUserProfile,
 } from "./user";
 
 // `isApiError` precisa ser o real (getUserProfile depende dele para mapear 404 → null);
@@ -189,5 +190,45 @@ describe("updateUserName", () => {
     await expect(updateUserName("u1", "Lucas R.")).resolves.toEqual(updated);
     expect(mockedPut).toHaveBeenCalledWith("/user/u1", { name: "Lucas R." });
     expect(mockedPut.mock.calls[0][1]).toEqual({ name: "Lucas R." });
+  });
+});
+
+describe("updateUserProfile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT no path do usuário com exatamente o body recebido", async () => {
+    const updated: UserSummary = {
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend",
+      configVisibility: { github: { value: "https://github.com/lucas", shareWithCommunity: true } },
+    };
+    mockedPut.mockResolvedValue({ data: updated });
+    const input = {
+      configVisibility: { github: { value: "https://github.com/lucas", shareWithCommunity: true } },
+    };
+
+    await expect(updateUserProfile("u1", input)).resolves.toEqual(updated);
+    expect(mockedPut).toHaveBeenCalledWith("/user/u1", input);
+    expect(mockedPut.mock.calls[0][1]).toEqual(input);
+  });
+
+  it("envia description e configVisibility juntos quando o diff tem os dois", async () => {
+    mockedPut.mockResolvedValue({
+      data: { id: "u1", name: "Lucas", email: "lucas@ajudadev.dev", role: "USER", token: "" },
+    });
+    const input = {
+      description: "novo texto",
+      configVisibility: { email: { value: "", shareWithCommunity: true } },
+    };
+
+    await updateUserProfile("u1", input);
+
+    expect(mockedPut.mock.calls[0][1]).toEqual(input);
   });
 });

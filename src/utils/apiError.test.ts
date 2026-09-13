@@ -88,6 +88,36 @@ describe("translateApiMessage", () => {
       "Esta ação não é permitida no estado atual da participação",
     );
   });
+
+  it("traduz as mensagens de perfil e visibilidade de contatos (plano 16)", () => {
+    expect(translateApiMessage("description must have at most 500 characters")).toBe(
+      "O resumo deve ter no máximo 500 caracteres",
+    );
+    expect(translateApiMessage("value must be a valid http or https url")).toBe(
+      "Informe um link http(s) válido (ex.: https://exemplo.com)",
+    );
+    expect(translateApiMessage("value must have at most 500 characters")).toBe(
+      "O link deve ter no máximo 500 caracteres",
+    );
+    expect(translateApiMessage("value must be a valid phone number")).toBe(
+      "Informe um telefone válido (8 a 15 dígitos)",
+    );
+    expect(translateApiMessage("value must have at most 20 characters")).toBe(
+      "O telefone deve ter no máximo 20 caracteres",
+    );
+    expect(translateApiMessage("shareWithCommunity requires a value")).toBe(
+      "Para compartilhar com a comunidade, informe um valor",
+    );
+    expect(translateApiMessage("unsupported visibility key")).toBe(
+      "Campo de contato não suportado",
+    );
+    expect(translateApiMessage("email value is managed by the system")).toBe(
+      "O e-mail é gerenciado pelo sistema; só a visibilidade pode ser alterada",
+    );
+    expect(translateApiMessage("email and password cannot be changed by this endpoint")).toBe(
+      "E-mail e senha não podem ser alterados por este endpoint",
+    );
+  });
 });
 
 describe("fieldLabel", () => {
@@ -101,6 +131,14 @@ describe("fieldLabel", () => {
     expect(fieldLabel("addressId")).toBe("Endereço");
     expect(fieldLabel("userId")).toBe("Usuário");
     expect(fieldLabel("body")).toBe("Formulário");
+  });
+
+  it("resolve as chaves de contato de configVisibility (plano 16)", () => {
+    expect(fieldLabel("config_visibility.github")).toBe("GitHub");
+    expect(fieldLabel("config_visibility.github.value")).toBe("GitHub");
+    expect(fieldLabel("config_visibility.otherlink")).toBe("Outro link");
+    expect(fieldLabel("config_visibility.email")).toBe("E-mail");
+    expect(fieldLabel("config_visibility.telegram")).toBe("telegram");
   });
 });
 

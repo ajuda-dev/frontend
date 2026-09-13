@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Alert } from "../../components/ui/Alert";
+import { Avatar } from "../../components/ui/Avatar";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -10,31 +11,10 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
 import { deleteUser, getUserProfile, getUserSkills } from "../../services/user";
-import type { ConfigVisibility, SkillUser, UserProfile } from "../../types/api";
+import type { SkillUser, UserProfile } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import { contactEntriesWithoutPhoto, contactLabel, hiddenContactKeys, isContactLink, photoUrl } from "../../utils/contacts";
 import { SKILL_LEVEL_COLOR, SKILL_LEVEL_LABEL } from "../../utils/labels";
-
-const CONTACT_LABELS: Record<string, string> = {
-  github: "GitHub",
-  linkedin: "LinkedIn",
-  otherlink: "Outro link",
-  photo: "Foto",
-  phone: "Telefone",
-};
-
-function contactLabel(key: string): string {
-  return CONTACT_LABELS[key] ?? key;
-}
-
-function isLink(key: string, value: string): boolean {
-  return key === "github" || key === "linkedin" || key === "otherlink" || /^https?:\/\//.test(value);
-}
-
-function contactEntries(config: ConfigVisibility): [string, string][] {
-  return Object.entries(config)
-    .filter(([key, entry]) => key !== "email" && entry.value.trim() !== "")
-    .map(([key, entry]) => [key, entry.value]);
-}
 
 export function PersonProfilePage() {
   const { userId = "" } = useParams<{ userId: string }>();
@@ -136,29 +116,32 @@ export function PersonProfilePage() {
   }
 
   const isSelf = Boolean(user && user.id === profile.id);
-  const contacts = contactEntries(profile.configVisibility);
-  const hiddenContacts = isSelf
-    ? Object.entries(profile.configVisibility).filter(
-        ([key, entry]) => key !== "email" && !entry.shareWithCommunity,
-      )
-    : [];
+  const contacts = contactEntriesWithoutPhoto(profile.configVisibility);
+  const photo = photoUrl(profile.configVisibility);
+  const hiddenContacts = isSelf ? hiddenContactKeys(profile.configVisibility) : [];
+  const emailHidden = isSelf && Boolean(profile.email) && !profile.configVisibility.email?.shareWithCommunity;
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={profile.name}
-        description={profile.description || "Sem descrição."}
-        actions={
-          isSelf ? (
-            <>
-              <Badge tone="brand">Este é você</Badge>
-              <Link to="/perfil" className="text-brand text-sm hover:underline">
-                Ir para meu perfil
-              </Link>
-            </>
-          ) : null
-        }
-      />
+      <div className="flex items-start gap-4">
+        <Avatar name={profile.name} src={photo} size="lg" />
+        <div className="min-w-0 flex-1">
+          <PageHeader
+            title={profile.name}
+            description={profile.description || "Sem descrição."}
+            actions={
+              isSelf ? (
+                <>
+                  <Badge tone="brand">Este é você</Badge>
+                  <Link to="/perfil" className="text-brand text-sm hover:underline">
+                    Ir para meu perfil
+                  </Link>
+                </>
+              ) : null
+            }
+          />
+        </div>
+      </div>
 
       <Card className="flex flex-col gap-4">
         <h2 className="text-ink text-base font-semibold">Contato</h2>
@@ -168,7 +151,14 @@ export function PersonProfilePage() {
             <dt className="text-xs">E-mail</dt>
             <dd className="text-ink">
               {profile.email ? (
-                profile.email
+                <>
+                  {profile.email}
+                  {emailHidden ? (
+                    <span className="ml-2">
+                      <Badge tone="ink-muted">Não compartilhado</Badge>
+                    </span>
+                  ) : null}
+                </>
               ) : (
                 <span className="text-ink-muted">E-mail não compartilhado</span>
               )}
@@ -179,7 +169,7 @@ export function PersonProfilePage() {
             <div key={key}>
               <dt className="text-xs">{contactLabel(key)}</dt>
               <dd className="text-ink break-all">
-                {isLink(key, value) ? (
+                {isContactLink(key, value) ? (
                   <a
                     href={value}
                     target="_blank"
@@ -199,7 +189,7 @@ export function PersonProfilePage() {
         {hiddenContacts.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-ink-muted text-xs">Não compartilhado com a comunidade:</span>
-            {hiddenContacts.map(([key]) => (
+            {hiddenContacts.map((key) => (
               <Badge key={key} tone="ink-muted">
                 {contactLabel(key)}
               </Badge>

@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -94,6 +94,113 @@ describe("PersonProfilePage", () => {
     expect(await screen.findByText("E-mail não compartilhado")).toBeInTheDocument();
   });
 
+  it("no próprio perfil, e-mail com valor e não compartilhado ganha o indicador", async () => {
+    seedSession("u2");
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "ana@ajudadev.dev", shareWithCommunity: false },
+          github: { value: "https://github.com/ana", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage("u2");
+
+    expect(await screen.findByText("ana@ajudadev.dev")).toBeInTheDocument();
+    expect(screen.getByText("Não compartilhado")).toBeInTheDocument();
+    expect(screen.queryByText("E-mail não compartilhado")).not.toBeInTheDocument();
+  });
+
+  it("renderiza a foto compartilhada como imagem no avatar", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "ana@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/ana.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    const image = await screen.findByRole("img", { name: "Foto de Ana Souza" });
+    expect(image).toHaveAttribute("src", "https://exemplo.com/ana.png");
+  });
+
+  it("a foto não aparece como link na lista de contatos", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "ana@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/ana.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    await screen.findByRole("img", { name: "Foto de Ana Souza" });
+    expect(screen.queryByRole("link", { name: "https://exemplo.com/ana.png" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Foto")).not.toBeInTheDocument();
+  });
+
+  it("foto que falha ao carregar cai nas iniciais", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "ana@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/quebrada.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    fireEvent.error(await screen.findByRole("img", { name: "Foto de Ana Souza" }));
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByText("AS")).toBeInTheDocument();
+  });
+
+  it("sem foto o avatar mostra as iniciais", async () => {
+    mockedProfile.mockResolvedValue(profile());
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Ana Souza" });
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getByText("AS")).toBeInTheDocument();
+  });
+
+  it("no próprio perfil, foto não compartilhada continua visível para o dono", async () => {
+    seedSession("u2");
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "ana@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/ana.png", shareWithCommunity: false },
+        },
+      }),
+    );
+    renderPage("u2");
+
+    const image = await screen.findByRole("img", { name: "Foto de Ana Souza" });
+    expect(image).toHaveAttribute("src", "https://exemplo.com/ana.png");
+
+    const hiddenRow = screen.getByText("Não compartilhado com a comunidade:").parentElement!;
+    expect(within(hiddenRow).getByText("Foto")).toBeInTheDocument();
+    expect(within(hiddenRow).queryByText("p")).not.toBeInTheDocument();
+  });
+
+  it("no perfil de terceiros o e-mail oculto não aparece", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        email: undefined,
+        configVisibility: { email: { value: "", shareWithCommunity: false } },
+      }),
+    );
+    renderPage();
+
+    expect(await screen.findByText("E-mail não compartilhado")).toBeInTheDocument();
+    expect(screen.queryByText("Não compartilhado")).not.toBeInTheDocument();
+  });
+
   it("lista as habilidades com o nível", async () => {
     mockedProfile.mockResolvedValue(profile());
     mockedSkills.mockResolvedValue([
@@ -132,7 +239,10 @@ describe("PersonProfilePage", () => {
       "/perfil",
     );
     expect(screen.getByText("Não compartilhado com a comunidade:")).toBeInTheDocument();
-    expect(screen.getAllByText("Telefone").length).toBeGreaterThan(0);
+
+    const hiddenRow = screen.getByText("Não compartilhado com a comunidade:").parentElement!;
+    expect(within(hiddenRow).getByText("Telefone")).toBeInTheDocument();
+    expect(within(hiddenRow).queryAllByText(/^[a-z]$/)).toHaveLength(0);
   });
 
   it("usuário inexistente mostra página amigável com volta para a lista", async () => {

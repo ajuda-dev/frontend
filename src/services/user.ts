@@ -70,3 +70,13 @@ export async function updateUserName(userId: string, name: string): Promise<User
   const { data } = await api.put<UserSummary>(`/user/${userId}`, body);
   return data;
 }
+
+export async function updateUserProfile(
+  userId: string,
+  input: UpdateUserInput,
+): Promise<UserSummary> {
+  // O body chega pronto (diff montado pela página): o backend faz merge por chave
+  // e recusa `email`/`password` fora de `configVisibility` (plano 16, decisão 3).
+  const { data } = await api.put<UserSummary>(`/user/${userId}`, input);
+  return data;
+}

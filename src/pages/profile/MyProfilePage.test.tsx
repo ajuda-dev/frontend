@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ vi.mock("../../services/user", () => ({
   removeUserSkill: vi.fn(),
   deleteUser: vi.fn(),
   updateUserName: vi.fn(),
+  updateUserProfile: vi.fn(),
 }));
 vi.mock("../../services/skill", () => ({
   listSkills: vi.fn(),
@@ -19,12 +20,19 @@ vi.mock("../../services/skill", () => ({
 }));
 
 import { assignSkillToUser, listSkills } from "../../services/skill";
-import { getUserProfile, getUserSkills, removeUserSkill, updateUserName } from "../../services/user";
+import {
+  getUserProfile,
+  getUserSkills,
+  removeUserSkill,
+  updateUserName,
+  updateUserProfile,
+} from "../../services/user";
 
 const mockedProfile = vi.mocked(getUserProfile);
 const mockedSkills = vi.mocked(getUserSkills);
 const mockedRemove = vi.mocked(removeUserSkill);
 const mockedUpdateName = vi.mocked(updateUserName);
+const mockedUpdateProfile = vi.mocked(updateUserProfile);
 const mockedAssign = vi.mocked(assignSkillToUser);
 const mockedListSkills = vi.mocked(listSkills);
 
@@ -92,7 +100,7 @@ describe("MyProfilePage", () => {
     expect(await screen.findByRole("heading", { name: "Lucas Rocha" })).toBeInTheDocument();
     expect(screen.getByText("lucas@ajudadev.dev")).toBeInTheDocument();
     expect(screen.getAllByText("Usuário")).toHaveLength(2);
-    expect(screen.getByText("Dev backend")).toBeInTheDocument();
+    expect(screen.getAllByText("Dev backend")).toHaveLength(2);
     expect(screen.getByRole("link", { name: "Ver perfil público" })).toHaveAttribute(
       "href",
       "/pessoas/u1",
@@ -324,5 +332,457 @@ describe("MyProfilePage", () => {
 
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
     expect(mockedUpdateName).not.toHaveBeenCalled();
+  });
+
+  it("card Perfil público mostra os contatos do GET e o badge do que não é compartilhado", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          github: { value: "https://github.com/lucas", shareWithCommunity: true },
+          phone: { value: "11999999999", shareWithCommunity: false },
+        },
+      }),
+    );
+    renderPage();
+
+    expect(await screen.findByRole("heading", { name: "Perfil público" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "https://github.com/lucas" })).toBeInTheDocument();
+    expect(screen.getByText("11999999999")).toBeInTheDocument();
+    expect(screen.getByText("Não compartilhado com a comunidade:")).toBeInTheDocument();
+    expect(screen.getAllByText("Telefone")).toHaveLength(2);
+
+    const hiddenRow = screen.getByText("Não compartilhado com a comunidade:").parentElement!;
+    expect(within(hiddenRow).getByText("Telefone")).toBeInTheDocument();
+    expect(within(hiddenRow).queryAllByText(/^[a-z]$/)).toHaveLength(0);
+  });
+
+  it("editar perfil pré-preenche o formulário e cancelar descarta sem request", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          github: { value: "https://github.com/lucas", shareWithCommunity: true },
+        },
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+
+    expect(screen.getByLabelText("Resumo")).toHaveValue("Dev backend");
+    expect(screen.getByLabelText("GitHub")).toHaveValue("https://github.com/lucas");
+    expect(screen.getAllByLabelText("Compartilhar com a comunidade")[0]).toBeChecked();
+    expect(screen.getByLabelText("Compartilhar e-mail com a comunidade")).toBeChecked();
+
+    await user.clear(screen.getByLabelText("GitHub"));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByLabelText("GitHub")).not.toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("salvar só o GitHub alterado envia apenas essa chave no body", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          github: { value: "https://github.com/lucas", shareWithCommunity: true },
+        },
+      }),
+    );
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend",
+      configVisibility: {
+        email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+        github: { value: "https://github.com/lucasrocha", shareWithCommunity: true },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("GitHub"));
+    await user.type(screen.getByLabelText("GitHub"), "https://github.com/lucasrocha");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile).toHaveBeenCalledWith("u1", {
+      configVisibility: {
+        github: { value: "https://github.com/lucasrocha", shareWithCommunity: true },
+      },
+    });
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({
+      configVisibility: {
+        github: { value: "https://github.com/lucasrocha", shareWithCommunity: true },
+      },
+    });
+    expect(screen.queryByLabelText("GitHub")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "https://github.com/lucasrocha" })).toBeInTheDocument();
+  });
+
+  it("alternar o e-mail envia value vazio e só o compartilhamento", async () => {
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend",
+      configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: false } },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.click(screen.getByLabelText("Compartilhar e-mail com a comunidade"));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({
+      configVisibility: { email: { value: "", shareWithCommunity: false } },
+    });
+  });
+
+  it("alterar o resumo envia só description", async () => {
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend e Go",
+      configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: true } },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("Resumo"));
+    await user.type(screen.getByLabelText("Resumo"), "Dev backend e Go");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({ description: "Dev backend e Go" });
+    expect(screen.getByRole("heading", { name: "Lucas Rocha" })).toBeInTheDocument();
+    expect(screen.getAllByText("Dev backend e Go")).toHaveLength(2);
+  });
+
+  it("resumo e contato alterados juntos vão no mesmo body", async () => {
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Novo resumo",
+      configVisibility: {
+        email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+        phone: { value: "11999999999", shareWithCommunity: true },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("Resumo"));
+    await user.type(screen.getByLabelText("Resumo"), "Novo resumo");
+    await user.type(screen.getByLabelText("Telefone"), "11999999999");
+    await user.click(screen.getAllByLabelText("Compartilhar com a comunidade")[4]);
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({
+      description: "Novo resumo",
+      configVisibility: { phone: { value: "11999999999", shareWithCommunity: true } },
+    });
+  });
+
+  it("sem mudanças o botão Salvar fica desabilitado", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+
+    expect(screen.getByRole("button", { name: "Salvar" })).toBeDisabled();
+  });
+
+  it("URL inválida é barrada localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("GitHub"), "github.com/lucas");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("telefone inválido é barrado localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("Telefone"), "1234");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Informe um telefone válido (8 a 15 dígitos)")).toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("compartilhar sem valor é barrado localmente", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.click(screen.getAllByLabelText("Compartilhar com a comunidade")[4]);
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Para compartilhar, informe um valor")).toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("apagar o resumo é barrado localmente com a explicação da limitação", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("Resumo"));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      await screen.findByText(
+        "Não é possível apagar o resumo: escreva um novo texto ou cancele a edição",
+      ),
+    ).toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("400 com cause config_visibility.github.value mostra o erro no campo", async () => {
+    mockedUpdateProfile.mockRejectedValue(
+      apiError(400, {
+        message: "invalid user data",
+        code: 400,
+        causes: [
+          { field: "config_visibility.github.value", message: "value must be a valid http or https url" },
+        ],
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("GitHub"), "https://github.com/lucas");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("GitHub")).toBeInTheDocument();
+  });
+
+  it("400 sem campo próprio vira alerta geral", async () => {
+    mockedUpdateProfile.mockRejectedValue(
+      apiError(400, {
+        message: "invalid user data",
+        code: 400,
+        causes: [{ field: "body", message: "provide at least one field to update" }],
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("GitHub"), "https://github.com/lucas");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Informe ao menos um campo para alterar")).toBeInTheDocument();
+    expect(screen.getByLabelText("GitHub")).toBeInTheDocument();
+  });
+
+  it("limpar um contato envia valor vazio e ele some da leitura", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          phone: { value: "11999999999", shareWithCommunity: true },
+        },
+      }),
+    );
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend",
+      configVisibility: {
+        email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+        phone: { value: "", shareWithCommunity: false },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("Telefone"));
+    await user.click(screen.getAllByLabelText("Compartilhar com a comunidade")[4]);
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({
+      configVisibility: { phone: { value: "", shareWithCommunity: false } },
+    });
+    expect(screen.queryByText("11999999999")).not.toBeInTheDocument();
+  });
+
+  it("renderiza a foto compartilhada como imagem no avatar", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/lucas.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    const images = await screen.findAllByRole("img", { name: "Foto de Lucas Rocha" });
+    expect(images.length).toBeGreaterThan(0);
+    expect(images[0]).toHaveAttribute("src", "https://exemplo.com/lucas.png");
+  });
+
+  it("sem foto o avatar mostra as iniciais", async () => {
+    renderPage();
+
+    await screen.findByRole("heading", { name: "Lucas Rocha" });
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getAllByText("LR").length).toBeGreaterThan(0);
+  });
+
+  it("foto que falha ao carregar cai nas iniciais", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/quebrada.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    const images = await screen.findAllByRole("img", { name: "Foto de Lucas Rocha" });
+    images.forEach((image) => fireEvent.error(image));
+
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+    expect(screen.getAllByText("LR").length).toBeGreaterThan(0);
+  });
+
+  it("a foto não aparece como link na lista de contatos", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/lucas.png", shareWithCommunity: true },
+        },
+      }),
+    );
+    renderPage();
+
+    await screen.findAllByRole("img", { name: "Foto de Lucas Rocha" });
+    expect(screen.queryByRole("link", { name: "https://exemplo.com/lucas.png" })).not.toBeInTheDocument();
+  });
+
+  it("foto não compartilhada continua visível para o próprio dono", async () => {
+    mockedProfile.mockResolvedValue(
+      profile({
+        configVisibility: {
+          email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+          photo: { value: "https://exemplo.com/lucas.png", shareWithCommunity: false },
+        },
+      }),
+    );
+    renderPage();
+
+    const images = await screen.findAllByRole("img", { name: "Foto de Lucas Rocha" });
+    expect(images.length).toBeGreaterThan(0);
+
+    const hiddenRow = screen.getByText("Não compartilhado com a comunidade:").parentElement!;
+    expect(within(hiddenRow).getByText("Foto")).toBeInTheDocument();
+    expect(within(hiddenRow).queryByText("p")).not.toBeInTheDocument();
+  });
+
+  it("salvar a foto envia a chave photo no body", async () => {
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Dev backend",
+      configVisibility: {
+        email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
+        photo: { value: "https://exemplo.com/lucas.png", shareWithCommunity: true },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("Foto"), "https://exemplo.com/lucas.png");
+    await user.click(screen.getAllByLabelText("Compartilhar com a comunidade")[3]);
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateProfile.mock.calls[0][1]).toEqual({
+      configVisibility: { photo: { value: "https://exemplo.com/lucas.png", shareWithCommunity: true } },
+    });
+    expect(screen.getAllByRole("img", { name: "Foto de Lucas Rocha" }).length).toBeGreaterThan(0);
+  });
+
+  it("URL de foto inválida é barrada localmente", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.type(screen.getByLabelText("Foto"), "exemplo.com/foto.png");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedUpdateProfile).not.toHaveBeenCalled();
+  });
+
+  it("não grava nada na sessão ao salvar o perfil", async () => {
+    mockedUpdateProfile.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+      description: "Novo resumo",
+      configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: true } },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar perfil" }));
+    await user.clear(screen.getByLabelText("Resumo"));
+    await user.type(screen.getByLabelText("Resumo"), "Novo resumo");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").name).toBe("Lucas Rocha");
   });
 });

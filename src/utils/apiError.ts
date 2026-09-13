@@ -1,5 +1,6 @@
 import { apiErrorBody, isApiError } from "../services/api";
 import type { ApiCause, ApiErrorBody } from "../types/api";
+import { contactFieldKey, contactLabel } from "./contacts";
 
 export const FIELD_LABELS: Record<string, string> = {
   name: "Nome",
@@ -92,6 +93,17 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "only the user themselves or an admin can update this user":
     "Você só pode alterar os seus próprios dados",
   "provide at least one field to update": "Informe ao menos um campo para alterar",
+  "description must have at most 500 characters": "O resumo deve ter no máximo 500 caracteres",
+  "value must be a valid http or https url": "Informe um link http(s) válido (ex.: https://exemplo.com)",
+  "value must have at most 500 characters": "O link deve ter no máximo 500 caracteres",
+  "value must be a valid phone number": "Informe um telefone válido (8 a 15 dígitos)",
+  "value must have at most 20 characters": "O telefone deve ter no máximo 20 caracteres",
+  "sharewithcommunity requires a value": "Para compartilhar com a comunidade, informe um valor",
+  "unsupported visibility key": "Campo de contato não suportado",
+  "email value is managed by the system":
+    "O e-mail é gerenciado pelo sistema; só a visibilidade pode ser alterada",
+  "email and password cannot be changed by this endpoint":
+    "E-mail e senha não podem ser alterados por este endpoint",
   "is owner of an active community": "É responsável por uma comunidade ativa",
   "is owner of an active event": "É responsável por um evento ativo",
   "has an active participation in an event": "Tem participação ativa em um evento",
@@ -168,6 +180,8 @@ export function translateApiMessage(message: string | undefined): string | null 
 }
 
 export function fieldLabel(field: string): string {
+  const contactKey = contactFieldKey(field);
+  if (contactKey) return contactLabel(contactKey);
   return FIELD_LABELS[field] ?? field;
 }
 
