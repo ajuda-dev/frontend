@@ -8,17 +8,19 @@ import {
   joinCommunity,
   leaveCommunity,
   listCommunities,
+  updateCommunity,
 } from "./community";
 
 // `isApiError` precisa ser o real (a implementação de findCommunityById depende dele
 // para mapear 404 → null); só a instância `api` é dublada.
 vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
-  return { ...actual, api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } };
+  return { ...actual, api: { get: vi.fn(), post: vi.fn(), put: vi.fn(), delete: vi.fn() } };
 });
 
 const mockedGet = vi.mocked(api.get);
 const mockedPost = vi.mocked(api.post);
+const mockedPut = vi.mocked(api.put);
 const mockedDelete = vi.mocked(api.delete);
 
 function axiosErrorWithStatus(status: number) {
@@ -194,6 +196,37 @@ describe("createCommunity", () => {
       address_id: "a1",
     });
     expect(result.id).toBe("c1");
+  });
+});
+
+describe("updateCommunity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT em /community/<id> com nome, descrição e endereço", async () => {
+    mockedPut.mockResolvedValue({ data: community("c1") });
+
+    const result = await updateCommunity("c1", {
+      name: "Dev SP",
+      description: "Encontros de dev",
+      address_id: "a1",
+    });
+
+    expect(mockedPut).toHaveBeenCalledWith("/community/c1", {
+      name: "Dev SP",
+      description: "Encontros de dev",
+      address_id: "a1",
+    });
+    expect(result.id).toBe("c1");
+  });
+
+  it("envia somente os campos informados (PATCH parcial)", async () => {
+    mockedPut.mockResolvedValue({ data: community("c1") });
+
+    await updateCommunity("c1", { name: "Dev SP" });
+
+    expect(mockedPut).toHaveBeenCalledWith("/community/c1", { name: "Dev SP" });
   });
 });
 

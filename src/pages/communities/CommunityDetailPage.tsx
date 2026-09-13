@@ -22,6 +22,7 @@ import { canAtLeast } from "../../utils/roles";
 
 interface DetailLocationState {
   community?: Community;
+  updated?: boolean;
 }
 
 // A tela depende de `address` e `owner` (CEP, cidade, responsável e ações de dono).
@@ -96,6 +97,7 @@ export function CommunityDetailPage() {
   const memberships = useMemberships(user?.id);
 
   const fromList = (location.state as DetailLocationState | null)?.community;
+  const justUpdated = Boolean((location.state as DetailLocationState | null)?.updated);
   const [community, setCommunity] = useState<Community | null>(
     fromList && fromList.id === id && isHydrated(fromList) ? fromList : null,
   );
@@ -190,7 +192,9 @@ export function CommunityDetailPage() {
   }
 
   const isOwner = Boolean(user && community.owner && community.owner.id === user.id);
-  const canDelete = isOwner || canAtLeast(user?.role, "MODERATOR");
+  // Mesma matriz do backend para alterar e excluir (owner ou ≥ MODERATOR): os dois
+  // botões usam a mesma condição para não divergir.
+  const canManage = isOwner || canAtLeast(user?.role, "MODERATOR");
   const member = memberships.isMember(community.id);
   const pending = memberships.pendingId === community.id;
 
@@ -240,6 +244,8 @@ export function CommunityDetailPage() {
         </Alert>
       ) : null}
 
+      {justUpdated ? <Alert variant="success">Comunidade atualizada.</Alert> : null}
+
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
 
       {isOwner ? (
@@ -264,8 +270,14 @@ export function CommunityDetailPage() {
         </div>
       )}
 
-      {canDelete ? (
+      {canManage ? (
         <div className="flex flex-wrap items-center gap-3">
+          <Link
+            to={`/comunidades/${community.id}/editar`}
+            className="bg-surface-2 text-ink border-line hover:border-brand inline-flex items-center justify-center rounded-md border px-4 py-2 text-sm font-medium transition-colors"
+          >
+            Editar comunidade
+          </Link>
           <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
             Excluir comunidade
           </Button>

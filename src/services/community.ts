@@ -1,4 +1,4 @@
-import type { Community, CommunityUser, Pageable } from "../types/api";
+import type { Community, CommunityUser, Pageable, UpdateCommunityInput } from "../types/api";
 import { api, isApiError } from "./api";
 
 export interface ListCommunitiesParams {
@@ -48,6 +48,14 @@ export interface CreateCommunityInput {
 
 export async function createCommunity(input: CreateCommunityInput): Promise<Community> {
   const { data } = await api.post<Community>("/community/register", input);
+  return data;
+}
+
+export async function updateCommunity(
+  communityId: string,
+  input: UpdateCommunityInput,
+): Promise<Community> {
+  const { data } = await api.put<Community>(`/community/${communityId}`, input);
   return data;
 }
 

@@ -140,6 +140,12 @@ export interface RegisterCommunityInput {
   address_id?: string;
 }
 
+export interface UpdateCommunityInput {
+  name?: string;
+  description?: string;
+  address_id?: string;
+}
+
 export interface RegisterEventInput {
   id?: string;
   category: EventCategory;

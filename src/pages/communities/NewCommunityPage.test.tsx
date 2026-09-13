@@ -96,9 +96,7 @@ describe("NewCommunityPage", () => {
     await user.type(screen.getByLabelText("Descrição"), "Encontros de dev");
     await user.click(screen.getByRole("button", { name: "Criar comunidade" }));
 
-    expect(
-      await screen.findByText("Busque ou selecione um endereço antes de criar a comunidade."),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Busque ou selecione um endereço")).toBeInTheDocument();
     expect(mockedCreateCommunity).not.toHaveBeenCalled();
   });
 

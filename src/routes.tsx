@@ -6,6 +6,7 @@ import { NotFoundPage } from "./pages/NotFoundPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
 import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
+import { EditCommunityPage } from "./pages/communities/EditCommunityPage";
 import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPage";
 import { NewCommunityPage } from "./pages/communities/NewCommunityPage";
 import { EventDetailPage } from "./pages/events/EventDetailPage";
@@ -31,6 +32,7 @@ export function AppRoutes() {
           <Route path="/comunidades" element={<ExploreCommunitiesPage />} />
           <Route path="/comunidades/nova" element={<NewCommunityPage />} />
           <Route path="/comunidades/:id" element={<CommunityDetailPage />} />
+          <Route path="/comunidades/:id/editar" element={<EditCommunityPage />} />
           <Route path="/eventos" element={<ExploreEventsPage />} />
           <Route path="/eventos/novo" element={<NewEventPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />

@@ -153,6 +153,53 @@ describe("CommunityDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Excluir comunidade" })).not.toBeInTheDocument();
   });
 
+  it("USER que não é owner não vê o link de editar", async () => {
+    renderDetail({ community: COMMUNITY });
+
+    await screen.findByRole("heading", { name: "Dev SP" });
+    expect(screen.queryByRole("link", { name: "Editar comunidade" })).not.toBeInTheDocument();
+  });
+
+  it("owner vê o link de editar apontando para a rota de edição", async () => {
+    seedSession("owner-1");
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByRole("link", { name: "Editar comunidade" })).toHaveAttribute(
+      "href",
+      "/comunidades/c1/editar",
+    );
+  });
+
+  it("MODERATOR vê o link de editar em comunidade alheia", async () => {
+    seedSession("mod-1", "MODERATOR");
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByRole("link", { name: "Editar comunidade" })).toBeInTheDocument();
+  });
+
+  it("state com updated mostra o aviso de sucesso", async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[{ pathname: "/comunidades/c1", state: { community: COMMUNITY, updated: true } }]}
+      >
+        <AuthProvider>
+          <Routes>
+            <Route path="/comunidades/:id" element={<CommunityDetailPage />} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText("Comunidade atualizada.")).toBeInTheDocument();
+  });
+
+  it("sem o state updated não mostra o aviso de sucesso", async () => {
+    renderDetail({ community: COMMUNITY });
+
+    await screen.findByRole("heading", { name: "Dev SP" });
+    expect(screen.queryByText("Comunidade atualizada.")).not.toBeInTheDocument();
+  });
+
   it("owner vê o botão e a confirmação exclui e volta para a lista", async () => {
     seedSession("owner-1");
     localStorage.setItem("ajudadev.memberships.owner-1", JSON.stringify(["c1"]));
