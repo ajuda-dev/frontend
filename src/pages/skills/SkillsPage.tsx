@@ -11,15 +11,17 @@ import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageable } from "../../hooks/usePageable";
-import { listSkills } from "../../services/skill";
+import { createSkill, listSkills } from "../../services/skill";
 import type { Skill } from "../../types/api";
-import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { apiErrorDetail, apiErrorFields, apiErrorMessage, hasApiMessage } from "../../utils/apiError";
 import { canAtLeast } from "../../utils/roles";
 
 export function SkillsPage() {
   const { user } = useAuth();
   const [name, setName] = useState("");
   const debouncedName = useDebouncedValue(name, 400);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<unknown>(null);
 
   const fetcher = useCallback(
     (page: number) => listSkills({ page, name: debouncedName }),
@@ -70,6 +72,26 @@ export function SkillsPage() {
     [reset],
   );
 
+  // A busca sem resultado pode cadastrar o termo digitado direto no catálogo: é a
+  // rota do usuário comum, já que o painel de administração é só para moderadores.
+  const handleCreateFromSearch = useCallback(async () => {
+    const term = debouncedName.trim();
+    if (!term) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      await createSkill(term);
+      reset();
+    } catch (caught) {
+      setCreateError(caught);
+      // Corrida com outro cadastro: refaz a busca para a habilidade existente
+      // aparecer na lista em vez de só mostrar o erro.
+      if (hasApiMessage(caught, "skill already exists")) reset();
+    } finally {
+      setCreating(false);
+    }
+  }, [debouncedName, reset]);
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -90,6 +112,12 @@ export function SkillsPage() {
           onChange={(event) => setName(event.target.value)}
         />
       </Field>
+
+      {createError ? (
+        <Alert variant="error">
+          {apiErrorFields(createError).name ?? apiErrorMessage(createError)}
+        </Alert>
+      ) : null}
 
       {canManage ? (
         <SkillAdminPanel
@@ -160,6 +188,13 @@ export function SkillsPage() {
             debouncedName
               ? "Nenhuma habilidade começa com esse termo. Tente outro trecho ou limpe a busca."
               : "O catálogo ainda não tem habilidades cadastradas."
+          }
+          action={
+            debouncedName ? (
+              <Button type="button" loading={creating} onClick={() => void handleCreateFromSearch()}>
+                {`Cadastrar "${debouncedName.trim()}" no catálogo`}
+              </Button>
+            ) : undefined
           }
         />
       ) : null}

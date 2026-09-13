@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
+import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { LoadMoreButton } from "../ui/LoadMoreButton";
 import { Spinner } from "../ui/Spinner";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageable } from "../../hooks/usePageable";
-import { listSkills } from "../../services/skill";
+import { createSkill, listSkills } from "../../services/skill";
 import type { Skill } from "../../types/api";
-import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import {
+  apiErrorDetail,
+  apiErrorFields,
+  apiErrorMessage,
+  hasApiMessage,
+} from "../../utils/apiError";
 
 interface SkillPickerProps {
   selected: Skill | null;
@@ -18,6 +24,10 @@ interface SkillPickerProps {
   hint?: string;
   clearLabel?: string;
   emptyHint?: string;
+  // Quando true, um termo buscado sem resultado pode ser cadastrado no catálogo
+  // (POST /skill/register) e sai selecionado — usado no formulário do perfil para
+  // adicionar uma habilidade que ainda não existe.
+  allowCreate?: boolean;
 }
 
 // O filtro `skill` da API é match exato do nome (normalizado em caixa alta), então
@@ -29,6 +39,7 @@ export function SkillPicker({
   hint = "Escolha uma habilidade do catálogo.",
   clearLabel = "Todas as habilidades",
   emptyHint = "Sem habilidade: a lista mostra todas as pessoas.",
+  allowCreate = false,
 }: SkillPickerProps) {
   const groupName = useId();
   const [search, setSearch] = useState("");
@@ -42,6 +53,8 @@ export function SkillPicker({
   const { items, hasNext, loading, error, loadMore, reset } = usePageable(fetcher);
   const filterKey = debouncedSearch;
   const isFirstRun = useRef(true);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<unknown>(null);
 
   useEffect(() => {
     // O usePageable já carrega a página 1 no mount: só reseta quando o filtro muda.
@@ -49,8 +62,28 @@ export function SkillPicker({
       isFirstRun.current = false;
       return;
     }
+    setCreateError(null);
     reset();
   }, [filterKey, reset]);
+
+  async function handleCreate() {
+    const term = debouncedSearch.trim();
+    if (!term) return;
+    setCreating(true);
+    setCreateError(null);
+    try {
+      const created = await createSkill(term);
+      onSelect(created);
+      reset();
+    } catch (caught) {
+      setCreateError(caught);
+      // Corrida com outro cadastro: refaz a busca para a habilidade existente
+      // aparecer na lista em vez de só mostrar o erro.
+      if (hasApiMessage(caught, "skill already exists")) reset();
+    } finally {
+      setCreating(false);
+    }
+  }
 
   // A skill selecionada pode não estar na página atual: fixa no topo para o
   // radio correspondente sempre existir.
@@ -102,11 +135,30 @@ export function SkillPicker({
       ) : null}
 
       {!loading && !error && items.length === 0 ? (
-        <p className="text-ink-muted text-sm">
-          {debouncedSearch
-            ? "Nenhuma habilidade começa com esse termo."
-            : "O catálogo ainda não tem habilidades cadastradas."}
-        </p>
+        <div className="flex flex-col items-start gap-2">
+          <p className="text-ink-muted text-sm">
+            {debouncedSearch
+              ? "Nenhuma habilidade começa com esse termo."
+              : "O catálogo ainda não tem habilidades cadastradas."}
+          </p>
+          {allowCreate && debouncedSearch ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              loading={creating}
+              onClick={() => void handleCreate()}
+            >
+              {`Cadastrar "${debouncedSearch.trim()}" no catálogo`}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {createError ? (
+        <Alert variant="error">
+          {apiErrorFields(createError).name ?? apiErrorMessage(createError)}
+        </Alert>
       ) : null}
 
       {options.length > 0 || !loading ? (

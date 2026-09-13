@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pageable, Skill } from "../../types/api";
 import { AddSkillForm } from "./AddSkillForm";
 
-vi.mock("../../services/skill", () => ({ listSkills: vi.fn() }));
+vi.mock("../../services/skill", () => ({ listSkills: vi.fn(), createSkill: vi.fn() }));
 
-import { listSkills } from "../../services/skill";
+import { createSkill, listSkills } from "../../services/skill";
 
 const mockedListSkills = vi.mocked(listSkills);
+const mockedCreateSkill = vi.mocked(createSkill);
 
 function skill(id: string, name: string): Skill {
   return { id, name };
@@ -92,5 +93,22 @@ describe("AddSkillForm", () => {
       ),
     ).toBeInTheDocument();
     expect(onAdd).toHaveBeenCalledTimes(1);
+  });
+
+  it("habilidade fora do catálogo pode ser cadastrada e sai selecionada para adicionar", async () => {
+    const user = userEvent.setup();
+    const created = skill("s9", "JAVA");
+    mockedListSkills.mockResolvedValue(page([]));
+    mockedCreateSkill.mockResolvedValue(created);
+    const { onAdd } = renderForm();
+
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "JAVA");
+    await user.click(await screen.findByRole("button", { name: 'Cadastrar "JAVA" no catálogo' }));
+
+    expect(await screen.findByRole("radio", { name: "JAVA" })).toBeChecked();
+    await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
+    await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
+
+    expect(onAdd).toHaveBeenCalledWith(created, "TEACH");
   });
 });

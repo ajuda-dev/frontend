@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { apiErrorFields, fieldLabel, toUserMessages, translateApiMessage } from "./apiError";
+import { apiErrorFields, fieldLabel, hasApiMessage, toUserMessages, translateApiMessage } from "./apiError";
 
 function apiError(status: number, data: unknown) {
   return {
@@ -138,5 +138,29 @@ describe("toUserMessages", () => {
       email: "E-mail inválido",
       password: "A senha deve ter ao menos 6 caracteres",
     });
+  });
+});
+
+describe("hasApiMessage", () => {
+  it("encontra a mensagem no corpo ou nos causes, ignorando a caixa", () => {
+    expect(
+      hasApiMessage(apiError(400, { message: "Skill already exists" }), "skill ALREADY exists"),
+    ).toBe(true);
+    expect(
+      hasApiMessage(
+        apiError(400, {
+          message: "Invalid skill user data",
+          causes: [{ field: "user_id", message: "User already has this skill" }],
+        }),
+        "user already has this skill",
+      ),
+    ).toBe(true);
+  });
+
+  it("não confunde mensagens diferentes nem erros não-axios", () => {
+    expect(hasApiMessage(apiError(400, { message: "outra coisa" }), "skill already exists")).toBe(
+      false,
+    );
+    expect(hasApiMessage(new Error("boom"), "skill already exists")).toBe(false);
   });
 });

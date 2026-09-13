@@ -195,6 +195,16 @@ export function apiErrorFields(error: unknown): Record<string, string> {
   return fields;
 }
 
+// A mesma mensagem pode chegar no corpo ou nos causes, dependendo da camada que
+// falhou; centraliza a comparação para os fluxos que reagem a um erro específico
+// (habilidade duplicada, associação repetida).
+export function hasApiMessage(error: unknown, message: string): boolean {
+  const body = apiErrorBody(error);
+  const normalized = message.trim().toLowerCase();
+  const messages = [body?.message, ...(body?.causes ?? []).map((cause) => cause.message)];
+  return messages.some((item) => item?.trim().toLowerCase() === normalized);
+}
+
 export function apiErrorDetail(error: unknown): string | null {
   if (!isApiError(error) || explainedMessage(error)) return null;
   const status = error.response?.status;

@@ -239,4 +239,38 @@ describe("SkillsPage", () => {
       await screen.findByText("Apenas moderadores e administradores podem arquivar habilidades"),
     ).toBeInTheDocument();
   });
+
+  it("busca sem resultado cadastra o termo e recarrega a lista", async () => {
+    mockedList.mockResolvedValue(page([], false));
+    mockedCreate.mockResolvedValue(skill("s9", "JAVA"));
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("Nenhuma habilidade encontrada.");
+    await user.type(screen.getByLabelText("Buscar habilidade"), "JAVA");
+    const button = await screen.findByRole("button", { name: 'Cadastrar "JAVA" no catálogo' });
+    const callsBefore = mockedList.mock.calls.length;
+    await user.click(button);
+
+    await waitFor(() => expect(mockedCreate).toHaveBeenCalledWith("JAVA"));
+    await waitFor(() => expect(mockedList.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it("erro ao cadastrar pela busca mostra a mensagem do campo", async () => {
+    mockedList.mockResolvedValue(page([], false));
+    mockedCreate.mockRejectedValue(
+      apiError(400, {
+        message: "Invalid skill data",
+        causes: [{ field: "name", message: "Skill already exists" }],
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByText("Nenhuma habilidade encontrada.");
+    await user.type(screen.getByLabelText("Buscar habilidade"), "GO");
+    await user.click(await screen.findByRole("button", { name: 'Cadastrar "GO" no catálogo' }));
+
+    expect(await screen.findByText("Já existe uma habilidade com este nome")).toBeInTheDocument();
+  });
 });

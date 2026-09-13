@@ -6,22 +6,13 @@ import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Field } from "../ui/Field";
 import { Select } from "../ui/Select";
-import { apiErrorBody } from "../../services/api";
 import type { Skill, SkillLevel } from "../../types/api";
 import { SKILL_LEVELS } from "../../types/api";
-import { apiErrorMessage } from "../../utils/apiError";
+import { apiErrorMessage, hasApiMessage } from "../../utils/apiError";
 import { SKILL_LEVEL_LABEL } from "../../utils/labels";
 
 interface AddSkillFormProps {
   onAdd: (skill: Skill, level: SkillLevel) => Promise<void>;
-}
-
-// A API responde 400 quando a linha (skill, usuário) já existe; a saída é ajustar
-// o nível na linha existente, não insistir no cadastro.
-function isDuplicateSkillError(error: unknown): boolean {
-  const body = apiErrorBody(error);
-  const messages = [body?.message, ...(body?.causes ?? []).map((cause) => cause.message)];
-  return messages.some((message) => message?.trim().toLowerCase() === "user already has this skill");
 }
 
 export function AddSkillForm({ onAdd }: AddSkillFormProps) {
@@ -50,8 +41,10 @@ export function AddSkillForm({ onAdd }: AddSkillFormProps) {
       setSkill(null);
       setLevel("");
     } catch (caught) {
+      // A API responde 400 quando a linha (skill, usuário) já existe; a saída é
+      // ajustar o nível na linha existente, não insistir no cadastro.
       setError(
-        isDuplicateSkillError(caught)
+        hasApiMessage(caught, "user already has this skill")
           ? "Você já tem esta habilidade. Para mudar o nível, use o seletor na linha dela abaixo."
           : apiErrorMessage(caught),
       );
@@ -72,6 +65,7 @@ export function AddSkillForm({ onAdd }: AddSkillFormProps) {
           hint="Busca pelo começo do nome da habilidade."
           clearLabel="Nenhuma habilidade"
           emptyHint="Escolha uma habilidade do catálogo para adicionar."
+          allowCreate
         />
 
         <Field label="Nível de domínio" htmlFor={levelId}>
