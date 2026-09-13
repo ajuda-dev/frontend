@@ -36,14 +36,14 @@ describe("AppRoutes", () => {
     seedSession();
     renderAt("/");
     expect(screen.getByRole("heading", { name: "Comunidades" })).toBeInTheDocument();
-    expect(screen.getByText("<AJUDA.DEV/>")).toBeInTheDocument();
+    expect(screen.getByText("<AJUDA-DEV/>")).toBeInTheDocument();
   });
 
   it("rota inexistente logado mostra o 404 dentro do shell", () => {
     seedSession();
     renderAt("/rota-inexistente");
     expect(screen.getByText("Página não encontrada.")).toBeInTheDocument();
-    expect(screen.getByText("<AJUDA.DEV/>")).toBeInTheDocument();
+    expect(screen.getByText("<AJUDA-DEV/>")).toBeInTheDocument();
   });
 
   it("rota inexistente sem sessão vai para o login", () => {

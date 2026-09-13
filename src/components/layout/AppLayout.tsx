@@ -23,7 +23,7 @@ export function AppLayout() {
       <header className="bg-surface border-line sticky top-0 z-40 border-b">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/" className="font-mono text-brand text-lg" onClick={() => setNavOpen(false)}>
-            &lt;AJUDA.DEV/&gt;
+            &lt;AJUDA-DEV/&gt;
           </Link>
 
           <nav aria-label="Navegação principal" className="hidden items-center gap-1 sm:flex">

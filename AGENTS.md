@@ -24,7 +24,7 @@ Planos de implementação: `C:\Users\Lucas\dev\ajudadev\docs\implementacao\front
 ## Convenções
 
 - **Idioma:** código/rotas/arquivos em inglês; todo texto visível em **pt-BR**.
-- **Identidade visual:** tema dark-only com tokens `@theme` (`bg-bg`, `bg-surface`, `bg-surface-2`, `border-line`, `text-ink`, `text-ink-muted`, `text-brand` #31f9a9, `danger/warning/info`). Primitivas e páginas usam **somente** classes dos tokens — nenhuma cor Tailwind solta (slate/emerald etc.). Logo: wordmark `<AJUDA.DEV/>` em `font-mono text-brand`; asset em `public/logo-ajudadev.png`.
+- **Identidade visual:** tema dark-only com tokens `@theme` (`bg-bg`, `bg-surface`, `bg-surface-2`, `border-line`, `text-ink`, `text-ink-muted`, `text-brand` #31f9a9, `danger/warning/info`). Primitivas e páginas usam **somente** classes dos tokens — nenhuma cor Tailwind solta (slate/emerald etc.). Logo: wordmark `<AJUDA-DEV/>` em `font-mono text-brand`; asset em `public/logo-ajudadev.png`.
 - **Contratos:** tipos de API somente em `src/types/api.ts`, espelhando as definitions `dto.*` do swagger.yaml do backend. `UserSummary.token` aparece vazio em respostas aninhadas — ignorar fora de login/register.
 - **Camadas:** páginas (`src/pages/<feature>`) → hooks (`src/hooks`) → services (`src/services/<area>.ts`, um módulo por área) → `services/api.ts`. Componentes compartilhados em `src/components/ui` (primitivas) e `src/components/<feature>`.
 - **Erros da API:** corpo `rest_err` tipado em `ApiErrorBody`; tradução de mensagens para pt-BR e `FIELD_LABELS` em `src/utils/apiError.ts` (tabela única — toda mensagem nova vista deve ser adicionada lá).
