@@ -12,8 +12,8 @@ export const NAV_ITEMS: NavItem[] = [
   { to: "/comunidades", label: "Comunidades", enabled: true },
   { to: "/eventos", label: "Eventos", enabled: true },
   { to: "/skills", label: "Skills", enabled: true },
-  { to: "/pessoas", label: "Pessoas", enabled: false },
-  { to: "/perfil", label: "Meu perfil", enabled: false },
+  { to: "/pessoas", label: "Pessoas", enabled: true },
+  { to: "/perfil", label: "Meu perfil", enabled: true },
 ];
 
 export function visibleNavItems(role: UserRole | null | undefined): NavItem[] {

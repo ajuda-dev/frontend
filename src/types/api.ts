@@ -8,12 +8,31 @@ export interface Address {
   state: string;
 }
 
+export interface VisibilityConfig {
+  value: string;
+  shareWithCommunity: boolean;
+}
+
+export interface ConfigVisibility {
+  [key: string]: VisibilityConfig;
+}
+
 export interface UserSummary {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   token?: string;
+  description?: string;
+  configVisibility?: ConfigVisibility;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  description: string;
+  email?: string;
+  configVisibility: ConfigVisibility;
 }
 
 export interface Community {
@@ -75,8 +94,7 @@ export interface SkillUser {
 export interface UserWithSkills {
   id: string;
   name: string;
-  email: string;
-  skills?: Skill[];
+  skills: Skill[];
 }
 
 export interface AuthUser {

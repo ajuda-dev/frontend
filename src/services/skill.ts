@@ -1,4 +1,4 @@
-import type { Pageable, Skill } from "../types/api";
+import type { Pageable, Skill, SkillLevel, SkillUser } from "../types/api";
 import { api, isApiError } from "./api";
 
 export interface ListSkillsParams {
@@ -47,4 +47,18 @@ export async function updateSkill(id: string, name: string): Promise<Skill> {
 
 export async function deleteSkill(id: string): Promise<void> {
   await api.delete(`/skill/${id}`);
+}
+
+// Associa uma skill do catálogo ao usuário com nível. O user_id vai no body (a UI
+// sempre envia o da sessão — o backend não valida o requester; sugestão registrada).
+export async function assignSkillToUser(
+  skillId: string,
+  userId: string,
+  level: SkillLevel,
+): Promise<SkillUser> {
+  const { data } = await api.post<SkillUser>(`/skill/${skillId}/users`, {
+    user_id: userId,
+    level,
+  });
+  return data;
 }

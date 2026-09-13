@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Pageable, Skill } from "../types/api";
+import type { Pageable, Skill, SkillUser } from "../types/api";
 import { api } from "./api";
 import {
+  assignSkillToUser,
   createSkill,
   deleteSkill,
   findSkillById,
@@ -158,5 +159,22 @@ describe("deleteSkill", () => {
     await deleteSkill("s1");
 
     expect(mockedDelete).toHaveBeenCalledWith("/skill/s1");
+  });
+});
+
+describe("assignSkillToUser", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz POST em /skill/:skillId/users com user_id e level no body", async () => {
+    const assigned: SkillUser = { id: "su1", skill_id: "s1", user_id: "u1", level: "TEACH" };
+    mockedPost.mockResolvedValue({ data: assigned });
+
+    await expect(assignSkillToUser("s1", "u1", "TEACH")).resolves.toEqual(assigned);
+    expect(mockedPost).toHaveBeenCalledWith("/skill/s1/users", {
+      user_id: "u1",
+      level: "TEACH",
+    });
   });
 });

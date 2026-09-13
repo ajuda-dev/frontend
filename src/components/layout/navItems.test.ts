@@ -2,25 +2,29 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, visibleNavItems } from "./navItems";
 
 describe("visibleNavItems", () => {
-  it("mostra os itens Comunidades, Eventos e Skills habilitados pelos planos 04, 06 e 08", () => {
+  it("mostra os itens Comunidades, Eventos, Skills, Pessoas e Meu perfil (planos 04, 06, 08, 09 e 10)", () => {
     expect(visibleNavItems("USER").map((item) => item.label)).toEqual([
       "Comunidades",
       "Eventos",
       "Skills",
+      "Pessoas",
+      "Meu perfil",
     ]);
   });
 
-  it("esconde itens desabilitados (rota ainda não existe)", () => {
-    const disabled = NAV_ITEMS.filter((item) => !item.enabled);
-    expect(disabled.map((item) => item.label)).toEqual(["Pessoas", "Meu perfil"]);
+  it("não guarda item desabilitado: todas as rotas do menu existem", () => {
+    expect(NAV_ITEMS.filter((item) => !item.enabled)).toEqual([]);
   });
 
   it("mostra item habilitado sem restrição de cargo", () => {
-    const items = NAV_ITEMS.map((item) =>
-      item.to === "/comunidades" ? { ...item, enabled: true } : item,
-    );
-    const visible = items.filter((item) => item.enabled && !item.roles);
-    expect(visible.map((item) => item.label)).toEqual(["Comunidades", "Eventos", "Skills"]);
+    const visible = NAV_ITEMS.filter((item) => item.enabled && !item.roles);
+    expect(visible.map((item) => item.label)).toEqual([
+      "Comunidades",
+      "Eventos",
+      "Skills",
+      "Pessoas",
+      "Meu perfil",
+    ]);
   });
 
   it("esconde item restrito a ADMIN para USER", () => {
