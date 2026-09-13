@@ -24,6 +24,9 @@ interface SkillPickerProps {
   hint?: string;
   clearLabel?: string;
   emptyHint?: string;
+  // No formulário do perfil o rádio de limpar não faz sentido: a seleção vem do
+  // catálogo e o botão de enviar já exige uma habilidade.
+  showClear?: boolean;
   // Quando true, um termo buscado sem resultado pode ser cadastrado no catálogo
   // (POST /skill/register) e sai selecionado — usado no formulário do perfil para
   // adicionar uma habilidade que ainda não existe.
@@ -39,6 +42,7 @@ export function SkillPicker({
   hint = "Escolha uma habilidade do catálogo.",
   clearLabel = "Todas as habilidades",
   emptyHint = "Sem habilidade: a lista mostra todas as pessoas.",
+  showClear = true,
   allowCreate = false,
 }: SkillPickerProps) {
   const groupName = useId();
@@ -144,7 +148,7 @@ export function SkillPicker({
           {allowCreate && debouncedSearch ? (
             <Button
               type="button"
-              variant="secondary"
+              variant="primary"
               size="sm"
               loading={creating}
               onClick={() => void handleCreate()}
@@ -161,20 +165,22 @@ export function SkillPicker({
         </Alert>
       ) : null}
 
-      {options.length > 0 || !loading ? (
+      {options.length > 0 || (showClear && !loading) ? (
         <fieldset className="flex flex-col gap-2">
           <legend className="text-ink-muted mb-1 text-sm">{label}</legend>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name={groupName}
-              value=""
-              checked={selected === null}
-              onChange={() => onSelect(null)}
-              className="accent-brand"
-            />
-            <span>{clearLabel}</span>
-          </label>
+          {showClear ? (
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={groupName}
+                value=""
+                checked={selected === null}
+                onChange={() => onSelect(null)}
+                className="accent-brand"
+              />
+              <span>{clearLabel}</span>
+            </label>
+          ) : null}
 
           {options.map((skill) => (
             <label key={skill.id} className="flex items-center gap-2 text-sm">

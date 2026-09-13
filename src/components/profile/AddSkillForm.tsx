@@ -63,8 +63,8 @@ export function AddSkillForm({ onAdd }: AddSkillFormProps) {
           onSelect={setSkill}
           label="Habilidade"
           hint="Busca pelo começo do nome da habilidade."
-          clearLabel="Nenhuma habilidade"
           emptyHint="Escolha uma habilidade do catálogo para adicionar."
+          showClear={false}
           allowCreate
         />
 

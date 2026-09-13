@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Pageable, Skill } from "../../types/api";
@@ -76,7 +76,14 @@ describe("AddSkillForm", () => {
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
 
     expect(onAdd).toHaveBeenCalledWith({ id: "s1", name: "GO" }, "TEACH");
-    expect(await screen.findByRole("radio", { name: "Nenhuma habilidade" })).toBeChecked();
+    await waitFor(() => expect(screen.getByRole("radio", { name: "GO" })).not.toBeChecked());
+  });
+
+  it("não mostra a opção de limpar a seleção", async () => {
+    renderForm();
+
+    await screen.findByRole("radio", { name: "GO" });
+    expect(screen.queryByRole("radio", { name: "Nenhuma habilidade" })).not.toBeInTheDocument();
   });
 
   it("duplicado mostra a orientação de mudar nível", async () => {

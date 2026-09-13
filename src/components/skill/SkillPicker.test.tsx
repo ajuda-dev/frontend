@@ -31,6 +31,7 @@ function renderPicker(
     selected: Skill | null;
     onSelect: (skill: Skill | null) => void;
     allowCreate: boolean;
+    showClear: boolean;
   }> = {},
 ) {
   const onSelect = props.onSelect ?? vi.fn();
@@ -39,6 +40,7 @@ function renderPicker(
       selected={props.selected ?? null}
       onSelect={onSelect}
       allowCreate={props.allowCreate ?? false}
+      showClear={props.showClear ?? true}
     />,
   );
   return { onSelect };
@@ -84,6 +86,16 @@ describe("SkillPicker", () => {
     await user.click(screen.getByRole("radio", { name: "Todas as habilidades" }));
 
     expect(onSelect).toHaveBeenCalledWith(null);
+  });
+
+  it("com showClear false não há opção de limpar nem fieldset vazio", async () => {
+    mockedList.mockResolvedValue(page([]));
+    renderPicker({ showClear: false });
+
+    expect(
+      await screen.findByText("O catálogo ainda não tem habilidades cadastradas."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("group")).not.toBeInTheDocument();
   });
 
   it("a busca vai com debounce para o catálogo", async () => {
