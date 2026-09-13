@@ -68,4 +68,10 @@ describe("AppRoutes", () => {
     renderAt("/eventos");
     expect(screen.getByRole("heading", { name: "Eventos" })).toBeInTheDocument();
   });
+
+  it("a rota /agenda renderiza a página de agenda", () => {
+    seedSession();
+    renderAt("/agenda");
+    expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
+  });
 });

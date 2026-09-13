@@ -139,6 +139,11 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
     "O papel de palestrante não vale em eventos de mentoria",
   "mentoring events cannot be joined, the host must invite the mentee":
     "Eventos de mentoria não aceitam inscrição; o mentor convida o mentorado",
+  "user_id is not valid, not found this user": "Usuário não encontrado",
+  "event is full": "O evento está cheio",
+  "user is already invited to this event": "Este usuário já tem convite pendente neste evento",
+  "user is already a participant of this event": "Este usuário já participa deste evento",
+  "event already has a confirmed mentee": "Esta mentoria já tem um mentorado confirmado",
   "invalid authenticated user": "Sessão inválida",
   "missing authenticated user": "Sessão não identificada",
   "missing or invalid authorization header": "Sessão não identificada",
@@ -150,9 +155,16 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
 
 export const GENERIC_ERROR_MESSAGE = "Não foi possível concluir a operação. Tente novamente.";
 
+// Mensagem dinâmica do repo de event_users: "invalid status transition from X to Y".
+const STATUS_TRANSITION_PREFIX = "invalid status transition from";
+
 export function translateApiMessage(message: string | undefined): string | null {
   if (!message) return null;
-  return MESSAGE_TRANSLATIONS[message.trim().toLowerCase()] ?? null;
+  const normalized = message.trim().toLowerCase();
+  if (normalized.startsWith(STATUS_TRANSITION_PREFIX)) {
+    return "Esta ação não é permitida no estado atual da participação";
+  }
+  return MESSAGE_TRANSLATIONS[normalized] ?? null;
 }
 
 export function fieldLabel(field: string): string {

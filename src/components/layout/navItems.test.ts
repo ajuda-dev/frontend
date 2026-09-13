@@ -2,10 +2,11 @@ import { describe, expect, it } from "vitest";
 import { NAV_ITEMS, visibleNavItems } from "./navItems";
 
 describe("visibleNavItems", () => {
-  it("mostra os itens Comunidades, Eventos, Skills, Pessoas e Meu perfil (planos 04, 06, 08, 09 e 10)", () => {
+  it("mostra os itens Comunidades, Eventos, Agenda, Skills, Pessoas e Meu perfil (planos 04, 06, 08, 09, 10 e 11)", () => {
     expect(visibleNavItems("USER").map((item) => item.label)).toEqual([
       "Comunidades",
       "Eventos",
+      "Agenda",
       "Skills",
       "Pessoas",
       "Meu perfil",
@@ -21,6 +22,7 @@ describe("visibleNavItems", () => {
     expect(visible.map((item) => item.label)).toEqual([
       "Comunidades",
       "Eventos",
+      "Agenda",
       "Skills",
       "Pessoas",
       "Meu perfil",

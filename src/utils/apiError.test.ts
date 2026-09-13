@@ -57,6 +57,28 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage("something brand new")).toBeNull();
     expect(translateApiMessage(undefined)).toBeNull();
   });
+
+  it("traduz as mensagens de participação em eventos (plano 11)", () => {
+    expect(translateApiMessage("event is full")).toBe("O evento está cheio");
+    expect(translateApiMessage("user is already invited to this event")).toBe(
+      "Este usuário já tem convite pendente neste evento",
+    );
+    expect(translateApiMessage("user is already a participant of this event")).toBe(
+      "Este usuário já participa deste evento",
+    );
+    expect(translateApiMessage("event already has a confirmed mentee")).toBe(
+      "Esta mentoria já tem um mentorado confirmado",
+    );
+    expect(translateApiMessage("user_id is not valid, not found this user")).toBe(
+      "Usuário não encontrado",
+    );
+  });
+
+  it("transição de status inválida (mensagem dinâmica do repo) é traduzida", () => {
+    expect(translateApiMessage("invalid status transition from REJECTED to CANCELLED")).toBe(
+      "Esta ação não é permitida no estado atual da participação",
+    );
+  });
 });
 
 describe("fieldLabel", () => {

@@ -10,6 +10,7 @@ import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPa
 import { NewCommunityPage } from "./pages/communities/NewCommunityPage";
 import { EventDetailPage } from "./pages/events/EventDetailPage";
 import { ExploreEventsPage } from "./pages/events/ExploreEventsPage";
+import { MyAgendaPage } from "./pages/events/MyAgendaPage";
 import { NewEventPage } from "./pages/events/NewEventPage";
 import { PeoplePage } from "./pages/people/PeoplePage";
 import { PersonProfilePage } from "./pages/people/PersonProfilePage";
@@ -33,6 +34,7 @@ export function AppRoutes() {
           <Route path="/eventos" element={<ExploreEventsPage />} />
           <Route path="/eventos/novo" element={<NewEventPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
+          <Route path="/agenda" element={<MyAgendaPage />} />
           <Route path="/skills" element={<SkillsPage />} />
           <Route path="/pessoas" element={<PeoplePage />} />
           <Route path="/pessoas/:userId" element={<PersonProfilePage />} />

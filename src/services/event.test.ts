@@ -104,6 +104,17 @@ describe("listEvents", () => {
     });
   });
 
+  it("envia os filtros da agenda pessoal (user_id com papel/status)", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listEvents({ page: 1, userId: "u1", role: "MENTEE", status: "REQUESTED" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/event", {
+      params: { page: 1, limit: 10, user_id: "u1", role: "MENTEE", status: "REQUESTED" },
+      signal: undefined,
+    });
+  });
+
   it("repassa o AbortSignal", async () => {
     mockedGet.mockResolvedValue({ data: page([], false) });
     const controller = new AbortController();

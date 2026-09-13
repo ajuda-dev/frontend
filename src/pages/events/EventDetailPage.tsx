@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { HostPanel } from "../../components/event/HostPanel";
+import { ParticipationZone } from "../../components/event/ParticipationZone";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
@@ -9,6 +11,7 @@ import { ConfirmModal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { useAuth } from "../../context/useAuth";
+import { useParticipants } from "../../hooks/useParticipants";
 import { deleteEvent, findEventById } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
@@ -61,6 +64,18 @@ export function EventDetailPage() {
   }, [id, attempt, event]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
+
+  // Após mutações de participação as vagas podem mudar: recarrega o evento em
+  // silêncio (a lista de participantes continua sendo a fonte da contagem).
+  const refreshEvent = useCallback(() => {
+    void findEventById(id)
+      .then((found) => {
+        if (found) setEvent(found);
+      })
+      .catch(() => {});
+  }, [id]);
+
+  const participation = useParticipants(event?.id ?? "", user?.id, refreshEvent);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
@@ -202,6 +217,12 @@ export function EventDetailPage() {
           </Link>
         ) : null}
       </Card>
+
+      {isOwner ? (
+        <HostPanel event={event} participation={participation} currentUserId={user?.id ?? null} />
+      ) : (
+        <ParticipationZone event={event} participation={participation} />
+      )}
 
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
 

@@ -3,6 +3,8 @@ import type {
   EventItem,
   EventType,
   Pageable,
+  ParticipationRole,
+  ParticipationStatus,
   RegisterEventInput,
 } from "../types/api";
 import { api, isApiError } from "./api";
@@ -14,6 +16,11 @@ export interface ListEventsParams {
   city?: string;
   upcoming?: boolean;
   communityId?: string;
+  // Recorte da agenda pessoal: o backend junta event_users e filtra por usuário
+  // combinado com papel/status da participação.
+  userId?: string;
+  role?: ParticipationRole;
+  status?: ParticipationStatus;
   signal?: AbortSignal;
 }
 
@@ -24,6 +31,9 @@ export async function listEvents({
   city,
   upcoming,
   communityId,
+  userId,
+  role,
+  status,
   signal,
 }: ListEventsParams): Promise<Pageable<EventItem>> {
   const params: Record<string, string | number | boolean> = { page, limit: 10 };
@@ -38,6 +48,9 @@ export async function listEvents({
   // `upcoming` só é enviado quando ligado: omitido, a API devolve passados e futuros.
   if (upcoming) params.upcoming = true;
   if (communityId) params.community_id = communityId;
+  if (userId) params.user_id = userId;
+  if (role) params.role = role;
+  if (status) params.status = status;
   const { data } = await api.get<Pageable<EventItem>>("/event", { params, signal });
   return data;
 }

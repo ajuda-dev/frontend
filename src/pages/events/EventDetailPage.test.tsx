@@ -13,10 +13,21 @@ vi.mock("../../services/event", () => ({
   deleteEvent: vi.fn(),
 }));
 
+vi.mock("../../services/eventUser", () => ({
+  joinEvent: vi.fn(),
+  cancelParticipation: vi.fn(),
+  getParticipants: vi.fn(),
+  addParticipant: vi.fn(),
+  updateParticipantStatus: vi.fn(),
+}));
+
 import { deleteEvent, findEventById } from "../../services/event";
+import { getParticipants, updateParticipantStatus } from "../../services/eventUser";
 
 const mockedFind = vi.mocked(findEventById);
 const mockedDelete = vi.mocked(deleteEvent);
+const mockedParticipants = vi.mocked(getParticipants);
+const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
 
 const EVENT: EventItem = {
   id: "e1",
@@ -57,6 +68,10 @@ describe("EventDetailPage", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    // clearAllMocks não esvazia filas de mockResolvedValueOnce; reseta os que usam once.
+    mockedFind.mockReset();
+    mockedParticipants.mockReset();
+    mockedParticipants.mockResolvedValue([]);
     seedSession();
   });
 
@@ -228,5 +243,56 @@ describe("EventDetailPage", () => {
     expect(await screen.findByText("Erro interno no servidor")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Meetup Dev SP" })).toBeInTheDocument();
     expect(screen.queryByText("Lista de eventos")).not.toBeInTheDocument();
+  });
+
+  it("não-owner vê a zona de participação e não o painel do anfitrião", async () => {
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByRole("button", { name: "Participar" })).toBeInTheDocument();
+    expect(screen.getByText("Sua participação")).toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+  });
+
+  it("owner vê o painel do anfitrião com a lista e não a zona", async () => {
+    seedSession("owner-1");
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p2",
+        event_id: "e1",
+        user_id: "u2",
+        role: "ATTENDEE",
+        status: "CONFIRMED",
+        user: { id: "u2", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
+    expect(await screen.findByText("Bea")).toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+  });
+
+  it("mentorado aceita o convite pela zona de participação", async () => {
+    const requestedRow = {
+      id: "p2",
+      event_id: "e1",
+      user_id: "u1",
+      role: "MENTEE" as const,
+      status: "REQUESTED" as const,
+      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" as const },
+    };
+    mockedParticipants
+      .mockResolvedValueOnce([requestedRow])
+      .mockResolvedValueOnce([{ ...requestedRow, status: "CONFIRMED" }]);
+    mockedUpdateStatus.mockResolvedValue({ ...requestedRow, status: "CONFIRMED" });
+    // O aceite dispara o refresh silencioso do evento (vagas).
+    mockedFind.mockResolvedValue({ ...EVENT, category: "MENTORING", max_slots: 2 });
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+    expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
   });
 });
