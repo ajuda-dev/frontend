@@ -9,7 +9,7 @@ import { Spinner } from "../ui/Spinner";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageable } from "../../hooks/usePageable";
 import { createSkill, listSkills } from "../../services/skill";
-import type { Skill } from "../../types/api";
+import type { Pageable, Skill } from "../../types/api";
 import {
   apiErrorDetail,
   apiErrorFields,
@@ -31,6 +31,10 @@ interface SkillPickerProps {
   // (POST /skill/register) e sai selecionado — usado no formulário do perfil para
   // adicionar uma habilidade que ainda não existe.
   allowCreate?: boolean;
+  // Quando true, o catálogo só é consultado depois de o usuário digitar um termo:
+  // nenhuma requisição é feita no mount e a lista não aparece antes da busca —
+  // usado no formulário do perfil.
+  requireSearch?: boolean;
 }
 
 // O filtro `skill` da API é match exato do nome (normalizado em caixa alta), então
@@ -44,14 +48,21 @@ export function SkillPicker({
   emptyHint = "Sem habilidade: a lista mostra todas as pessoas.",
   showClear = true,
   allowCreate = false,
+  requireSearch = false,
 }: SkillPickerProps) {
   const groupName = useId();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 400);
+  const searching = !requireSearch || debouncedSearch.trim() !== "";
 
+  // Com requireSearch e sem termo o picker resolve uma página vazia: assim o
+  // usePageable não pede a página 1 do catálogo ao backend.
   const fetcher = useCallback(
-    (page: number) => listSkills({ page, name: debouncedSearch }),
-    [debouncedSearch],
+    (page: number): Promise<Pageable<Skill>> =>
+      searching
+        ? listSkills({ page, name: debouncedSearch })
+        : Promise.resolve({ data: [], has_next: false }),
+    [debouncedSearch, searching],
   );
 
   const { items, hasNext, loading, error, loadMore, reset } = usePageable(fetcher);
@@ -117,13 +128,13 @@ export function SkillPicker({
         />
       </Field>
 
-      {loading && items.length === 0 ? (
+      {searching && loading && items.length === 0 ? (
         <div className="flex justify-center py-4">
           <Spinner />
         </div>
       ) : null}
 
-      {error && items.length === 0 ? (
+      {searching && error && items.length === 0 ? (
         <Alert
           variant="error"
           title="Não foi possível carregar as habilidades"
@@ -138,7 +149,11 @@ export function SkillPicker({
         </Alert>
       ) : null}
 
-      {!loading && !error && items.length === 0 ? (
+      {!searching ? (
+        <p className="text-ink-muted text-sm">Digite para buscar uma habilidade no catálogo.</p>
+      ) : null}
+
+      {searching && !loading && !error && items.length === 0 ? (
         <div className="flex flex-col items-start gap-2">
           <p className="text-ink-muted text-sm">
             {debouncedSearch
@@ -165,7 +180,7 @@ export function SkillPicker({
         </Alert>
       ) : null}
 
-      {options.length > 0 || (showClear && !loading) ? (
+      {searching && (options.length > 0 || (showClear && !loading)) ? (
         <fieldset className="flex flex-col gap-2">
           <legend className="text-ink-muted mb-1 text-sm">{label}</legend>
           {showClear ? (

@@ -45,11 +45,17 @@ describe("AddSkillForm", () => {
     mockedListSkills.mockResolvedValue(page([skill("s1", "GO"), skill("s2", "JAVA")]));
   });
 
+  it("não consulta o catálogo antes de o usuário digitar", async () => {
+    renderForm();
+
+    expect(screen.getByText("Digite para buscar uma habilidade no catálogo.")).toBeInTheDocument();
+    expect(mockedListSkills).not.toHaveBeenCalled();
+  });
+
   it("submit sem habilidade é bloqueado sem chamar onAdd", async () => {
     const user = userEvent.setup();
     const { onAdd } = renderForm();
 
-    await screen.findByRole("radio", { name: "JAVA" });
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
 
     expect(await screen.findByText("Escolha uma habilidade do catálogo.")).toBeInTheDocument();
@@ -60,6 +66,7 @@ describe("AddSkillForm", () => {
     const user = userEvent.setup();
     const { onAdd } = renderForm();
 
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
     await user.click(await screen.findByRole("radio", { name: "GO" }));
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
 
@@ -71,6 +78,7 @@ describe("AddSkillForm", () => {
     const user = userEvent.setup();
     const { onAdd } = renderForm();
 
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
     await user.click(await screen.findByRole("radio", { name: "GO" }));
     await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
@@ -80,8 +88,10 @@ describe("AddSkillForm", () => {
   });
 
   it("não mostra a opção de limpar a seleção", async () => {
+    const user = userEvent.setup();
     renderForm();
 
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
     await screen.findByRole("radio", { name: "GO" });
     expect(screen.queryByRole("radio", { name: "Nenhuma habilidade" })).not.toBeInTheDocument();
   });
@@ -90,6 +100,7 @@ describe("AddSkillForm", () => {
     const user = userEvent.setup();
     const { onAdd } = renderForm(vi.fn().mockRejectedValue(duplicateError()));
 
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
     await user.click(await screen.findByRole("radio", { name: "GO" }));
     await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));

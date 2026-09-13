@@ -32,6 +32,7 @@ function renderPicker(
     onSelect: (skill: Skill | null) => void;
     allowCreate: boolean;
     showClear: boolean;
+    requireSearch: boolean;
   }> = {},
 ) {
   const onSelect = props.onSelect ?? vi.fn();
@@ -41,6 +42,7 @@ function renderPicker(
       onSelect={onSelect}
       allowCreate={props.allowCreate ?? false}
       showClear={props.showClear ?? true}
+      requireSearch={props.requireSearch ?? false}
     />,
   );
   return { onSelect };
@@ -57,6 +59,40 @@ describe("SkillPicker", () => {
 
     expect(await screen.findByRole("radio", { name: "JAVA" })).toBeInTheDocument();
     expect(mockedList).toHaveBeenCalledWith({ page: 1, name: "" });
+  });
+
+  it("com requireSearch não consulta o catálogo antes de digitar", async () => {
+    mockedList.mockResolvedValue(page([skill("s1", "GO")]));
+    const user = userEvent.setup();
+    renderPicker({ requireSearch: true });
+
+    expect(screen.getByText("Digite para buscar uma habilidade no catálogo.")).toBeInTheDocument();
+    expect(mockedList).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
+
+    expect(await screen.findByRole("radio", { name: "GO" })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(mockedList).toHaveBeenLastCalledWith({ page: 1, name: "GO" });
+    });
+    expect(mockedList).not.toHaveBeenCalledWith({ page: 1, name: "" });
+  });
+
+  it("com requireSearch apagar o termo esconde a lista sem nova busca", async () => {
+    mockedList.mockResolvedValue(page([skill("s1", "GO")]));
+    const user = userEvent.setup();
+    renderPicker({ requireSearch: true });
+
+    await user.type(screen.getByLabelText("Buscar habilidade no catálogo"), "GO");
+    await screen.findByRole("radio", { name: "GO" });
+
+    await user.clear(screen.getByLabelText("Buscar habilidade no catálogo"));
+
+    expect(
+      await screen.findByText("Digite para buscar uma habilidade no catálogo."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "GO" })).not.toBeInTheDocument();
+    expect(mockedList).not.toHaveBeenCalledWith({ page: 1, name: "" });
   });
 
   it("selecionar uma habilidade avisa a página com o objeto completo", async () => {

@@ -115,6 +115,15 @@ describe("MyProfilePage", () => {
     );
   });
 
+  it("não consulta o catálogo de habilidades antes de o usuário buscar", async () => {
+    renderPage();
+
+    expect(
+      await screen.findByText("Digite para buscar uma habilidade no catálogo."),
+    ).toBeInTheDocument();
+    expect(mockedListSkills).not.toHaveBeenCalled();
+  });
+
   it("adicionar habilidade usa o id da sessão e recarrega a lista", async () => {
     mockedListSkills.mockResolvedValue(page([{ id: "s1", name: "GO" }]));
     mockedSkills
@@ -124,6 +133,7 @@ describe("MyProfilePage", () => {
     const user = userEvent.setup();
     renderPage();
 
+    await user.type(await screen.findByLabelText("Buscar habilidade no catálogo"), "GO");
     await user.click(await screen.findByRole("radio", { name: "GO" }));
     await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
@@ -147,6 +157,7 @@ describe("MyProfilePage", () => {
     const user = userEvent.setup();
     renderPage();
 
+    await user.type(await screen.findByLabelText("Buscar habilidade no catálogo"), "GO");
     await user.click(await screen.findByRole("radio", { name: "GO" }));
     await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
     await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));

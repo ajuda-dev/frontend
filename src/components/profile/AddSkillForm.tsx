@@ -66,6 +66,7 @@ export function AddSkillForm({ onAdd }: AddSkillFormProps) {
           emptyHint="Escolha uma habilidade do catálogo para adicionar."
           showClear={false}
           allowCreate
+          requireSearch
         />
 
         <Field label="Nível de domínio" htmlFor={levelId}>
