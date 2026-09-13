@@ -5,11 +5,13 @@ import { useAddresses } from "./useAddresses";
 
 vi.mock("../services/address", () => ({
   createAddress: vi.fn(),
+  searchAddresses: vi.fn(),
 }));
 
-import { createAddress } from "../services/address";
+import { createAddress, searchAddresses } from "../services/address";
 
 const mockedCreate = vi.mocked(createAddress);
+const mockedSearch = vi.mocked(searchAddresses);
 
 function address(overrides: Partial<Address> = {}): Address {
   return {
@@ -72,6 +74,41 @@ describe("useAddresses", () => {
     ).toBe("a1");
     expect(result.current.findByKey({ zip_code: "01310100", number: "1001" })).toBeNull();
     expect(result.current.findByKey({ zip_code: "01310100", number: "1000" })).toBeNull();
+  });
+
+  it("findExisting acha no servidor pela mesma chave do cache local", async () => {
+    mockedSearch.mockResolvedValue([
+      address({ id: "a9", number: "2000" }),
+      address({ id: "a1", complement: "Sala 5" }),
+    ]);
+    const { result } = renderHook(() => useAddresses("u1"));
+
+    const found = await result.current.findExisting({
+      zip_code: "01310-100",
+      number: "1000",
+      complement: "sala 5",
+    });
+
+    expect(mockedSearch).toHaveBeenCalledWith({ zipCode: "01310-100" });
+    expect(found?.id).toBe("a1");
+  });
+
+  it("findExisting ignora o mesmo CEP com número diferente", async () => {
+    mockedSearch.mockResolvedValue([address({ id: "a9", number: "2000" })]);
+    const { result } = renderHook(() => useAddresses("u1"));
+
+    await expect(
+      result.current.findExisting({ zip_code: "01310100", number: "1000" }),
+    ).resolves.toBeNull();
+  });
+
+  it("findExisting devolve null quando a busca falha, sem lançar", async () => {
+    mockedSearch.mockRejectedValue(new Error("network down"));
+    const { result } = renderHook(() => useAddresses("u1"));
+
+    await expect(
+      result.current.findExisting({ zip_code: "01310100", number: "1000" }),
+    ).resolves.toBeNull();
   });
 
   it("cache corrompido não quebra o hook", () => {

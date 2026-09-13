@@ -6,6 +6,7 @@ import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
 import { Select } from "../ui/Select";
 import { apiErrorBody, isApiError } from "../../services/api";
+import { searchAddresses } from "../../services/address";
 import type { Address } from "../../types/api";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
@@ -20,6 +21,11 @@ interface AddressPickerProps {
     number: string;
     complement?: string;
   }) => Address | null;
+  findExisting: (input: {
+    zip_code: string;
+    number: string;
+    complement?: string;
+  }) => Promise<Address | null>;
   onAddress: (address: Address | null) => void;
 }
 
@@ -42,7 +48,13 @@ function isDuplicateError(error: unknown): boolean {
   return messages.some((message) => message?.trim().toLowerCase() === "address already exists");
 }
 
-export function AddressPicker({ addresses, onSave, findByKey, onAddress }: AddressPickerProps) {
+export function AddressPicker({
+  addresses,
+  onSave,
+  findByKey,
+  findExisting,
+  onAddress,
+}: AddressPickerProps) {
   const fieldId = useId();
   const [mode, setMode] = useState<Mode>(addresses.length > 0 ? "saved" : "new");
   const [selectedId, setSelectedId] = useState(addresses[0]?.id ?? "");
@@ -53,6 +65,7 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
   const [numberError, setNumberError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [suggestions, setSuggestions] = useState<Address[]>([]);
   const [saving, setSaving] = useState(false);
 
   const selected = addresses.find((address) => address.id === selectedId) ?? null;
@@ -68,6 +81,7 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
     setMode(next);
     setNotice(null);
     setFormError(null);
+    setSuggestions([]);
     if (next === "saved") {
       const fallback = addresses.find((address) => address.id === selectedId) ?? addresses[0] ?? null;
       setSelectedId(fallback?.id ?? "");
@@ -77,10 +91,18 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
     }
   }
 
+  function handleSuggestion(address: Address) {
+    setSuggestions([]);
+    setFormError(null);
+    setNotice(`Endereço selecionado: ${formatAddress(address)}`);
+    onAddress(address);
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
     setNotice(null);
+    setSuggestions([]);
 
     const digits = onlyDigits(zipCode);
     const nextZipError = digits.length === 8 ? null : "Informe um CEP com 8 dígitos";
@@ -92,6 +114,28 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
     const input = { zip_code: digits, number: number.trim(), complement: complement.trim() };
     setSaving(true);
     try {
+      // Buscar antes de criar: o GET /v1/address é global, então a consulta é sempre
+      // por CEP exato (nunca por cidade) e o match é pela mesma chave do cache local.
+      const existing = await findExisting(input);
+      if (existing) {
+        onAddress(existing);
+        setNotice(`Este endereço já estava cadastrado — reaproveitado: ${formatAddress(existing)}`);
+        return;
+      }
+
+      // Best-effort: se a busca falhar, o cadastro segue (o ViaCEP vem do POST).
+      let sameCep: Address[] = [];
+      try {
+        sameCep = await searchAddresses({ zipCode: digits });
+      } catch {
+        sameCep = [];
+      }
+      if (sameCep.length > 0) {
+        setSuggestions(sameCep);
+        onAddress(null);
+        return;
+      }
+
       const created = await onSave(input);
       onAddress(created);
       setNotice(`Endereço confirmado: ${formatAddress(created)}`);
@@ -101,6 +145,16 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
         if (cached) {
           onAddress(cached);
           setNotice(`Este endereço já estava salvo: ${formatAddress(cached)}`);
+          return;
+        }
+        // Corrida entre a busca e o cadastro: o backend rejeitou, mas o endereço
+        // pode ter sido criado no meio do caminho — tenta recuperar o id.
+        const recovered = await findExisting(input);
+        if (recovered) {
+          onAddress(recovered);
+          setNotice(
+            `Este endereço já estava cadastrado — reaproveitado: ${formatAddress(recovered)}`,
+          );
         } else {
           onAddress(null);
           setFormError(
@@ -192,6 +246,31 @@ export function AddressPicker({ addresses, onSave, findByKey, onAddress }: Addre
           <p className="text-ink-muted text-xs">
             Rua, cidade e UF são preenchidos pelo servidor a partir do CEP.
           </p>
+
+          {suggestions.length > 0 ? (
+            <div className="border-line flex flex-col gap-2 rounded border p-3">
+              <p className="text-ink text-sm font-semibold">
+                Endereços já cadastrados neste CEP
+              </p>
+              <ul className="flex flex-col gap-2">
+                {suggestions.map((address) => (
+                  <li key={address.id}>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      onClick={() => handleSuggestion(address)}
+                    >
+                      {formatAddress(address)} · CEP {formatCep(address.zip_code)}
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-ink-muted text-xs">
+                Escolha um deles ou clique em "Buscar endereço" para cadastrar um novo.
+              </p>
+            </div>
+          ) : null}
 
           <div>
             <Button type="submit" variant="secondary" loading={saving}>

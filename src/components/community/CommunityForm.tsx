@@ -112,6 +112,7 @@ export function CommunityForm({
           addresses={options}
           onSave={addresses.save}
           findByKey={addresses.findByKey}
+          findExisting={addresses.findExisting}
           onAddress={setAddress}
         />
         {errors.address_id ? (

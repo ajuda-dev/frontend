@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { createAddress } from "../services/address";
+import { createAddress, searchAddresses } from "../services/address";
 import type { Address, RegisterAddressInput } from "../types/api";
 
 const STORAGE_PREFIX = "ajudadev.addresses.";
@@ -8,6 +8,7 @@ export interface UseAddressesResult {
   addresses: Address[];
   save: (input: RegisterAddressInput) => Promise<Address>;
   findByKey: (input: RegisterAddressInput) => Address | null;
+  findExisting: (input: RegisterAddressInput) => Promise<Address | null>;
 }
 
 function storageKey(userId: string): string {
@@ -104,6 +105,19 @@ export function useAddresses(userId: string | null | undefined): UseAddressesRes
     [addresses],
   );
 
+  // Fallback de rede do findByKey: recupera o id de um endereço que já existe no
+  // servidor mas não está no cache local (outro navegador, cache limpo). Best-effort:
+  // falha de busca devolve null em vez de lançar — quem chama segue para o cadastro.
+  const findExisting = useCallback(async (input: RegisterAddressInput) => {
+    const key = addressKey(input);
+    try {
+      const found = await searchAddresses({ zipCode: input.zip_code });
+      return found.find((address) => keyOf(address) === key) ?? null;
+    } catch {
+      return null;
+    }
+  }, []);
+
   const save = useCallback(
     async (input: RegisterAddressInput) => {
       const created = await createAddress(input);
@@ -114,5 +128,8 @@ export function useAddresses(userId: string | null | undefined): UseAddressesRes
     [addresses, persist],
   );
 
-  return useMemo(() => ({ addresses, save, findByKey }), [addresses, save, findByKey]);
+  return useMemo(
+    () => ({ addresses, save, findByKey, findExisting }),
+    [addresses, save, findByKey, findExisting],
+  );
 }

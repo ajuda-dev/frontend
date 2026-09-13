@@ -1,8 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Address } from "../../types/api";
 import { AddressPicker } from "./AddressPicker";
+
+vi.mock("../../services/address", () => ({ searchAddresses: vi.fn() }));
+
+import { searchAddresses } from "../../services/address";
+
+const mockedSearch = vi.mocked(searchAddresses);
 
 const SAVED: Address = {
   id: "a1",
@@ -43,6 +49,7 @@ function renderPicker(overrides: Partial<Parameters<typeof AddressPicker>[0]> = 
     addresses: [] as Address[],
     onSave: vi.fn().mockResolvedValue(CREATED),
     findByKey: vi.fn().mockReturnValue(null),
+    findExisting: vi.fn().mockResolvedValue(null),
     onAddress: vi.fn(),
     ...overrides,
   };
@@ -51,6 +58,10 @@ function renderPicker(overrides: Partial<Parameters<typeof AddressPicker>[0]> = 
 }
 
 describe("AddressPicker", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedSearch.mockResolvedValue([]);
+  });
   it("CEP incompleto bloqueia o submit sem chamar a API", async () => {
     const user = userEvent.setup();
     const props = renderPicker();
@@ -135,6 +146,80 @@ describe("AddressPicker", () => {
       await screen.findByText(/Este endereço já está cadastrado, mas não está salvo neste navegador/),
     ).toBeInTheDocument();
     expect(props.onAddress).toHaveBeenLastCalledWith(null);
+  });
+
+  it("match exato no servidor reaproveita o endereço sem chamar o POST", async () => {
+    const user = userEvent.setup();
+    const props = renderPicker({ findExisting: vi.fn().mockResolvedValue(SAVED) });
+
+    await user.type(screen.getByLabelText("CEP"), "01310100");
+    await user.type(screen.getByLabelText("Número"), "1000");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+
+    expect(props.onSave).not.toHaveBeenCalled();
+    expect(props.onAddress).toHaveBeenLastCalledWith(SAVED);
+    expect(
+      await screen.findByText(
+        "Este endereço já estava cadastrado — reaproveitado: Avenida Paulista, 1000 · São Paulo/SP",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("endereços do mesmo CEP com outros números viram sugestões clicáveis", async () => {
+    const user = userEvent.setup();
+    const other: Address = { ...SAVED, id: "a9", number: "2000" };
+    mockedSearch.mockResolvedValue([other]);
+    const props = renderPicker();
+
+    await user.type(screen.getByLabelText("CEP"), "01310100");
+    await user.type(screen.getByLabelText("Número"), "1000");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+
+    expect(await screen.findByText("Endereços já cadastrados neste CEP")).toBeInTheDocument();
+    expect(props.onSave).not.toHaveBeenCalled();
+    expect(props.onAddress).toHaveBeenLastCalledWith(null);
+
+    await user.click(screen.getByRole("button", { name: /Avenida Paulista, 2000/ }));
+
+    expect(props.onAddress).toHaveBeenLastCalledWith(other);
+    expect(screen.queryByText("Endereços já cadastrados neste CEP")).not.toBeInTheDocument();
+  });
+
+  it("busca de CEP que falha não bloqueia o cadastro", async () => {
+    const user = userEvent.setup();
+    mockedSearch.mockRejectedValue(new Error("network down"));
+    const props = renderPicker();
+
+    await user.type(screen.getByLabelText("CEP"), "20040020");
+    await user.type(screen.getByLabelText("Número"), "50");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+
+    expect(props.onSave).toHaveBeenCalledWith({
+      zip_code: "20040020",
+      number: "50",
+      complement: "",
+    });
+    expect(props.onAddress).toHaveBeenLastCalledWith(CREATED);
+  });
+
+  it("400 duplicado com match na busca reaproveita em vez do dead-end", async () => {
+    const user = userEvent.setup();
+    const props = renderPicker({
+      onSave: vi.fn().mockRejectedValue(duplicateError()),
+      findExisting: vi.fn().mockResolvedValue(SAVED),
+    });
+
+    await user.type(screen.getByLabelText("CEP"), "01310100");
+    await user.type(screen.getByLabelText("Número"), "1000");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+
+    expect(props.onAddress).toHaveBeenLastCalledWith(SAVED);
+    expect(
+      await screen.findByText(
+        "Este endereço já estava cadastrado — reaproveitado: Avenida Paulista, 1000 · São Paulo/SP",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/não está salvo neste navegador/)).not.toBeInTheDocument();
   });
 
   it("400 de CEP inexistente não é tratado como endereço duplicado", async () => {

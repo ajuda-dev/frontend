@@ -132,6 +132,11 @@ export interface RegisterAddressInput {
   complement?: string;
 }
 
+export interface SearchAddressParams {
+  zipCode: string;
+  signal?: AbortSignal;
+}
+
 export interface RegisterCommunityInput {
   id?: string;
   name: string;
