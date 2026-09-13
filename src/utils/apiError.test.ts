@@ -58,6 +58,15 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage(undefined)).toBeNull();
   });
 
+  it("chaves removidas (não emitidas pelo backend) devolvem null", () => {
+    expect(translateApiMessage("Community already exists")).toBeNull();
+    expect(translateApiMessage("cannot delete community with active members")).toBeNull();
+    expect(translateApiMessage("user already joined this community")).toBeNull();
+    expect(translateApiMessage("user already joined this event")).toBeNull();
+    expect(translateApiMessage("Password is not valid")).toBeNull();
+    expect(translateApiMessage("invalid data")).toBeNull();
+  });
+
   it("traduz as mensagens de participação em eventos (plano 11)", () => {
     expect(translateApiMessage("event is full")).toBe("O evento está cheio");
     expect(translateApiMessage("user is already invited to this event")).toBe(
@@ -86,6 +95,12 @@ describe("fieldLabel", () => {
     expect(fieldLabel("zip_code")).toBe("CEP");
     expect(fieldLabel("start_at")).toBe("Data de início");
     expect(fieldLabel("campo_novo")).toBe("campo_novo");
+  });
+
+  it("resolve as variantes camelCase dos causes e o campo body", () => {
+    expect(fieldLabel("addressId")).toBe("Endereço");
+    expect(fieldLabel("userId")).toBe("Usuário");
+    expect(fieldLabel("body")).toBe("Formulário");
   });
 });
 
