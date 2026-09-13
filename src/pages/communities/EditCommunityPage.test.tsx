@@ -81,8 +81,8 @@ describe("EditCommunityPage", () => {
 
     expect(await screen.findByLabelText("Nome")).toHaveValue("Dev SP");
     expect(screen.getByLabelText("Descrição")).toHaveValue("Encontros de dev em São Paulo");
-    // O endereço atual entra nas opções mesmo sem estar no cache local.
-    expect(screen.getByRole("button", { name: "Endereços salvos" })).toBeInTheDocument();
+    // O endereço atual fica visível mesmo sem cache local, para ser mantido no PUT.
+    expect(screen.getByText(/Endereço atual:/)).toHaveTextContent("Avenida Paulista");
   });
 
   it("salvar envia PUT com os campos e volta ao detalhe com o aviso de sucesso", async () => {

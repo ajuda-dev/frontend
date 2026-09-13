@@ -46,7 +46,6 @@ function duplicateError() {
 
 function renderPicker(overrides: Partial<Parameters<typeof AddressPicker>[0]> = {}) {
   const props = {
-    addresses: [] as Address[],
     onSave: vi.fn().mockResolvedValue(CREATED),
     findByKey: vi.fn().mockReturnValue(null),
     findExisting: vi.fn().mockResolvedValue(null),
@@ -262,19 +261,10 @@ describe("AddressPicker", () => {
     expect(props.onAddress).toHaveBeenLastCalledWith(null);
   });
 
-  it("alterna para endereços salvos e devolve o selecionado", async () => {
-    const user = userEvent.setup();
-    const props = renderPicker({ addresses: [SAVED] });
-
-    await user.click(screen.getByRole("button", { name: "Endereços salvos" }));
-
-    expect(props.onAddress).toHaveBeenLastCalledWith(SAVED);
-    expect(screen.getByLabelText("Usar endereço salvo")).toBeInTheDocument();
-  });
-
-  it("sem endereços salvos o botão fica desabilitado", () => {
+  it("não renderiza o seletor de endereços salvos", () => {
     renderPicker();
 
-    expect(screen.getByRole("button", { name: "Endereços salvos" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Endereços salvos" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Usar endereço salvo")).not.toBeInTheDocument();
   });
 });

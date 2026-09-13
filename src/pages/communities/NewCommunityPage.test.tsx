@@ -7,7 +7,7 @@ import type { Address, Community } from "../../types/api";
 import { CommunityDetailPage } from "./CommunityDetailPage";
 import { NewCommunityPage } from "./NewCommunityPage";
 
-vi.mock("../../services/address", () => ({ createAddress: vi.fn() }));
+vi.mock("../../services/address", () => ({ createAddress: vi.fn(), searchAddresses: vi.fn() }));
 vi.mock("../../services/community", () => ({
   createCommunity: vi.fn(),
   findCommunityById: vi.fn(),
@@ -16,10 +16,11 @@ vi.mock("../../services/community", () => ({
   deleteCommunity: vi.fn(),
 }));
 
-import { createAddress } from "../../services/address";
+import { createAddress, searchAddresses } from "../../services/address";
 import { createCommunity, findCommunityById } from "../../services/community";
 
 const mockedCreateAddress = vi.mocked(createAddress);
+const mockedSearch = vi.mocked(searchAddresses);
 const mockedCreateCommunity = vi.mocked(createCommunity);
 const mockedFind = vi.mocked(findCommunityById);
 
@@ -75,6 +76,7 @@ describe("NewCommunityPage", () => {
     seedSession();
     mockedCreateAddress.mockResolvedValue(ADDRESS);
     mockedCreateCommunity.mockResolvedValue(COMMUNITY);
+    mockedSearch.mockResolvedValue([]);
   });
 
   it("nome vazio é barrado localmente sem chamar a API", async () => {
@@ -149,12 +151,16 @@ describe("NewCommunityPage", () => {
     );
   });
 
-  it("endereço salvo no cache pode ser reusado sem nova chamada de CEP", async () => {
-    localStorage.setItem("ajudadev.addresses.u1", JSON.stringify([ADDRESS]));
+  it("endereço que já existe no servidor é reaproveitado sem criar outro", async () => {
+    mockedSearch.mockResolvedValue([ADDRESS]);
     const user = userEvent.setup();
     renderPage();
 
-    await user.click(screen.getByRole("button", { name: "Endereços salvos" }));
+    await user.type(screen.getByLabelText("CEP"), "01310100");
+    await user.type(screen.getByLabelText("Número"), "1000");
+    await user.click(screen.getByRole("button", { name: "Buscar endereço" }));
+    await screen.findByText(/reaproveitado/);
+
     await user.type(screen.getByLabelText("Nome"), "Dev SP");
     await user.type(screen.getByLabelText("Descrição"), "Encontros de dev");
     await user.click(screen.getByRole("button", { name: "Criar comunidade" }));

@@ -385,7 +385,6 @@ export function NewEventPage() {
         <Card className="flex flex-col gap-4">
           <h2 className="text-ink text-base font-semibold">Endereço do evento</h2>
           <AddressPicker
-            addresses={addresses.addresses}
             onSave={addresses.save}
             findByKey={addresses.findByKey}
             findExisting={addresses.findExisting}

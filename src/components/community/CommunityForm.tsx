@@ -12,6 +12,7 @@ import { useAuth } from "../../context/useAuth";
 import { useAddresses } from "../../hooks/useAddresses";
 import type { Address } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import { formatAddress, formatCep } from "../../utils/format";
 
 export interface CommunityFormValues {
   name: string;
@@ -34,15 +35,6 @@ interface FieldErrors {
   address_id?: string;
 }
 
-// O endereço atual da comunidade pode não estar no cache local (foi criado por outra
-// pessoa ou em outro navegador): sem semeá-lo, o usuário abre a edição e não vê o
-// endereço atual para manter — e acaba criando um duplicado só para "não mudar".
-function withCurrentAddress(addresses: Address[], current: Address | null | undefined): Address[] {
-  if (!current) return addresses;
-  if (addresses.some((address) => address.id === current.id)) return addresses;
-  return [current, ...addresses];
-}
-
 export function CommunityForm({
   initialName = "",
   initialDescription = "",
@@ -61,8 +53,6 @@ export function CommunityForm({
   const [formError, setFormError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-
-  const options = withCurrentAddress(addresses.addresses, initialAddress);
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
@@ -108,8 +98,12 @@ export function CommunityForm({
     <div className="flex flex-col gap-6">
       <Card className="flex flex-col gap-4">
         <h2 className="text-ink text-base font-semibold">Endereço</h2>
+        {initialAddress && address?.id === initialAddress.id ? (
+          <p className="text-ink-muted text-xs">
+            Endereço atual: {formatAddress(initialAddress)} · CEP {formatCep(initialAddress.zip_code)}
+          </p>
+        ) : null}
         <AddressPicker
-          addresses={options}
           onSave={addresses.save}
           findByKey={addresses.findByKey}
           findExisting={addresses.findExisting}

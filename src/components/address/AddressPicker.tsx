@@ -4,17 +4,13 @@ import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
 import { Field } from "../ui/Field";
 import { Input } from "../ui/Input";
-import { Select } from "../ui/Select";
 import { apiErrorBody, isApiError } from "../../services/api";
 import { searchAddresses } from "../../services/address";
 import type { Address } from "../../types/api";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
 
-type Mode = "new" | "saved";
-
 interface AddressPickerProps {
-  addresses: Address[];
   onSave: (input: { zip_code: string; number: string; complement?: string }) => Promise<Address>;
   findByKey: (input: {
     zip_code: string;
@@ -49,15 +45,12 @@ function isDuplicateError(error: unknown): boolean {
 }
 
 export function AddressPicker({
-  addresses,
   onSave,
   findByKey,
   findExisting,
   onAddress,
 }: AddressPickerProps) {
   const fieldId = useId();
-  const [mode, setMode] = useState<Mode>(addresses.length > 0 ? "saved" : "new");
-  const [selectedId, setSelectedId] = useState(addresses[0]?.id ?? "");
   const [zipCode, setZipCode] = useState("");
   const [number, setNumber] = useState("");
   const [complement, setComplement] = useState("");
@@ -67,29 +60,6 @@ export function AddressPicker({
   const [notice, setNotice] = useState<string | null>(null);
   const [suggestions, setSuggestions] = useState<Address[]>([]);
   const [saving, setSaving] = useState(false);
-
-  const selected = addresses.find((address) => address.id === selectedId) ?? null;
-
-  function handleSelectSaved(id: string) {
-    setSelectedId(id);
-    setNotice(null);
-    setFormError(null);
-    onAddress(addresses.find((address) => address.id === id) ?? null);
-  }
-
-  function switchMode(next: Mode) {
-    setMode(next);
-    setNotice(null);
-    setFormError(null);
-    setSuggestions([]);
-    if (next === "saved") {
-      const fallback = addresses.find((address) => address.id === selectedId) ?? addresses[0] ?? null;
-      setSelectedId(fallback?.id ?? "");
-      onAddress(fallback);
-    } else {
-      onAddress(null);
-    }
-  }
 
   function handleSuggestion(address: Address) {
     setSuggestions([]);
@@ -173,122 +143,79 @@ export function AddressPicker({
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === "new" ? "primary" : "secondary"}
-          onClick={() => switchMode("new")}
-        >
-          Novo endereço (CEP)
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant={mode === "saved" ? "primary" : "secondary"}
-          disabled={addresses.length === 0}
-          onClick={() => switchMode("saved")}
-        >
-          Endereços salvos
-        </Button>
-      </div>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="CEP" htmlFor={`${fieldId}-zip`} error={zipError ?? undefined}>
+            <Input
+              id={`${fieldId}-zip`}
+              name="zip_code"
+              inputMode="numeric"
+              autoComplete="postal-code"
+              placeholder="00000-000"
+              value={zipCode}
+              invalid={Boolean(zipError)}
+              onChange={(event) => setZipCode(maskCep(event.target.value))}
+            />
+          </Field>
 
-      {mode === "saved" ? (
-        <Field label="Usar endereço salvo" htmlFor={`${fieldId}-saved`}>
-          <Select
-            id={`${fieldId}-saved`}
-            value={selectedId}
-            onChange={(event) => handleSelectSaved(event.target.value)}
-          >
-            {addresses.map((address) => (
-              <option key={address.id} value={address.id}>
-                {formatAddress(address)} · CEP {formatCep(address.zip_code)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      ) : (
-        <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <Field label="CEP" htmlFor={`${fieldId}-zip`} error={zipError ?? undefined}>
-              <Input
-                id={`${fieldId}-zip`}
-                name="zip_code"
-                inputMode="numeric"
-                autoComplete="postal-code"
-                placeholder="00000-000"
-                value={zipCode}
-                invalid={Boolean(zipError)}
-                onChange={(event) => setZipCode(maskCep(event.target.value))}
-              />
-            </Field>
+          <Field label="Número" htmlFor={`${fieldId}-number`} error={numberError ?? undefined}>
+            <Input
+              id={`${fieldId}-number`}
+              name="number"
+              value={number}
+              invalid={Boolean(numberError)}
+              onChange={(event) => setNumber(event.target.value)}
+            />
+          </Field>
 
-            <Field label="Número" htmlFor={`${fieldId}-number`} error={numberError ?? undefined}>
-              <Input
-                id={`${fieldId}-number`}
-                name="number"
-                value={number}
-                invalid={Boolean(numberError)}
-                onChange={(event) => setNumber(event.target.value)}
-              />
-            </Field>
+          <Field label="Complemento" htmlFor={`${fieldId}-complement`} hint="Opcional">
+            <Input
+              id={`${fieldId}-complement`}
+              name="complement"
+              value={complement}
+              onChange={(event) => setComplement(event.target.value)}
+            />
+          </Field>
+        </div>
 
-            <Field label="Complemento" htmlFor={`${fieldId}-complement`} hint="Opcional">
-              <Input
-                id={`${fieldId}-complement`}
-                name="complement"
-                value={complement}
-                onChange={(event) => setComplement(event.target.value)}
-              />
-            </Field>
+        <p className="text-ink-muted text-xs">
+          Rua, cidade e UF são preenchidos pelo servidor a partir do CEP.
+        </p>
+
+        {suggestions.length > 0 ? (
+          <div className="border-line flex flex-col gap-2 rounded border p-3">
+            <p className="text-ink text-sm font-semibold">
+              Endereços já cadastrados neste CEP
+            </p>
+            <ul className="flex flex-col gap-2">
+              {suggestions.map((address) => (
+                <li key={address.id}>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => handleSuggestion(address)}
+                  >
+                    {formatAddress(address)} · CEP {formatCep(address.zip_code)}
+                  </Button>
+                </li>
+              ))}
+            </ul>
+            <p className="text-ink-muted text-xs">
+              Escolha um deles ou clique em "Buscar endereço" para cadastrar um novo.
+            </p>
           </div>
+        ) : null}
 
-          <p className="text-ink-muted text-xs">
-            Rua, cidade e UF são preenchidos pelo servidor a partir do CEP.
-          </p>
-
-          {suggestions.length > 0 ? (
-            <div className="border-line flex flex-col gap-2 rounded border p-3">
-              <p className="text-ink text-sm font-semibold">
-                Endereços já cadastrados neste CEP
-              </p>
-              <ul className="flex flex-col gap-2">
-                {suggestions.map((address) => (
-                  <li key={address.id}>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => handleSuggestion(address)}
-                    >
-                      {formatAddress(address)} · CEP {formatCep(address.zip_code)}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-ink-muted text-xs">
-                Escolha um deles ou clique em "Buscar endereço" para cadastrar um novo.
-              </p>
-            </div>
-          ) : null}
-
-          <div>
-            <Button type="submit" variant="secondary" loading={saving}>
-              Buscar endereço
-            </Button>
-          </div>
-        </form>
-      )}
+        <div>
+          <Button type="submit" variant="secondary" loading={saving}>
+            Buscar endereço
+          </Button>
+        </div>
+      </form>
 
       {formError ? <Alert variant="error">{formError}</Alert> : null}
       {notice ? <Alert variant="success">{notice}</Alert> : null}
-
-      {mode === "saved" && selected ? (
-        <p className="text-ink-muted text-xs">
-          {selected.street ? `${selected.street}, ${selected.number ?? "s/n"} · ` : ""}
-          {selected.city}/{selected.state} · CEP {formatCep(selected.zip_code)}
-        </p>
-      ) : null}
     </div>
   );
 }
