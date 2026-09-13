@@ -7,9 +7,9 @@ import { Field } from "../../components/ui/Field";
 import { Input } from "../../components/ui/Input";
 import { useAuth } from "../../context/useAuth";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
+import { validatePersonName } from "../../utils/nameValidation";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NAME_REGEX = /^[A-Za-zÀ-ÖØ-öø-ÿ' ]+$/;
 const MIN_PASSWORD_LENGTH = 6;
 
 interface FieldErrors {
@@ -32,9 +32,8 @@ export function RegisterPage() {
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
-    const trimmedName = name.trim();
-    if (!trimmedName) next.name = "Informe seu nome";
-    else if (trimmedName.length > 50 || !NAME_REGEX.test(trimmedName)) next.name = "Nome inválido";
+    const nameError = validatePersonName(name);
+    if (nameError) next.name = nameError;
 
     if (!email.trim()) next.email = "Informe seu e-mail";
     else if (!EMAIL_REGEX.test(email.trim())) next.email = "E-mail inválido";

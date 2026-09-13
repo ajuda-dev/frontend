@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { AddSkillForm } from "../../components/profile/AddSkillForm";
 import { SkillRow } from "../../components/profile/SkillRow";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
+import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { Field } from "../../components/ui/Field";
+import { Input } from "../../components/ui/Input";
 import { ConfirmModal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
@@ -13,12 +17,14 @@ import { useAuth } from "../../context/useAuth";
 import { assignSkillToUser } from "../../services/skill";
 import { getUserProfile, getUserSkills, removeUserSkill } from "../../services/user";
 import type { Skill, SkillLevel, SkillUser, UserProfile } from "../../types/api";
-import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
 import { USER_ROLE_COLOR, USER_ROLE_LABEL } from "../../utils/labels";
+import { NAME_MAX_LENGTH, validatePersonName } from "../../utils/nameValidation";
 
 export function MyProfilePage() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
   const userId = user?.id ?? "";
+  const nameFieldId = useId();
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [skills, setSkills] = useState<SkillUser[]>([]);
@@ -29,6 +35,10 @@ export function MyProfilePage() {
   const [removing, setRemoving] = useState<SkillUser | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [nameError, setNameError] = useState<string | undefined>();
+  const [savingName, setSavingName] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -124,6 +134,50 @@ export function MyProfilePage() {
     [userId, runSkillAction],
   );
 
+  const startEditingName = useCallback(() => {
+    setNameDraft(user?.name ?? "");
+    setNameError(undefined);
+    setActionError(null);
+    setNotice(null);
+    setEditingName(true);
+  }, [user?.name]);
+
+  const cancelEditingName = useCallback(() => {
+    setEditingName(false);
+    setNameError(undefined);
+  }, []);
+
+  const handleSaveName = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setActionError(null);
+      setNotice(null);
+
+      const localError = validatePersonName(nameDraft);
+      if (localError) {
+        setNameError(localError);
+        return;
+      }
+
+      const trimmed = nameDraft.trim();
+      setNameError(undefined);
+      setSavingName(true);
+      try {
+        const updated = await updateProfile(trimmed);
+        setProfile((current) => (current ? { ...current, name: updated.name } : current));
+        setEditingName(false);
+        setNotice("Nome atualizado.");
+      } catch (caught) {
+        const fields = apiErrorFields(caught);
+        if (fields.name) setNameError(fields.name);
+        else setActionError(apiErrorMessage(caught));
+      } finally {
+        setSavingName(false);
+      }
+    },
+    [nameDraft, updateProfile],
+  );
+
   if (!user) return null;
   if (loading) return <PageSpinner />;
 
@@ -162,15 +216,59 @@ export function MyProfilePage() {
         }
       />
 
-      <Card className="flex flex-col gap-2">
+      <Card className="flex flex-col gap-3">
         <h2 className="text-ink text-base font-semibold">Conta</h2>
+
+        {editingName ? (
+          <form className="flex flex-col gap-3" onSubmit={handleSaveName} noValidate>
+            <Field label="Nome" htmlFor={nameFieldId} error={nameError}>
+              <Input
+                id={nameFieldId}
+                name="name"
+                type="text"
+                autoComplete="name"
+                maxLength={NAME_MAX_LENGTH}
+                value={nameDraft}
+                invalid={Boolean(nameError)}
+                onChange={(event) => setNameDraft(event.target.value)}
+              />
+            </Field>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button type="submit" loading={savingName}>
+                Salvar
+              </Button>
+              <Button type="button" variant="ghost" onClick={cancelEditingName}>
+                Cancelar
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-ink text-sm">{user.name}</p>
+            <Button type="button" variant="secondary" size="sm" onClick={startEditingName}>
+              Editar nome
+            </Button>
+          </div>
+        )}
+
         <dl className="text-ink-muted grid gap-2 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-xs">E-mail</dt>
             <dd className="text-ink">{user.email}</dd>
           </div>
+          <div>
+            <dt className="text-xs">Cargo</dt>
+            <dd className="text-ink">{USER_ROLE_LABEL[user.role]}</dd>
+          </div>
+          <div>
+            <dt className="text-xs">Senha</dt>
+            <dd className="text-ink">••••••••</dd>
+          </div>
         </dl>
-        <p className="text-ink-muted text-xs">E-mail, senha e cargo são somente leitura.</p>
+        <p className="text-ink-muted text-xs">
+          E-mail, senha e cargo são somente leitura. O e-mail não pode ser alterado por aqui e a troca
+          de senha estará disponível em breve.
+        </p>
       </Card>
 
       <section className="flex flex-col gap-4">

@@ -1,7 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Pageable, SkillUser, UserProfile, UserWithSkills } from "../types/api";
+import type { Pageable, SkillUser, UserProfile, UserSummary, UserWithSkills } from "../types/api";
 import { api } from "./api";
-import { deleteUser, getUserProfile, getUserSkills, listUsers, removeUserSkill } from "./user";
+import {
+  deleteUser,
+  getUserProfile,
+  getUserSkills,
+  listUsers,
+  removeUserSkill,
+  updateUserName,
+} from "./user";
 
 // `isApiError` precisa ser o real (getUserProfile depende dele para mapear 404 → null);
 // só a instância `api` é dublada.
@@ -14,6 +21,7 @@ vi.mock("./api", async (importOriginal) => {
 });
 
 const mockedGet = vi.mocked(api.get);
+const mockedPut = vi.mocked(api.put);
 const mockedDelete = vi.mocked(api.delete);
 
 function axiosErrorWithStatus(status: number) {
@@ -160,5 +168,26 @@ describe("deleteUser", () => {
     await deleteUser("u1");
 
     expect(mockedDelete).toHaveBeenCalledWith("/user/u1");
+  });
+});
+
+describe("updateUserName", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT no path do usuário com body exatamente {name}", async () => {
+    const updated: UserSummary = {
+      id: "u1",
+      name: "Lucas R.",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+    };
+    mockedPut.mockResolvedValue({ data: updated });
+
+    await expect(updateUserName("u1", "Lucas R.")).resolves.toEqual(updated);
+    expect(mockedPut).toHaveBeenCalledWith("/user/u1", { name: "Lucas R." });
+    expect(mockedPut.mock.calls[0][1]).toEqual({ name: "Lucas R." });
   });
 });

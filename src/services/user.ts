@@ -1,4 +1,11 @@
-import type { Pageable, SkillUser, UserProfile, UserWithSkills } from "../types/api";
+import type {
+  Pageable,
+  SkillUser,
+  UpdateUserInput,
+  UserProfile,
+  UserSummary,
+  UserWithSkills,
+} from "../types/api";
 import { api, isApiError } from "./api";
 
 export interface ListUsersParams {
@@ -55,4 +62,11 @@ export async function removeUserSkill(userId: string, skillId: string): Promise<
 
 export async function deleteUser(userId: string): Promise<void> {
   await api.delete(`/user/${userId}`);
+}
+
+export async function updateUserName(userId: string, name: string): Promise<UserSummary> {
+  // Só `name`: o backend recusa o body inteiro se vier `email` (plano 13, decisão 3).
+  const body: UpdateUserInput = { name };
+  const { data } = await api.put<UserSummary>(`/user/${userId}`, body);
+  return data;
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext } from "react";
-import type { Session } from "../types/api";
+import type { AuthUser, Session } from "../types/api";
 
 export const TOKEN_KEY = "ajudadev.token";
 export const USER_KEY = "ajudadev.user";
@@ -9,6 +9,7 @@ export interface AuthContextValue {
   user: Session["user"] | null;
   login: (email: string, password: string) => Promise<Session>;
   register: (name: string, email: string, password: string) => Promise<Session>;
+  updateProfile: (name: string) => Promise<AuthUser>;
   logout: () => void;
 }
 

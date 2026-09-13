@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { onUnauthorized, setTokenGetter } from "../services/api";
 import * as authService from "../services/auth";
-import type { Session } from "../types/api";
+import { updateUserName } from "../services/user";
+import type { AuthUser, Session } from "../types/api";
 import {
   AuthContext,
   clearStoredSession,
@@ -40,9 +41,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return next;
   }, []);
 
+  const updateProfile = useCallback(
+    async (name: string): Promise<AuthUser> => {
+      if (!session) throw new Error("Sem sessão para atualizar o perfil");
+      const updated = await updateUserName(session.user.id, name);
+      // A resposta do PUT traz `token: ""`; persistir a resposta crua mataria a sessão.
+      const user: AuthUser = {
+        id: updated.id,
+        name: updated.name,
+        email: updated.email,
+        role: updated.role,
+      };
+      persistSession({ token: session.token, user });
+      setSession({ token: session.token, user });
+      return user;
+    },
+    [session],
+  );
+
   const value = useMemo<AuthContextValue>(
-    () => ({ session, user: session?.user ?? null, login, register, logout }),
-    [session, login, register, logout],
+    () => ({ session, user: session?.user ?? null, login, register, updateProfile, logout }),
+    [session, login, register, updateProfile, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -120,6 +120,12 @@ export interface RegisterUserInput {
   password: string;
 }
 
+export interface UpdateUserInput {
+  name?: string;
+  description?: string;
+  configVisibility?: ConfigVisibility;
+}
+
 export interface RegisterAddressInput {
   zip_code: string;
   number: string;

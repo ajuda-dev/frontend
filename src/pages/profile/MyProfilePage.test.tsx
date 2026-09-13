@@ -11,6 +11,7 @@ vi.mock("../../services/user", () => ({
   getUserSkills: vi.fn(),
   removeUserSkill: vi.fn(),
   deleteUser: vi.fn(),
+  updateUserName: vi.fn(),
 }));
 vi.mock("../../services/skill", () => ({
   listSkills: vi.fn(),
@@ -18,11 +19,12 @@ vi.mock("../../services/skill", () => ({
 }));
 
 import { assignSkillToUser, listSkills } from "../../services/skill";
-import { getUserProfile, getUserSkills, removeUserSkill } from "../../services/user";
+import { getUserProfile, getUserSkills, removeUserSkill, updateUserName } from "../../services/user";
 
 const mockedProfile = vi.mocked(getUserProfile);
 const mockedSkills = vi.mocked(getUserSkills);
 const mockedRemove = vi.mocked(removeUserSkill);
+const mockedUpdateName = vi.mocked(updateUserName);
 const mockedAssign = vi.mocked(assignSkillToUser);
 const mockedListSkills = vi.mocked(listSkills);
 
@@ -89,7 +91,7 @@ describe("MyProfilePage", () => {
 
     expect(await screen.findByRole("heading", { name: "Lucas Rocha" })).toBeInTheDocument();
     expect(screen.getByText("lucas@ajudadev.dev")).toBeInTheDocument();
-    expect(screen.getByText("Usuário")).toBeInTheDocument();
+    expect(screen.getAllByText("Usuário")).toHaveLength(2);
     expect(screen.getByText("Dev backend")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver perfil público" })).toHaveAttribute(
       "href",
@@ -226,5 +228,101 @@ describe("MyProfilePage", () => {
 
     expect(await screen.findByText("Não foi possível carregar o perfil")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Tentar novamente" })).toBeInTheDocument();
+  });
+
+  it("editar o nome atualiza cabeçalho, card e sessão sem recarregar", async () => {
+    mockedUpdateName.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha Silva",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      token: "",
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    const input = screen.getByLabelText("Nome");
+    await user.clear(input);
+    await user.type(input, "Lucas Rocha Silva");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Nome atualizado.")).toBeInTheDocument();
+    expect(mockedUpdateName).toHaveBeenCalledWith("u1", "Lucas Rocha Silva");
+    expect(screen.getByRole("heading", { name: "Lucas Rocha Silva" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").name).toBe("Lucas Rocha Silva");
+  });
+
+  it("nome vazio é barrado localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    await user.clear(screen.getByLabelText("Nome"));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Informe seu nome")).toBeInTheDocument();
+    expect(mockedUpdateName).not.toHaveBeenCalled();
+  });
+
+  it("nome com dígito é barrado localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    const input = screen.getByLabelText("Nome");
+    await user.clear(input);
+    await user.type(input, "Lucas123");
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Nome inválido")).toBeInTheDocument();
+    expect(mockedUpdateName).not.toHaveBeenCalled();
+  });
+
+  it("400 com cause name mostra o erro no campo", async () => {
+    mockedUpdateName.mockRejectedValue(
+      apiError(400, {
+        message: "Invalid data",
+        code: 400,
+        causes: [{ field: "name", message: "Name is not valid" }],
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Nome inválido")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toBeInTheDocument();
+  });
+
+  it("403 mostra alerta traduzido", async () => {
+    mockedUpdateName.mockRejectedValue(
+      apiError(403, {
+        message: "only the user themselves or an admin can update this user",
+        code: 403,
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    await user.click(screen.getByRole("button", { name: "Salvar" }));
+
+    expect(await screen.findByText("Você só pode alterar os seus próprios dados")).toBeInTheDocument();
+  });
+
+  it("cancelar fecha o formulário sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Editar nome" }));
+    await user.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
+    expect(mockedUpdateName).not.toHaveBeenCalled();
   });
 });
