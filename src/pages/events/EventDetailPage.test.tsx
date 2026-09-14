@@ -208,7 +208,7 @@ describe("EventDetailPage", () => {
 
     expect(
       screen.getByText(
-        "Você está excluindo um evento que não é seu. Esta ação não pode ser desfeita.",
+        "Você está excluindo um evento que não é seu (você gerencia a comunidade ou a moderação). Esta ação não pode ser desfeita.",
       ),
     ).toBeInTheDocument();
   });
@@ -255,7 +255,7 @@ describe("EventDetailPage", () => {
     expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
   });
 
-  it("owner vê o painel do anfitrião com a lista e não a zona", async () => {
+  it("owner vê o painel do anfitrião com a lista e também a zona de participação", async () => {
     seedSession("owner-1");
     mockedParticipants.mockResolvedValue([
       {
@@ -271,7 +271,8 @@ describe("EventDetailPage", () => {
 
     expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
     expect(await screen.findByText("Bea")).toBeInTheDocument();
-    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+    // O criador de evento comum também se inscreve: as duas seções convivem.
+    expect(screen.getByText("Sua participação")).toBeInTheDocument();
   });
 
   it("mentorado aceita o convite pela zona de participação", async () => {
@@ -381,5 +382,82 @@ describe("EventDetailPage", () => {
     expect(screen.queryByText("Aprovação do evento")).not.toBeInTheDocument();
     expect(screen.queryByText("Aguardando aprovação")).not.toBeInTheDocument();
     expect(screen.queryByText("Rejeitado")).not.toBeInTheDocument();
+  });
+
+  it("dono da comunidade (não criador) vê a gestão do evento e pode excluir", async () => {
+    seedSession("dono-c1");
+    renderDetail({
+      event: {
+        ...EVENT,
+        community: {
+          id: "c1",
+          name: "Dev SP",
+          description: "Comunidade de São Paulo",
+          owner: { id: "dono-c1", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+        },
+      },
+    });
+
+    expect(await screen.findByText("Gestão do evento")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluir evento" })).toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+  });
+
+  it("moderador vê a gestão do evento e pode excluir", async () => {
+    localStorage.setItem("ajudadev.token", "token-123");
+    localStorage.setItem(
+      "ajudadev.user",
+      JSON.stringify({ id: "u9", name: "Mod", email: "mod@ajudadev.dev", role: "MODERATOR" }),
+    );
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByText("Gestão do evento")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluir evento" })).toBeInTheDocument();
+  });
+
+  it("usuário comum não vê gestão nem excluir", async () => {
+    renderDetail({ event: EVENT });
+
+    await screen.findByRole("heading", { name: "Meetup Dev SP" });
+    expect(screen.queryByText("Gestão do evento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
+  });
+
+  it("criador de 1:1 vê o painel e não a zona de participação", async () => {
+    seedSession("owner-1");
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar inscrição" })).not.toBeInTheDocument();
+  });
+
+  it("criador de evento comum vê o painel e a zona de participação juntos", async () => {
+    seedSession("owner-1");
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
+    expect(screen.getByText("Sua participação")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Participar" })).toBeInTheDocument();
+  });
+
+  it("dono da comunidade se inscreve pelo detalhe: gestão e zona juntas", async () => {
+    seedSession("dono-c1");
+    renderDetail({
+      event: {
+        ...EVENT,
+        community: {
+          id: "c1",
+          name: "Dev SP",
+          description: "Comunidade de São Paulo",
+          owner: { id: "dono-c1", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+        },
+      },
+    });
+
+    expect(await screen.findByText("Gestão do evento")).toBeInTheDocument();
+    expect(screen.getByText("Sua participação")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Participar" })).toBeInTheDocument();
   });
 });

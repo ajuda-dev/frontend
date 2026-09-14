@@ -16,22 +16,25 @@ vi.mock("../../services/event", () => ({
 vi.mock("../../services/community", () => ({
   findCommunityById: vi.fn(),
   listCommunities: vi.fn(),
+  listUserCommunities: vi.fn(),
 }));
 
 import { createAddress } from "../../services/address";
-import { findCommunityById, listCommunities } from "../../services/community";
+import { findCommunityById, listCommunities, listUserCommunities } from "../../services/community";
 import { createEvent } from "../../services/event";
 
 const mockedCreateAddress = vi.mocked(createAddress);
 const mockedCreateEvent = vi.mocked(createEvent);
 const mockedFindCommunity = vi.mocked(findCommunityById);
 const mockedListCommunities = vi.mocked(listCommunities);
+const mockedListUserCommunities = vi.mocked(listUserCommunities);
 
 const COMMUNITY: Community = {
   id: "c1",
   name: "Comunidade de origem",
   description: "comunidade de testes",
   address: { id: "a-c1", zip_code: "01001000", city: "São Paulo", state: "SP" },
+  owner: { id: "dono-c1", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
 };
 
 function emptyPage(): Pageable<Community> {
@@ -101,6 +104,7 @@ describe("NewEventPage", () => {
     mockedCreateEvent.mockResolvedValue(CREATED);
     mockedFindCommunity.mockResolvedValue(null);
     mockedListCommunities.mockResolvedValue(emptyPage());
+    mockedListUserCommunities.mockResolvedValue(emptyPage());
   });
 
   it("título e descrição vazios são barrados localmente sem chamar a API", async () => {
@@ -345,7 +349,7 @@ describe("NewEventPage", () => {
     expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
   });
 
-  it("o picker só lista comunidades do usuário logado", async () => {
+  it("o picker lista as comunidades do usuário logado (criadas e de membro)", async () => {
     renderPage();
 
     await waitFor(() =>
@@ -355,6 +359,75 @@ describe("NewEventPage", () => {
         ownerId: "u1",
       }),
     );
+    expect(mockedListUserCommunities).toHaveBeenCalledWith({ userId: "u1", page: 1 });
+  });
+
+  it("não sendo o responsável, o aviso explica membership e aprovação", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(
+      await screen.findByText(
+        "Só o responsável ou membros da comunidade podem criar eventos nela, e eventos criados por membros passam pela aprovação do responsável antes de aparecer no catálogo.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("responsável pela comunidade vê que o evento entra direto no catálogo", async () => {
+    mockedFindCommunity.mockResolvedValue({
+      ...COMMUNITY,
+      owner: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+    });
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(
+      await screen.findByText(
+        "Você é o responsável por esta comunidade: o evento entra direto no catálogo, sem fila de aprovação.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/passam pela aprovação do responsável/)).not.toBeInTheDocument();
+  });
+
+  it("comunidade sem owner no payload cai no aviso de aprovação", async () => {
+    mockedFindCommunity.mockResolvedValue({ ...COMMUNITY, owner: null });
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(await screen.findByText(/passam pela aprovação do responsável/)).toBeInTheDocument();
+  });
+
+  it("sem vínculo com comunidade o aviso não aparece", async () => {
+    renderPage();
+
+    await screen.findByText("Sem vínculo: o evento será publicado de forma avulsa.");
+    expect(
+      screen.queryByText(/Só o responsável ou membros da comunidade podem criar eventos nela/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("403 de quem não é membro aparece traduzido no formulário", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    mockedCreateEvent.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 403",
+      response: {
+        status: 403,
+        data: {
+          message: "only community members can create events for this community",
+          code: 403,
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    await screen.findByRole("radio", { name: /Comunidade de origem/ });
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Só o responsável ou membros da comunidade podem criar eventos nela"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
   });
 
   it("comunidade da URL não encontrada avisa e cria sem vínculo", async () => {

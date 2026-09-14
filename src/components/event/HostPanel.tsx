@@ -22,9 +22,10 @@ interface HostPanelProps {
   currentUserId: string | null;
 }
 
-// Painel de gestão do evento, restrito ao owner (a página decide a visibilidade).
-// A lista mostra papel e status de cada linha; quem criou o evento aparece como
-// "Você" e não ganha ações.
+// Painel de gestão do evento, visível para quem gerencia (canManageEvent: criador,
+// dono da comunidade ou ≥ MODERATOR — a página decide a visibilidade). A lista mostra
+// papel e status de cada linha; quem criou o evento aparece como "Você" e não ganha
+// ações, e o criador de um 1:1 não pode ser removido (400 no backend).
 export function HostPanel({ event, participation, currentUserId }: HostPanelProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const {
@@ -40,6 +41,7 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
   } = participation;
 
   const isMentoring = event.category === "MENTORING";
+  const isCreator = currentUserId !== null && event.owner?.id === currentUserId;
   const maxSlots = event.max_slots ?? null;
   // Quem criou a mentoria pode ser mentor ou mentorado; o convite vai sempre para
   // o papel complementar (o backend recusa o mesmo papel).
@@ -70,11 +72,15 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-1">
-          <h2 className="text-ink text-base font-semibold">Painel do anfitrião</h2>
+          <h2 className="text-ink text-base font-semibold">
+            {isCreator ? "Painel do anfitrião" : "Gestão do evento"}
+          </h2>
           <p className="text-ink-muted text-xs">
-            {isMentoring
-              ? `Você é o ${PARTICIPATION_ROLE_LABEL[myRole ?? "MENTOR"].toLowerCase()} desta mentoria. Convide ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} para completar as vagas.`
-              : "Adicione palestrantes e acompanhe as inscrições do evento."}
+            {!isCreator
+              ? "Você gerencia este evento como responsável pela comunidade ou pela moderação."
+              : isMentoring
+                ? `Você é o ${PARTICIPATION_ROLE_LABEL[myRole ?? "MENTOR"].toLowerCase()} desta mentoria. Convide ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} para completar as vagas.`
+                : "Adicione palestrantes e acompanhe as inscrições do evento."}
             {maxSlots !== null ? ` ${confirmedCount} de ${maxSlots} vagas ocupadas.` : ""}
           </p>
         </div>
@@ -145,6 +151,8 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
 
                 {self ? (
                   <Badge tone="ink-muted">Você</Badge>
+                ) : entry.user_id === event.owner?.id && isMentoring ? (
+                  <Badge tone="ink-muted">Criador do 1:1</Badge>
                 ) : entry.status === "REQUESTED" ? (
                   <Button
                     size="sm"

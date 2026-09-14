@@ -35,6 +35,25 @@ export async function listCommunities({
   return data;
 }
 
+// GET /v1/user/:userId/communities (plano 29 do backend): comunidades em que o
+// usuário é membro. Não inclui as próprias (o dono não tem membership) e não tem
+// filtro de nome.
+export async function listUserCommunities({
+  userId,
+  page,
+  signal,
+}: {
+  userId: string;
+  page: number;
+  signal?: AbortSignal;
+}): Promise<Pageable<Community>> {
+  const { data } = await api.get<Pageable<Community>>(`/user/${userId}/communities`, {
+    params: { page, limit: 10 },
+    signal,
+  });
+  return data;
+}
+
 export async function joinCommunity(communityId: string): Promise<CommunityUser> {
   const { data } = await api.post<CommunityUser>(`/community/${communityId}/join`);
   return data;

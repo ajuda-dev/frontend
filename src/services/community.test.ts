@@ -8,6 +8,7 @@ import {
   joinCommunity,
   leaveCommunity,
   listCommunities,
+  listUserCommunities,
   updateCommunity,
 } from "./community";
 
@@ -142,6 +143,37 @@ describe("listCommunities", () => {
       params: { page: 1, limit: 10 },
       signal: controller.signal,
     });
+  });
+});
+
+describe("listUserCommunities", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("chama /user/<id>/communities com page e limit padrão", async () => {
+    mockedGet.mockResolvedValue({ data: page([community("c1")], false) });
+
+    const result = await listUserCommunities({ userId: "u1", page: 1 });
+
+    expect(mockedGet).toHaveBeenCalledWith("/user/u1/communities", {
+      params: { page: 1, limit: 10 },
+      signal: undefined,
+    });
+    expect(result.data.map((item) => item.id)).toEqual(["c1"]);
+  });
+
+  it("repassa a página pedida e o AbortSignal", async () => {
+    mockedGet.mockResolvedValue({ data: page([], true) });
+    const controller = new AbortController();
+
+    const result = await listUserCommunities({ userId: "u1", page: 3, signal: controller.signal });
+
+    expect(mockedGet).toHaveBeenCalledWith("/user/u1/communities", {
+      params: { page: 3, limit: 10 },
+      signal: controller.signal,
+    });
+    expect(result.has_next).toBe(true);
   });
 });
 

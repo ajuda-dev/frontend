@@ -7,12 +7,12 @@ import { LoadMoreButton } from "../ui/LoadMoreButton";
 import { Spinner } from "../ui/Spinner";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageable } from "../../hooks/usePageable";
-import { listCommunities } from "../../services/community";
+import { listCommunities, listUserCommunities } from "../../services/community";
 import type { Community } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
 
 interface CommunityPickerProps {
-  ownerId: string;
+  userId: string;
   selected: Community | null;
   onSelect: (community: Community | null) => void;
 }
@@ -21,21 +21,38 @@ function locationOf(community: Community): string {
   return community.address ? `${community.address.city}/${community.address.state}` : "";
 }
 
-// Seleção de comunidade do formulário de evento. A API não tem "minhas comunidades"
-// como endpoint dedicado: o recorte é `?owner_id=` na listagem (plano 15 do backend),
-// combinado com `?name=` para a busca por trecho do nome.
-export function CommunityPicker({ ownerId, selected, onSelect }: CommunityPickerProps) {
+// Seleção de comunidade do formulário de evento. A lista mescla duas fontes: as
+// comunidades que o usuário criou (`?owner_id=` na listagem) e as que ele entrou
+// como membro (`GET /user/:id/communities`, plano 29 do backend). O endpoint de
+// membership não inclui as próprias nem tem filtro por nome, então a união e a
+// busca sobre as de membro acontecem aqui.
+export function CommunityPicker({ userId, selected, onSelect }: CommunityPickerProps) {
   const groupName = useId();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search, 400);
 
   const fetcher = useCallback(
-    (page: number) => listCommunities({ page, name: debouncedSearch, ownerId }),
-    [debouncedSearch, ownerId],
+    async (page: number) => {
+      const [owned, member] = await Promise.all([
+        listCommunities({ page, name: debouncedSearch, ownerId: userId }),
+        listUserCommunities({ userId, page }),
+      ]);
+      const term = debouncedSearch.trim().toLowerCase();
+      // O endpoint de comunidades do usuário não tem filtro de nome: a busca dele é
+      // aplicada aqui, sobre as páginas já carregadas.
+      const members = term
+        ? member.data.filter((community) => community.name.toLowerCase().includes(term))
+        : member.data;
+      return {
+        data: [...owned.data, ...members].sort((a, b) => a.name.localeCompare(b.name, "pt-BR")),
+        has_next: owned.has_next || member.has_next,
+      };
+    },
+    [debouncedSearch, userId],
   );
 
   const { items, hasNext, loading, error, loadMore, reset } = usePageable(fetcher);
-  const filterKey = `${ownerId}|${debouncedSearch}`;
+  const filterKey = `${userId}|${debouncedSearch}`;
   const isFirstRun = useRef(true);
 
   useEffect(() => {
@@ -76,7 +93,7 @@ export function CommunityPicker({ ownerId, selected, onSelect }: CommunityPicker
       <Field
         label="Buscar comunidade pelo nome"
         htmlFor={`${groupName}-search`}
-        hint="Opcional — lista apenas as comunidades que você criou."
+        hint="Opcional — lista as comunidades que você criou e as que você entrou como membro."
       >
         <Input
           id={`${groupName}-search`}
@@ -111,8 +128,8 @@ export function CommunityPicker({ ownerId, selected, onSelect }: CommunityPicker
       {!loading && !error && items.length === 0 ? (
         <p className="text-ink-muted text-sm">
           {debouncedSearch
-            ? "Nenhuma comunidade sua com esse nome."
-            : "Você ainda não criou nenhuma comunidade."}
+            ? "Nenhuma das suas comunidades tem esse nome."
+            : "Você ainda não criou nem entrou em nenhuma comunidade."}
         </p>
       ) : null}
 

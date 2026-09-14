@@ -4,11 +4,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Community, Pageable } from "../../types/api";
 import { CommunityPicker } from "./CommunityPicker";
 
-vi.mock("../../services/community", () => ({ listCommunities: vi.fn() }));
+vi.mock("../../services/community", () => ({
+  listCommunities: vi.fn(),
+  listUserCommunities: vi.fn(),
+}));
 
-import { listCommunities } from "../../services/community";
+import { listCommunities, listUserCommunities } from "../../services/community";
 
 const mockedList = vi.mocked(listCommunities);
+const mockedListUser = vi.mocked(listUserCommunities);
 
 function community(id: string, name: string, city = "São Paulo"): Community {
   return {
@@ -31,7 +35,7 @@ function renderPicker(
 ) {
   const onSelect = props.onSelect ?? vi.fn();
   render(
-    <CommunityPicker ownerId="u1" selected={props.selected ?? null} onSelect={onSelect} />,
+    <CommunityPicker userId="u1" selected={props.selected ?? null} onSelect={onSelect} />,
   );
   return { onSelect };
 }
@@ -39,14 +43,24 @@ function renderPicker(
 describe("CommunityPicker", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedListUser.mockResolvedValue(page([]));
   });
 
-  it("lista as comunidades do dono usando owner_id", async () => {
+  it("mescla as comunidades criadas com as de membro, em ordem alfabética", async () => {
     mockedList.mockResolvedValue(page([community("c1", "Dev SP")]));
+    mockedListUser.mockResolvedValue(page([community("c2", "Dev BH")]));
     renderPicker();
 
-    expect(await screen.findByRole("radio", { name: /Dev SP/ })).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Dev BH/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Dev SP/ })).toBeInTheDocument();
     expect(mockedList).toHaveBeenCalledWith({ page: 1, name: "", ownerId: "u1" });
+    expect(mockedListUser).toHaveBeenCalledWith({ userId: "u1", page: 1 });
+
+    const names = screen
+      .getAllByRole("radio")
+      .map((radio) => radio.closest("label")?.textContent ?? "");
+    expect(names[1]).toContain("Dev BH");
+    expect(names[2]).toContain("Dev SP");
   });
 
   it("mostra a cidade do endereço ao lado do nome", async () => {
@@ -105,11 +119,32 @@ describe("CommunityPicker", () => {
     );
   });
 
-  it("lista vazia sem busca avisa que o usuário não criou comunidades", async () => {
+  it("a busca filtra as comunidades de membro no cliente", async () => {
+    mockedList.mockResolvedValue(page([]));
+    mockedListUser.mockResolvedValue(
+      page([community("c2", "Dev BH"), community("c3", "Dev Recife")]),
+    );
+    const user = userEvent.setup();
+    renderPicker();
+
+    await screen.findByRole("radio", { name: /Dev BH/ });
+    await user.type(screen.getByLabelText("Buscar comunidade pelo nome"), "recife");
+
+    await waitFor(() =>
+      expect(screen.queryByRole("radio", { name: /Dev BH/ })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("radio", { name: /Dev Recife/ })).toBeInTheDocument();
+    // O termo não vai para o endpoint de membership: ele não tem filtro de nome.
+    expect(mockedListUser).toHaveBeenLastCalledWith({ userId: "u1", page: 1 });
+  });
+
+  it("lista vazia sem busca avisa que o usuário não criou nem entrou em comunidades", async () => {
     mockedList.mockResolvedValue(page([]));
     renderPicker();
 
-    expect(await screen.findByText("Você ainda não criou nenhuma comunidade.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Você ainda não criou nem entrou em nenhuma comunidade."),
+    ).toBeInTheDocument();
   });
 
   it("lista vazia com busca usa a mensagem de busca", async () => {
@@ -119,7 +154,7 @@ describe("CommunityPicker", () => {
 
     await user.type(screen.getByLabelText("Buscar comunidade pelo nome"), "zzz");
 
-    expect(await screen.findByText("Nenhuma comunidade sua com esse nome.")).toBeInTheDocument();
+    expect(await screen.findByText("Nenhuma das suas comunidades tem esse nome.")).toBeInTheDocument();
   });
 
   it("erro mostra Alert com Tentar novamente e recarrega", async () => {
@@ -150,9 +185,19 @@ describe("CommunityPicker", () => {
 
     expect(await screen.findByRole("radio", { name: /Dev RJ/ })).toBeInTheDocument();
     expect(mockedList).toHaveBeenLastCalledWith({ page: 2, name: "", ownerId: "u1" });
+    expect(mockedListUser).toHaveBeenLastCalledWith({ userId: "u1", page: 2 });
   });
 
-  it("sem has_next não mostra Carregar mais", async () => {
+  it("has_next da mescla é verdadeiro quando só a fonte de membro tem próxima página", async () => {
+    mockedList.mockResolvedValue(page([community("c1", "Dev SP")], false));
+    mockedListUser.mockResolvedValue(page([community("c2", "Dev BH")], true));
+    renderPicker();
+
+    await screen.findByRole("radio", { name: /Dev SP/ });
+    expect(screen.getByRole("button", { name: "Carregar mais" })).toBeInTheDocument();
+  });
+
+  it("sem has_next em nenhuma das fontes não mostra Carregar mais", async () => {
     mockedList.mockResolvedValue(page([community("c1", "Dev SP")]));
     renderPicker();
 

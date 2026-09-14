@@ -241,4 +241,44 @@ describe("HostPanel", () => {
     expect(await screen.findByText("Nenhum participante ainda.")).toBeInTheDocument();
     expect(screen.getByText(/0 de 5 vagas ocupadas/)).toBeInTheDocument();
   });
+
+  it("quem gerencia sem ser criador vê o título de gestão e o subtítulo explicativo", async () => {
+    mockedGet.mockResolvedValue([]);
+    renderPanel(event(), "dono-c1");
+
+    expect(await screen.findByText("Gestão do evento")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Você gerencia este evento como responsável pela comunidade ou pela moderação.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+  });
+
+  it("criador de 1:1 não pode ser removido: a linha dele mostra o badge e nenhuma ação", async () => {
+    mockedGet.mockResolvedValue([
+      row({ user_id: "owner-1", role: "MENTOR" }),
+      row({ user_id: "u2", role: "MENTEE" }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }), "dono-c1");
+
+    expect(await screen.findByText("Criador do 1:1")).toBeInTheDocument();
+    // Só a linha do mentorado (u2) tem ação; a do criador não.
+    expect(screen.getAllByRole("button", { name: "Remover" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: "Cancelar convite" })).not.toBeInTheDocument();
+  });
+
+  it("em evento comum o criador continua removível por quem gerencia", async () => {
+    mockedGet
+      .mockResolvedValueOnce([row({ user_id: "owner-1" })])
+      .mockResolvedValueOnce([row({ user_id: "owner-1", status: "CANCELLED" })]);
+    mockedCancel.mockResolvedValue(row({ user_id: "owner-1", status: "CANCELLED" }));
+    const user = userEvent.setup();
+    renderPanel(event(), "dono-c1");
+
+    await user.click(await screen.findByRole("button", { name: "Remover" }));
+
+    expect(mockedCancel).toHaveBeenCalledWith("e1", "owner-1");
+    expect(await screen.findByText("Cancelado")).toBeInTheDocument();
+  });
 });

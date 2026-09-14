@@ -18,7 +18,7 @@ import { deleteEvent, findEventById } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
-import { isEventApproved } from "../../utils/events";
+import { canManageEvent, isEventApproved } from "../../utils/events";
 import { formatAddress, formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
 import { canAtLeast } from "../../utils/roles";
@@ -142,9 +142,12 @@ export function EventDetailPage() {
 
   const isOwner = Boolean(user && event.owner && event.owner.id === user.id);
   const isOnline = event.type === "ONLINE";
-  // O backend não checa dono/cargo no delete (assimetria conhecida): a UI restringe
-  // a owner ou ≥ MODERATOR.
-  const canDelete = isOwner || canAtLeast(user?.role, "MODERATOR");
+  // Espelha canManageEvent do backend: criador, dono da comunidade ou ≥ MODERATOR.
+  const canManage = canManageEvent(event, user);
+  const canDelete = canManage;
+  // O criador de um 1:1 não pode sair do próprio evento (400 no backend): a zona
+  // de participação não aparece para ele. Nas demais categorias ele pode se inscrever.
+  const showZone = !(isOwner && event.category === "MENTORING");
   // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
   // do evento não aprova, nem quando é membro da comunidade.
   const isCommunityOwner = Boolean(
@@ -251,11 +254,11 @@ export function EventDetailPage() {
         </Alert>
       ) : null}
 
-      {isOwner ? (
+      {canManage ? (
         <HostPanel event={event} participation={participation} currentUserId={user?.id ?? null} />
-      ) : (
-        <ParticipationZone event={event} participation={participation} />
-      )}
+      ) : null}
+
+      {showZone ? <ParticipationZone event={event} participation={participation} /> : null}
 
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
 
@@ -273,7 +276,7 @@ export function EventDetailPage() {
         description={
           isOwner
             ? "Excluir evento? Esta ação não pode ser desfeita."
-            : "Você está excluindo um evento que não é seu. Esta ação não pode ser desfeita."
+            : "Você está excluindo um evento que não é seu (você gerencia a comunidade ou a moderação). Esta ação não pode ser desfeita."
         }
         confirmLabel="Excluir"
         loading={deleting}

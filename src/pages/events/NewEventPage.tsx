@@ -116,6 +116,10 @@ export function NewEventPage() {
   const showAddress = needsAddress(type);
   const showMeetingLink = allowsMeetingLink(type);
   const showMaxSlots = allowsMaxSlots(category);
+  // O dono da comunidade cria evento já publicado (event_service.go:99-108 só marca
+  // PENDING para quem não é o responsável): o `owner` vem no CommunityDto das três
+  // origens (busca por id, listagem e comunidades do usuário).
+  const isCommunityOwner = Boolean(user && community?.owner?.id === user.id);
 
   function handleTypeChange(next: EventType) {
     setType(next);
@@ -409,12 +413,20 @@ export function NewEventPage() {
         {communityNotice ? <Alert variant="info">{communityNotice}</Alert> : null}
         {errors.community_id ? <Alert variant="error">{errors.community_id}</Alert> : null}
 
+        {community ? (
+          <Alert variant="info">
+            {isCommunityOwner
+              ? "Você é o responsável por esta comunidade: o evento entra direto no catálogo, sem fila de aprovação."
+              : "Só o responsável ou membros da comunidade podem criar eventos nela, e eventos criados por membros passam pela aprovação do responsável antes de aparecer no catálogo."}
+          </Alert>
+        ) : null}
+
         {loadingCommunity ? (
           <div className="flex justify-center py-4">
             <Spinner />
           </div>
         ) : user?.id ? (
-          <CommunityPicker ownerId={user.id} selected={community} onSelect={setCommunity} />
+          <CommunityPicker userId={user.id} selected={community} onSelect={setCommunity} />
         ) : null}
       </Card>
 
