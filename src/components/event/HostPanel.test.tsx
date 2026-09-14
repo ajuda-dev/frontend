@@ -169,6 +169,25 @@ describe("HostPanel", () => {
     expect(mockedAdd).toHaveBeenCalledWith("e1", { userId: "u9", role: "MENTEE" });
   });
 
+  it("mentoria criada por mentorado convida mentor", async () => {
+    mockedGet.mockResolvedValue([row({ user_id: "owner-1", role: "MENTEE" })]);
+    mockedUsers.mockResolvedValue({
+      data: [{ id: "u9", name: "Duda", skills: [] }],
+      has_next: false,
+    });
+    mockedAdd.mockResolvedValue(row({ user_id: "u9", role: "MENTOR", status: "REQUESTED" }));
+    const user = userEvent.setup();
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }));
+
+    expect(await screen.findByText(/Você é o mentorado desta mentoria/)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Convidar mentor" }));
+    await user.click(await screen.findByRole("radio", { name: "Duda" }));
+    await user.click(screen.getByRole("button", { name: "Convidar" }));
+
+    expect(mockedAdd).toHaveBeenCalledWith("e1", { userId: "u9", role: "MENTOR" });
+  });
+
   it("mentoria com mentorado confirmado bloqueia novo convite com aviso", async () => {
     mockedGet.mockResolvedValue([
       row({ user_id: "owner-1", role: "MENTOR" }),
@@ -180,6 +199,19 @@ describe("HostPanel", () => {
       await screen.findByText("Mentoria já tem mentorado — não é possível convidar outro."),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Convidar mentorado" })).toBeDisabled();
+  });
+
+  it("mentoria criada por mentorado bloqueia convite quando o mentor já confirmou", async () => {
+    mockedGet.mockResolvedValue([
+      row({ user_id: "owner-1", role: "MENTEE" }),
+      row({ user_id: "u2", role: "MENTOR" }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }));
+
+    expect(
+      await screen.findByText("Mentoria já tem mentor — não é possível convidar outro."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Convidar mentor" })).toBeDisabled();
   });
 
   it("erro ao adicionar mostra o alerta traduzido dentro do seletor", async () => {

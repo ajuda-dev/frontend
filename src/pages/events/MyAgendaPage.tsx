@@ -85,7 +85,7 @@ export function MyAgendaPage() {
     [userId],
   );
   const invites = useCallback(
-    (page: number) => listEvents({ page, userId, role: "MENTEE", status: "REQUESTED" }),
+    (page: number) => listEvents({ page, userId, status: "REQUESTED" }),
     [userId],
   );
   const cancelled = useCallback(
@@ -110,9 +110,9 @@ export function MyAgendaPage() {
 
       <AgendaSection
         title="Convites de mentoria"
-        description="Convites que aguardam o seu aceite."
+        description="Convites que aguardam o seu aceite — como mentor ou como mentorado."
         emptyTitle="Nenhum convite de mentoria pendente."
-        emptyDescription="Quando um mentor convidar você para uma mentoria, o convite aparece aqui."
+        emptyDescription="Quando alguém convidar você para uma mentoria, o convite aparece aqui."
         fetchPage={invites}
       />
 

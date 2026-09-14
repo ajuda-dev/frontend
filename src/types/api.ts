@@ -69,6 +69,9 @@ export interface EventItem {
   duration_min: number;
   max_slots?: number | null;
   meeting_link?: string;
+  // Situação de aprovação do evento (dto.EventDto.status); o backend trata
+  // vazio/ausente como aprovado (isEventApproved), por isso o campo é opcional.
+  status?: EventApprovalStatus;
   community?: Community | null;
   address?: Address | null;
   owner?: UserSummary | null;
@@ -164,6 +167,7 @@ export interface RegisterEventInput {
   owner_id?: string;
   community_id?: string;
   address_id?: string;
+  creator_role?: CreatorRole;
 }
 
 export interface RegisterSkillInput {
@@ -178,10 +182,6 @@ export interface UpdateSkillInput {
 export interface AddParticipantInput {
   user_id: string;
   role: ParticipationRole;
-}
-
-export interface JoinEventInput {
-  user_id: string;
 }
 
 export interface UpdateParticipantStatusInput {
@@ -222,3 +222,9 @@ export type ParticipationStatus = (typeof PARTICIPATION_STATUSES)[number];
 
 export const SKILL_LEVELS = ["WANT_TO_LEARN", "LEARN_AND_TEACH", "TEACH"] as const;
 export type SkillLevel = (typeof SKILL_LEVELS)[number];
+
+export const EVENT_APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
+export type EventApprovalStatus = (typeof EVENT_APPROVAL_STATUSES)[number];
+
+export const CREATOR_ROLES = ["MENTOR", "MENTEE"] as const;
+export type CreatorRole = (typeof CREATOR_ROLES)[number];

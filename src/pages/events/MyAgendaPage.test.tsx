@@ -75,12 +75,7 @@ describe("MyAgendaPage", () => {
 
     await waitFor(() => expect(mockedListEvents).toHaveBeenCalledTimes(3));
     expect(mockedListEvents).toHaveBeenCalledWith({ page: 1, userId: "u1", status: "CONFIRMED" });
-    expect(mockedListEvents).toHaveBeenCalledWith({
-      page: 1,
-      userId: "u1",
-      role: "MENTEE",
-      status: "REQUESTED",
-    });
+    expect(mockedListEvents).toHaveBeenCalledWith({ page: 1, userId: "u1", status: "REQUESTED" });
     expect(mockedListEvents).toHaveBeenCalledWith({ page: 1, userId: "u1", status: "CANCELLED" });
   });
 
@@ -97,7 +92,7 @@ describe("MyAgendaPage", () => {
       if (params.status === "CONFIRMED") {
         return { data: [event("e1", "Meetup confirmado")], has_next: false };
       }
-      if (params.role === "MENTEE") {
+      if (params.status === "REQUESTED") {
         return { data: [event("e2", "Mentoria pendente")], has_next: false };
       }
       return { data: [event("e3", "Evento cancelado")], has_next: false };

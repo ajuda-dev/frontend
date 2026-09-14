@@ -2,15 +2,17 @@ import type { EventUser, ParticipationStatus } from "../types/api";
 import { api } from "./api";
 
 // POST /event/:id/participants só aceita estes papéis (o backend responde 400
-// para qualquer outro, inclusive HOST/ATTENDEE).
-export type InvitableRole = "MENTEE" | "SPEAKER";
+// para qualquer outro, inclusive HOST/ATTENDEE). Em MENTORING o papel tem de ser
+// complementar ao de quem criou (MENTOR quando quem criou é MENTEE).
+export type InvitableRole = "MENTOR" | "MENTEE" | "SPEAKER";
 
 // Resposta de aceite/recusa do convite de mentoria: o backend recusa os demais
 // status nesta rota ("Status is not valid, use CONFIRMED or REJECTED").
 export type DecidableStatus = "CONFIRMED" | "REJECTED";
 
-export async function joinEvent(eventId: string, userId: string): Promise<EventUser> {
-  const { data } = await api.post<EventUser>(`/event/${eventId}/join`, { user_id: userId });
+// O POST não tem body: o participante é o dono do token.
+export async function joinEvent(eventId: string): Promise<EventUser> {
+  const { data } = await api.post<EventUser>(`/event/${eventId}/join`);
   return data;
 }
 

@@ -38,12 +38,12 @@ describe("joinEvent", () => {
     vi.clearAllMocks();
   });
 
-  it("faz POST em /event/:id/join com o user_id", async () => {
+  it("faz POST em /event/:id/join sem body (o participante vem do token)", async () => {
     mockedPost.mockResolvedValue({ data: eventUser() });
 
-    const result = await joinEvent("e1", "u1");
+    const result = await joinEvent("e1");
 
-    expect(mockedPost).toHaveBeenCalledWith("/event/e1/join", { user_id: "u1" });
+    expect(mockedPost).toHaveBeenCalledWith("/event/e1/join");
     expect(result.status).toBe("CONFIRMED");
   });
 });

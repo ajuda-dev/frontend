@@ -192,8 +192,78 @@ describe("NewEventPage", () => {
     await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
 
     expect(screen.getByRole("status")).toHaveTextContent("Mentoria 1:1");
-    expect(screen.getByText("Vaga única para mentorado.")).toBeInTheDocument();
+    expect(screen.getByText(/Vaga única/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Vagas")).not.toBeInTheDocument();
+  });
+
+  it("MENTORING deixa escolher o papel de quem cria e envia creator_role", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    expect(screen.getByLabelText("Meu papel nesta mentoria")).toHaveValue("MENTOR");
+
+    await user.selectOptions(screen.getByLabelText("Meu papel nesta mentoria"), "MENTEE");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].creator_role).toBe("MENTEE");
+  });
+
+  it("evento comum não mostra o papel de quem cria nem envia creator_role", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.queryByLabelText("Meu papel nesta mentoria")).not.toBeInTheDocument();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].creator_role).toBeUndefined();
+  });
+
+  it("voltar de MENTORING para evento comum descarta o papel escolhido", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await user.selectOptions(screen.getByLabelText("Meu papel nesta mentoria"), "MENTEE");
+    await user.selectOptions(screen.getByLabelText("Categoria"), "COMMUNITY_EVENT");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].creator_role).toBeUndefined();
+  });
+
+  it("cause de creator_role vira erro no campo do papel", async () => {
+    mockedCreateEvent.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: {
+          message: "Invalid event data",
+          code: 400,
+          causes: [
+            { field: "creator_role", message: "CreatorRole is not valid, use MENTOR or MENTEE" },
+          ],
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Papel de quem cria inválido: use mentor ou mentorado"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
   });
 
   it("fluxo feliz ONLINE envia payload sem endereço e navega sem state", async () => {

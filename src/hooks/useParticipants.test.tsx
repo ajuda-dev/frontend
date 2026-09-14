@@ -68,7 +68,7 @@ describe("useParticipants", () => {
     expect(result.current.confirmedCount).toBe(2);
   });
 
-  it("join envia meu user_id e o refetch mostra CONFIRMED", async () => {
+  it("join não envia user_id (o backend usa o dono do token) e o refetch mostra CONFIRMED", async () => {
     mockedGet.mockResolvedValueOnce([]).mockResolvedValueOnce([row({ user_id: "u1" })]);
     mockedJoin.mockResolvedValue(row({ user_id: "u1" }));
     const { result } = await renderParticipants();
@@ -77,7 +77,7 @@ describe("useParticipants", () => {
       await result.current.join();
     });
 
-    expect(mockedJoin).toHaveBeenCalledWith("e1", "u1");
+    expect(mockedJoin).toHaveBeenCalledWith("e1");
     expect(result.current.myRow?.status).toBe("CONFIRMED");
     expect(result.current.failure).toBeNull();
   });

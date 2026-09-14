@@ -88,7 +88,8 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
         <>
           {!myRow ? (
             <p className="text-ink-muted text-sm">
-              Mentoria por convite: o anfitrião convida o mentorado — não há auto-inscrição.
+              Mentoria por convite: quem criou o evento convida a outra pessoa — não há
+              auto-inscrição.
             </p>
           ) : null}
 
@@ -96,7 +97,8 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
             <div className="flex flex-col gap-3">
               <Badge tone="warning">Convite de mentoria recebido</Badge>
               <p className="text-ink-muted text-sm">
-                O anfitrião convidou você para esta mentoria. Aceite para confirmar sua vaga.
+                Você foi convidado para esta mentoria como{" "}
+                {myRow?.role === "MENTOR" ? "mentor" : "mentorado"}. Aceite para confirmar sua vaga.
               </p>
               <div className="flex flex-wrap gap-2">
                 <Button size="sm" loading={isPending("accept")} onClick={() => void accept()}>

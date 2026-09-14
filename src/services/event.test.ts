@@ -283,6 +283,40 @@ describe("createEvent", () => {
     const body = mockedPost.mock.calls[0][1] as Record<string, unknown>;
     expect(body).not.toHaveProperty("max_slots");
   });
+
+  it("MENTORING envia creator_role quando informado", async () => {
+    mockedPost.mockResolvedValue({ data: event("e1") });
+
+    await createEvent({
+      title: "Mentoria",
+      description: "1:1",
+      category: "MENTORING",
+      type: "ONLINE",
+      start_at: "2026-10-01T21:00:00.000Z",
+      duration_min: 60,
+      creator_role: "MENTEE",
+    });
+
+    const body = mockedPost.mock.calls[0][1] as Record<string, unknown>;
+    expect(body.creator_role).toBe("MENTEE");
+  });
+
+  it("creator_role fora de MENTORING é omitido (o backend responde 400)", async () => {
+    mockedPost.mockResolvedValue({ data: event("e1") });
+
+    await createEvent({
+      title: "Meetup",
+      description: "descrição",
+      category: "COMMUNITY_EVENT",
+      type: "ONLINE",
+      start_at: "2026-10-01T21:00:00.000Z",
+      duration_min: 60,
+      creator_role: "MENTOR",
+    });
+
+    const body = mockedPost.mock.calls[0][1] as Record<string, unknown>;
+    expect(body).not.toHaveProperty("creator_role");
+  });
 });
 
 describe("deleteEvent", () => {

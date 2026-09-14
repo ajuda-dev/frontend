@@ -4,8 +4,9 @@ import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import { usePageable } from "../../hooks/usePageable";
 import type { InvitableRole } from "../../services/eventUser";
 import { listUsers } from "../../services/user";
-import type { EventItem, Skill } from "../../types/api";
+import type { Skill } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { PARTICIPATION_ROLE_LABEL } from "../../utils/labels";
 import { SkillPicker } from "../skill/SkillPicker";
 import { Alert } from "../ui/Alert";
 import { Button } from "../ui/Button";
@@ -16,22 +17,21 @@ import { Modal } from "../ui/Modal";
 import { Spinner } from "../ui/Spinner";
 
 interface AddPersonPickerProps {
-  event: EventItem;
   participation: UseParticipantsResult;
+  inviteRole: InvitableRole;
   onClose: () => void;
 }
 
-// Reusa a busca de pessoas do plano 09 (nome + skill do catálogo). O papel é
-// derivado da categoria do evento: o backend só aceita MENTEE em MENTORING e
-// SPEAKER nos demais.
-export function AddPersonPicker({ event, participation, onClose }: AddPersonPickerProps) {
+// Reusa a busca de pessoas do plano 09 (nome + skill do catálogo). O papel do
+// convite vem do painel do anfitrião: em MENTORING é o complementar ao de quem
+// criou e nos demais eventos é SPEAKER.
+export function AddPersonPicker({ participation, inviteRole, onClose }: AddPersonPickerProps) {
   const groupName = useId();
   const [name, setName] = useState("");
   const debouncedName = useDebouncedValue(name, 400);
   const [skill, setSkill] = useState<Skill | null>(null);
   const [selectedId, setSelectedId] = useState("");
 
-  const role: InvitableRole = event.category === "MENTORING" ? "MENTEE" : "SPEAKER";
   const adding = participation.isPending("add");
   const addFailure = participation.failure?.key === "add" ? participation.failure : null;
 
@@ -59,14 +59,14 @@ export function AddPersonPicker({ event, participation, onClose }: AddPersonPick
 
   async function handleSubmit() {
     if (!selectedId || adding) return;
-    const ok = await participation.add(selectedId, role);
+    const ok = await participation.add(selectedId, inviteRole);
     if (ok) onClose();
   }
 
   return (
     <Modal
       open
-      title={role === "MENTEE" ? "Convidar mentorado" : "Adicionar palestrante"}
+      title={inviteRole === "SPEAKER" ? "Adicionar palestrante" : "Convidar para a mentoria"}
       onClose={onClose}
       footer={
         <>
@@ -74,16 +74,16 @@ export function AddPersonPicker({ event, participation, onClose }: AddPersonPick
             Cancelar
           </Button>
           <Button loading={adding} disabled={!selectedId} onClick={() => void handleSubmit()}>
-            {role === "MENTEE" ? "Convidar" : "Adicionar"}
+            {inviteRole === "SPEAKER" ? "Adicionar" : "Convidar"}
           </Button>
         </>
       }
     >
       <div className="flex flex-col gap-4">
         <p>
-          {role === "MENTEE"
-            ? "Escolha quem você quer convidar para esta mentoria. O convite fica pendente até a pessoa aceitar."
-            : "Escolha quem vai palestrar neste evento. O palestrante entra já confirmado."}
+          {inviteRole === "SPEAKER"
+            ? "Escolha quem vai palestrar neste evento. O palestrante entra já confirmado."
+            : `Escolha quem você quer convidar como ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()}. O convite fica pendente até a pessoa aceitar.`}
         </p>
 
         <Field label="Buscar por nome" htmlFor={`${groupName}-name`}>

@@ -120,7 +120,7 @@ export function useParticipants(
 
   const join = useCallback(() => {
     if (!userId) return Promise.resolve(false);
-    return runAction("join", () => joinEvent(eventId, userId));
+    return runAction("join", () => joinEvent(eventId));
   }, [eventId, runAction, userId]);
 
   const cancel = useCallback(() => {

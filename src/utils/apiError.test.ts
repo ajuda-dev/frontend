@@ -89,6 +89,56 @@ describe("translateApiMessage", () => {
     );
   });
 
+  it("traduz as mensagens de eventos e participação (plano 17)", () => {
+    expect(translateApiMessage("Invalid participation data")).toBe(
+      "Dados da participação inválidos",
+    );
+    expect(translateApiMessage("event is not approved yet")).toBe(
+      "Este evento ainda não foi aprovado pela comunidade",
+    );
+    expect(translateApiMessage("only the invited user can accept or reject this invitation")).toBe(
+      "Só quem recebeu o convite pode aceitar ou recusá-lo",
+    );
+    expect(translateApiMessage("the creator cannot leave the event; cancel the event instead")).toBe(
+      "Quem criou o evento não pode sair dele — cancele o evento",
+    );
+    expect(
+      translateApiMessage("only the event owner, the community owner or moderators can manage this event"),
+    ).toBe(
+      "Apenas quem criou o evento, o responsável pela comunidade (ou moderadores e administradores) pode gerenciá-lo",
+    );
+    expect(translateApiMessage("only the community owner can approve this event")).toBe(
+      "Apenas o responsável pela comunidade (ou moderadores e administradores) pode aprovar este evento",
+    );
+    expect(translateApiMessage("only the community owner can filter events by approval status")).toBe(
+      "Apenas o responsável pela comunidade pode filtrar por situação de aprovação",
+    );
+    expect(translateApiMessage("only community members can create events for this community")).toBe(
+      "Só o responsável ou membros da comunidade podem criar eventos nela",
+    );
+    expect(translateApiMessage("only moderators and admins can read another user's agenda")).toBe(
+      "Apenas moderadores e administradores podem ver a agenda de outra pessoa",
+    );
+    expect(translateApiMessage("CreatorRole is only allowed for MENTORING events")).toBe(
+      "O papel de quem cria só vale em eventos de mentoria",
+    );
+    expect(translateApiMessage("CreatorRole is not valid, use MENTOR or MENTEE")).toBe(
+      "Papel de quem cria inválido: use mentor ou mentorado",
+    );
+    expect(translateApiMessage("Role is not valid, use MENTOR or MENTEE")).toBe(
+      "Papel inválido para esta mentoria: use mentor ou mentorado",
+    );
+  });
+
+  it("papel complementar (mensagem com sufixo variável) é traduzido pelo prefixo", () => {
+    expect(
+      translateApiMessage("Role must be complementary to the creator role, use MENTOR"),
+    ).toBe("O convite precisa ser para o papel complementar ao de quem criou a mentoria");
+    expect(
+      translateApiMessage("Role must be complementary to the creator role, use MENTEE"),
+    ).toBe("O convite precisa ser para o papel complementar ao de quem criou a mentoria");
+  });
+
   it("traduz as mensagens de perfil e visibilidade de contatos (plano 16)", () => {
     expect(translateApiMessage("description must have at most 500 characters")).toBe(
       "O resumo deve ter no máximo 500 caracteres",
@@ -131,6 +181,11 @@ describe("fieldLabel", () => {
     expect(fieldLabel("addressId")).toBe("Endereço");
     expect(fieldLabel("userId")).toBe("Usuário");
     expect(fieldLabel("body")).toBe("Formulário");
+  });
+
+  it("resolve os campos novos de evento (plano 17)", () => {
+    expect(fieldLabel("creator_role")).toBe("Papel de quem cria");
+    expect(fieldLabel("approval_status")).toBe("Situação de aprovação");
   });
 
   it("resolve as chaves de contato de configVisibility (plano 16)", () => {

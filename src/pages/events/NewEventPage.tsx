@@ -16,10 +16,14 @@ import { useAuth } from "../../context/useAuth";
 import { useAddresses } from "../../hooks/useAddresses";
 import { findCommunityById } from "../../services/community";
 import { createEvent } from "../../services/event";
-import { EVENT_CATEGORIES, EVENT_TYPES } from "../../types/api";
-import type { Address, Community, EventCategory, EventType } from "../../types/api";
+import { EVENT_CATEGORIES, EVENT_TYPES, CREATOR_ROLES } from "../../types/api";
+import type { Address, Community, CreatorRole, EventCategory, EventType } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
-import { EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
+import {
+  EVENT_CATEGORY_LABEL,
+  EVENT_TYPE_LABEL,
+  PARTICIPATION_ROLE_LABEL,
+} from "../../utils/labels";
 
 interface FieldErrors {
   title?: string;
@@ -32,6 +36,7 @@ interface FieldErrors {
   meeting_link?: string;
   address_id?: string;
   community_id?: string;
+  creator_role?: string;
 }
 
 // `datetime-local` trabalha em hora local do navegador; o backend compara instantes,
@@ -96,6 +101,7 @@ export function NewEventPage() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<EventCategory>("COMMUNITY_EVENT");
+  const [creatorRole, setCreatorRole] = useState<CreatorRole>("MENTOR");
   const [type, setType] = useState<EventType>("ONLINE");
   const [startAt, setStartAt] = useState("");
   const [durationMin, setDurationMin] = useState("");
@@ -122,7 +128,10 @@ export function NewEventPage() {
   function handleCategoryChange(next: EventCategory) {
     setCategory(next);
     if (!allowsMaxSlots(next)) setMaxSlots("");
-    setErrors((previous) => ({ ...previous, max_slots: undefined }));
+    // `creator_role` só vale em MENTORING: fora dela o valor volta ao padrão e a
+    // chave não é enviada (o backend responde 400 se ela vier).
+    if (next !== "MENTORING") setCreatorRole("MENTOR");
+    setErrors((previous) => ({ ...previous, max_slots: undefined, creator_role: undefined }));
   }
 
   function validate(): FieldErrors {
@@ -177,6 +186,7 @@ export function NewEventPage() {
         max_slots: showMaxSlots && maxSlots.trim() ? Number(maxSlots) : null,
         community_id: community?.id,
         address_id: showAddress && address ? address.id : undefined,
+        creator_role: category === "MENTORING" ? creatorRole : undefined,
       });
       // O 201 não traz owner/community/address aninhados: o detalhe busca pelo id.
       navigate(`/eventos/${created.id}`, { replace: true });
@@ -193,6 +203,7 @@ export function NewEventPage() {
         meeting_link: fields.meeting_link,
         address_id: fields.address_id,
         community_id: fields.community_id,
+        creator_role: fields.creator_role,
       });
       if (Object.keys(fields).length === 0) {
         setFormError(apiErrorMessage(error));
@@ -269,9 +280,33 @@ export function NewEventPage() {
 
           {category === "MENTORING" ? (
             <Alert variant="info" title="Mentoria 1:1">
-              Você entra como mentor(a) e a vaga é única para um mentorado convidado. A API fixa
-              duas posições (mentor e mentorado) automaticamente.
+              Você escolhe o seu papel: quem cria pode ser o mentor (padrão) ou o mentorado, e a
+              outra pessoa é convidada com o papel complementar. A API mantém duas posições (mentor
+              e mentorado).
             </Alert>
+          ) : null}
+
+          {category === "MENTORING" ? (
+            <Field
+              label="Meu papel nesta mentoria"
+              htmlFor="creator_role"
+              error={errors.creator_role}
+              hint="O convidado entra no papel complementar."
+            >
+              <Select
+                id="creator_role"
+                name="creator_role"
+                value={creatorRole}
+                invalid={Boolean(errors.creator_role)}
+                onChange={(event) => setCreatorRole(event.target.value as CreatorRole)}
+              >
+                {CREATOR_ROLES.map((value) => (
+                  <option key={value} value={value}>
+                    {PARTICIPATION_ROLE_LABEL[value]}
+                  </option>
+                ))}
+              </Select>
+            </Field>
           ) : null}
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -320,7 +355,9 @@ export function NewEventPage() {
               />
             </Field>
           ) : (
-            <p className="text-ink-muted text-sm">Vaga única para mentorado.</p>
+            <p className="text-ink-muted text-sm">
+              Vaga única: a mentoria 1:1 tem sempre duas posições — a sua e a de quem for convidado.
+            </p>
           )}
 
           {showMeetingLink ? (

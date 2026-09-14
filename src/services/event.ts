@@ -1,4 +1,5 @@
 import type {
+  CreatorRole,
   EventCategory,
   EventItem,
   EventType,
@@ -79,6 +80,8 @@ export interface CreateEventInput {
   max_slots?: number | null;
   community_id?: string;
   address_id?: string;
+  // Só MENTORING: o papel de quem cria no 1:1 (o convidado recebe o complementar).
+  creator_role?: CreatorRole;
 }
 
 // POST /v1/event/register. Campos opcionais vazios são omitidos do body: o backend
@@ -98,6 +101,8 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
   if (input.community_id) body.community_id = input.community_id;
   // ONLINE nunca leva endereço: o backend responde 400 se o campo vier preenchido.
   if (input.address_id && input.type !== "ONLINE") body.address_id = input.address_id;
+  // `creator_role` fora de MENTORING é 400: a chave só sai quando é válida.
+  if (input.category === "MENTORING" && input.creator_role) body.creator_role = input.creator_role;
   const { data } = await api.post<EventItem>("/event/register", body);
   return data;
 }

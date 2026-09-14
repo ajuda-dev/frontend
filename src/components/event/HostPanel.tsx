@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type { UseParticipantsResult } from "../../hooks/useParticipants";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { complementaryRole } from "../../utils/events";
 import {
   PARTICIPATION_ROLE_COLOR,
   PARTICIPATION_ROLE_LABEL,
@@ -22,8 +23,8 @@ interface HostPanelProps {
 }
 
 // Painel de gestão do evento, restrito ao owner (a página decide a visibilidade).
-// A lista mostra papel e status de cada linha; o mentor da própria mentoria
-// aparece como "Você" e não ganha ações.
+// A lista mostra papel e status de cada linha; quem criou o evento aparece como
+// "Você" e não ganha ações.
 export function HostPanel({ event, participation, currentUserId }: HostPanelProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const {
@@ -40,10 +41,18 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
 
   const isMentoring = event.category === "MENTORING";
   const maxSlots = event.max_slots ?? null;
-  const confirmedMentee = participants.some(
-    (entry) => entry.role === "MENTEE" && entry.status === "CONFIRMED",
+  // Quem criou a mentoria pode ser mentor ou mentorado; o convite vai sempre para
+  // o papel complementar (o backend recusa o mesmo papel).
+  const myRow = participants.find((entry) => entry.user_id === currentUserId) ?? null;
+  const myRole = myRow?.role === "MENTOR" || myRow?.role === "MENTEE" ? myRow.role : null;
+  const inviteRole = isMentoring ? complementaryRole(myRole ?? "MENTOR") : "SPEAKER";
+  const inviteLabel = isMentoring
+    ? `Convidar ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()}`
+    : "Adicionar palestrante";
+  const counterpartConfirmed = participants.some(
+    (entry) => entry.role === inviteRole && entry.status === "CONFIRMED",
   );
-  const inviteBlocked = isMentoring && confirmedMentee;
+  const inviteBlocked = isMentoring && counterpartConfirmed;
   const removeFailure = failure?.key.startsWith("remove:") ? failure : null;
   const detail = apiErrorDetail(error);
 
@@ -64,20 +73,21 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
           <h2 className="text-ink text-base font-semibold">Painel do anfitrião</h2>
           <p className="text-ink-muted text-xs">
             {isMentoring
-              ? "Você é o mentor desta mentoria. Convide o mentorado para completar as vagas."
+              ? `Você é o ${PARTICIPATION_ROLE_LABEL[myRole ?? "MENTOR"].toLowerCase()} desta mentoria. Convide ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} para completar as vagas.`
               : "Adicione palestrantes e acompanhe as inscrições do evento."}
             {maxSlots !== null ? ` ${confirmedCount} de ${maxSlots} vagas ocupadas.` : ""}
           </p>
         </div>
 
         <Button size="sm" onClick={openPicker} disabled={inviteBlocked}>
-          {isMentoring ? "Convidar mentorado" : "Adicionar palestrante"}
+          {inviteLabel}
         </Button>
       </div>
 
       {inviteBlocked ? (
         <p className="text-ink-muted text-sm">
-          Mentoria já tem mentorado — não é possível convidar outro.
+          Mentoria já tem {PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} — não é possível
+          convidar outro.
         </p>
       ) : null}
 
@@ -163,7 +173,11 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
       {removeFailure ? <Alert variant="error">{removeFailure.message}</Alert> : null}
 
       {pickerOpen ? (
-        <AddPersonPicker event={event} participation={participation} onClose={closePicker} />
+        <AddPersonPicker
+          participation={participation}
+          inviteRole={inviteRole}
+          onClose={closePicker}
+        />
       ) : null}
     </section>
   );

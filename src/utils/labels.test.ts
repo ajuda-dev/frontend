@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  EVENT_APPROVAL_STATUSES,
   EVENT_CATEGORIES,
   EVENT_TYPES,
   PARTICIPATION_ROLES,
@@ -8,9 +9,13 @@ import {
   USER_ROLES,
 } from "../types/api";
 import {
+  EVENT_APPROVAL_STATUS_COLOR,
+  EVENT_APPROVAL_STATUS_LABEL,
   EVENT_CATEGORY_LABEL,
   EVENT_TYPE_LABEL,
+  LABEL_COLORS,
   PARTICIPATION_ROLE_LABEL,
+  PARTICIPATION_STATUS_COLOR,
   PARTICIPATION_STATUS_LABEL,
   SKILL_LEVEL_LABEL,
   USER_ROLE_LABEL,
@@ -47,5 +52,23 @@ describe("labels pt-BR", () => {
   it("cobre todos os níveis de skill", () => {
     for (const l of SKILL_LEVELS) expect(SKILL_LEVEL_LABEL[l]).toBeTruthy();
     expect(SKILL_LEVEL_LABEL.WANT_TO_LEARN).toBe("Quero aprender");
+  });
+
+  it("cobre todas as situações de aprovação do evento", () => {
+    for (const s of EVENT_APPROVAL_STATUSES) {
+      expect(EVENT_APPROVAL_STATUS_LABEL[s]).toBeTruthy();
+      expect(EVENT_APPROVAL_STATUS_COLOR[s]).toBeTruthy();
+    }
+    expect(EVENT_APPROVAL_STATUS_LABEL.PENDING).toBe("Aguardando aprovação");
+    expect(EVENT_APPROVAL_STATUS_LABEL.APPROVED).toBe("Aprovado");
+    expect(EVENT_APPROVAL_STATUS_LABEL.REJECTED).toBe("Rejeitado");
+    expect(EVENT_APPROVAL_STATUS_COLOR.PENDING).toBe("warning");
+    expect(EVENT_APPROVAL_STATUS_COLOR.APPROVED).toBe("brand");
+    expect(EVENT_APPROVAL_STATUS_COLOR.REJECTED).toBe("danger");
+  });
+
+  it("LABEL_COLORS expõe a aprovação sem trocar a chave status (participação)", () => {
+    expect(LABEL_COLORS.approvalStatus).toBe(EVENT_APPROVAL_STATUS_COLOR);
+    expect(LABEL_COLORS.status).toBe(PARTICIPATION_STATUS_COLOR);
   });
 });

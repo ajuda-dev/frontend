@@ -28,6 +28,8 @@ export const FIELD_LABELS: Record<string, string> = {
   level: "Nível",
   role: "Papel",
   status: "Status",
+  creator_role: "Papel de quem cria",
+  approval_status: "Situação de aprovação",
   body: "Formulário",
   id: "Identificador",
   members: "Membros",
@@ -121,6 +123,27 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "address_id is not valid, not found this address": "Endereço não encontrado",
   "community_id is not valid, not found this community": "Comunidade não encontrada",
   "invalid event data": "Dados do evento inválidos",
+  "invalid participation data": "Dados da participação inválidos",
+  "event is not approved yet": "Este evento ainda não foi aprovado pela comunidade",
+  "only the invited user can accept or reject this invitation":
+    "Só quem recebeu o convite pode aceitar ou recusá-lo",
+  "the creator cannot leave the event; cancel the event instead":
+    "Quem criou o evento não pode sair dele — cancele o evento",
+  "only the event owner, the community owner or moderators can manage this event":
+    "Apenas quem criou o evento, o responsável pela comunidade (ou moderadores e administradores) pode gerenciá-lo",
+  "only the community owner can approve this event":
+    "Apenas o responsável pela comunidade (ou moderadores e administradores) pode aprovar este evento",
+  "only the community owner can filter events by approval status":
+    "Apenas o responsável pela comunidade pode filtrar por situação de aprovação",
+  "only community members can create events for this community":
+    "Só o responsável ou membros da comunidade podem criar eventos nela",
+  "only moderators and admins can read another user's agenda":
+    "Apenas moderadores e administradores podem ver a agenda de outra pessoa",
+  "creatorrole is only allowed for mentoring events":
+    "O papel de quem cria só vale em eventos de mentoria",
+  "creatorrole is not valid, use mentor or mentee":
+    "Papel de quem cria inválido: use mentor ou mentorado",
+  "role is not valid, use mentor or mentee": "Papel inválido para esta mentoria: use mentor ou mentorado",
   "invalid skill data": "Dados da habilidade inválidos",
   "invalid skill user data": "Dados da habilidade do usuário inválidos",
   "description is not valid": "Descrição inválida",
@@ -170,11 +193,18 @@ export const GENERIC_ERROR_MESSAGE = "Não foi possível concluir a operação. 
 // Mensagem dinâmica do repo de event_users: "invalid status transition from X to Y".
 const STATUS_TRANSITION_PREFIX = "invalid status transition from";
 
+// "Role must be complementary to the creator role, use MENTOR|MENTEE" — o papel
+// esperado no final varia, então só o prefixo é comparado.
+const ROLE_COMPLEMENTARY_PREFIX = "role must be complementary to the creator role";
+
 export function translateApiMessage(message: string | undefined): string | null {
   if (!message) return null;
   const normalized = message.trim().toLowerCase();
   if (normalized.startsWith(STATUS_TRANSITION_PREFIX)) {
     return "Esta ação não é permitida no estado atual da participação";
+  }
+  if (normalized.startsWith(ROLE_COMPLEMENTARY_PREFIX)) {
+    return "O convite precisa ser para o papel complementar ao de quem criou a mentoria";
   }
   return MESSAGE_TRANSLATIONS[normalized] ?? null;
 }

@@ -1,5 +1,6 @@
 import type { BadgeTone } from "../components/ui/Badge";
 import type {
+  EventApprovalStatus,
   EventCategory,
   EventType,
   ParticipationRole,
@@ -47,6 +48,12 @@ export const SKILL_LEVEL_LABEL: Record<SkillLevel, string> = {
   TEACH: "Ensinar",
 };
 
+export const EVENT_APPROVAL_STATUS_LABEL: Record<EventApprovalStatus, string> = {
+  PENDING: "Aguardando aprovação",
+  APPROVED: "Aprovado",
+  REJECTED: "Rejeitado",
+};
+
 export const EVENT_CATEGORY_COLOR: Record<EventCategory, BadgeTone> = {
   COMMUNITY_EVENT: "info",
   MENTORING: "brand",
@@ -80,10 +87,17 @@ export const USER_ROLE_COLOR: Record<UserRole, BadgeTone> = {
   ADMIN: "danger",
 };
 
+export const EVENT_APPROVAL_STATUS_COLOR: Record<EventApprovalStatus, BadgeTone> = {
+  PENDING: "warning",
+  APPROVED: "brand",
+  REJECTED: "danger",
+};
+
 export const LABEL_COLORS = {
   category: EVENT_CATEGORY_COLOR,
   status: PARTICIPATION_STATUS_COLOR,
   role: PARTICIPATION_ROLE_COLOR,
   level: SKILL_LEVEL_COLOR,
   userRole: USER_ROLE_COLOR,
+  approvalStatus: EVENT_APPROVAL_STATUS_COLOR,
 } as const;

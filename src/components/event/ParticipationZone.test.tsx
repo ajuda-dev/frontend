@@ -76,7 +76,7 @@ describe("ParticipationZone", () => {
 
     await user.click(await screen.findByRole("button", { name: "Participar" }));
 
-    expect(mockedJoin).toHaveBeenCalledWith("e1", "u1");
+    expect(mockedJoin).toHaveBeenCalledWith("e1");
     expect(await screen.findByText("Você participa")).toBeInTheDocument();
   });
 
@@ -119,10 +119,28 @@ describe("ParticipationZone", () => {
     const user = userEvent.setup();
     render(<Harness eventItem={event({ category: "MENTORING", max_slots: 2 })} />);
 
+    expect(await screen.findByText(/convidado para esta mentoria como mentorado/)).toBeInTheDocument();
+
     await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
 
     expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
     expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
+  });
+
+  it("convite de mentoria para mentor também é aceito", async () => {
+    mockedGet
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTOR", status: "REQUESTED" })])
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTOR" })]);
+    mockedUpdate.mockResolvedValue(row({ user_id: "u1", role: "MENTOR" }));
+    const user = userEvent.setup();
+    render(<Harness eventItem={event({ category: "MENTORING", max_slots: 2 })} />);
+
+    expect(await screen.findByText(/convidado para esta mentoria como mentor\./)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+    expect(await screen.findByText("Você é o mentor")).toBeInTheDocument();
   });
 
   it("convite de mentoria pendente pode ser recusado", async () => {
