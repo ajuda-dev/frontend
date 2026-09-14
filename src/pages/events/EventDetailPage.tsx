@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { HostPanel } from "../../components/event/HostPanel";
+import { EventApprovalBadge } from "../../components/event/EventApprovalBadge";
+import { EventApprovalControls } from "../../components/event/EventApprovalControls";
 import { ParticipationZone } from "../../components/event/ParticipationZone";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
@@ -16,6 +18,7 @@ import { deleteEvent, findEventById } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
+import { isEventApproved } from "../../utils/events";
 import { formatAddress, formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
 import { canAtLeast } from "../../utils/roles";
@@ -142,6 +145,15 @@ export function EventDetailPage() {
   // O backend não checa dono/cargo no delete (assimetria conhecida): a UI restringe
   // a owner ou ≥ MODERATOR.
   const canDelete = isOwner || canAtLeast(user?.role, "MODERATOR");
+  // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
+  // do evento não aprova, nem quando é membro da comunidade.
+  const isCommunityOwner = Boolean(
+    user && event.community?.owner && event.community.owner.id === user.id,
+  );
+  const canApprove = isCommunityOwner || canAtLeast(user?.role, "MODERATOR");
+  const approved = isEventApproved(event);
+  const showApprovalPanel = canApprove && !approved;
+  const showCreatorNotice = isOwner && !canApprove && !approved;
 
   return (
     <div className="flex flex-col gap-6">
@@ -156,6 +168,7 @@ export function EventDetailPage() {
           {EVENT_CATEGORY_LABEL[event.category]}
         </Badge>
         <Badge tone="ink-muted">{EVENT_TYPE_LABEL[event.type]}</Badge>
+        <EventApprovalBadge event={event} />
       </div>
 
       <Card className="flex flex-col gap-4">
@@ -217,6 +230,26 @@ export function EventDetailPage() {
           </Link>
         ) : null}
       </Card>
+
+      {showApprovalPanel ? (
+        <Card className="flex flex-col gap-3">
+          <h2 className="text-ink text-base font-semibold">Aprovação do evento</h2>
+          <Alert variant="info">
+            {event.status === "REJECTED"
+              ? "Este evento foi rejeitado e não aparece no catálogo. Aprovar libera a inscrição e a visibilidade para todos."
+              : "Este evento aguarda aprovação: enquanto isso ele fica oculto para quem não gerencia a comunidade e a inscrição está bloqueada."}
+          </Alert>
+          <EventApprovalControls event={event} onDecided={setEvent} />
+        </Card>
+      ) : null}
+
+      {showCreatorNotice ? (
+        <Alert variant="info" title="Aguardando aprovação">
+          {event.status === "REJECTED"
+            ? "Este evento foi rejeitado pelo responsável pela comunidade e não aparece no catálogo. Só quem gerencia a comunidade pode aprová-lo de novo — não existe edição de evento na API."
+            : "O responsável pela comunidade ainda não liberou este evento. Ele aparece para você, para quem gerencia a comunidade e na sua agenda, mas fica oculto para os demais até ser aprovado."}
+        </Alert>
+      ) : null}
 
       {isOwner ? (
         <HostPanel event={event} participation={participation} currentUserId={user?.id ?? null} />

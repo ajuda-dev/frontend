@@ -180,4 +180,52 @@ describe("ParticipationZone", () => {
     expect(mockedGet).toHaveBeenCalledTimes(2);
     expect(await screen.findByRole("button", { name: "Participar" })).toBeInTheDocument();
   });
+
+  it("evento PENDING troca o botão Participar pela nota de aprovação", async () => {
+    mockedGet.mockResolvedValue([]);
+    render(<Harness eventItem={event({ status: "PENDING" })} />);
+
+    expect(
+      await screen.findByText("As inscrições abrem quando o evento for aprovado pela comunidade."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Participar" })).not.toBeInTheDocument();
+  });
+
+  it("evento REJECTED também bloqueia a inscrição", async () => {
+    mockedGet.mockResolvedValue([]);
+    render(<Harness eventItem={event({ status: "REJECTED" })} />);
+
+    expect(
+      await screen.findByText("As inscrições abrem quando o evento for aprovado pela comunidade."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Participar" })).not.toBeInTheDocument();
+  });
+
+  it("convite de mentoria em evento PENDING: aceitar desabilitado e recusar ativo", async () => {
+    mockedGet.mockResolvedValue([row({ user_id: "u1", role: "MENTEE", status: "REQUESTED" })]);
+    render(
+      <Harness eventItem={event({ category: "MENTORING", max_slots: 2, status: "PENDING" })} />,
+    );
+
+    expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Recusar" })).toBeEnabled();
+    expect(
+      screen.getByText("As inscrições abrem quando o evento for aprovado pela comunidade."),
+    ).toBeInTheDocument();
+  });
+
+  it("convite de mentoria em evento aprovado aceita normalmente", async () => {
+    mockedGet
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "REQUESTED" })])
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE" })]);
+    mockedUpdate.mockResolvedValue(row({ user_id: "u1", role: "MENTEE" }));
+    const user = userEvent.setup();
+    render(
+      <Harness eventItem={event({ category: "MENTORING", max_slots: 2, status: "APPROVED" })} />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+  });
 });

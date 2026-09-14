@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { EventApprovalControls } from "../../components/event/EventApprovalControls";
 import { EventCard } from "../../components/event/EventCard";
 import { Alert } from "../../components/ui/Alert";
 import { Badge } from "../../components/ui/Badge";
@@ -15,7 +16,7 @@ import { useMemberships } from "../../hooks/useMemberships";
 import { usePageable } from "../../hooks/usePageable";
 import { deleteCommunity, findCommunityById } from "../../services/community";
 import { listEvents } from "../../services/event";
-import type { Community } from "../../types/api";
+import type { Community, EventApprovalStatus } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
 import { formatAddress, formatCep } from "../../utils/format";
 import { canAtLeast } from "../../utils/roles";
@@ -77,6 +78,93 @@ function CommunityEventsSection({ communityId }: { communityId: string }) {
           {items.map((event) => (
             <li key={event.id}>
               <EventCard event={event} compact />
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
+      {items.length > 0 ? (
+        <LoadMoreButton hasNext={hasNext} loading={loading} onLoadMore={loadMore} />
+      ) : null}
+    </section>
+  );
+}
+
+const APPROVAL_TABS: { status: Extract<EventApprovalStatus, "PENDING" | "REJECTED">; label: string }[] =
+  [
+    { status: "PENDING", label: "Aguardando aprovação" },
+    { status: "REJECTED", label: "Rejeitados" },
+  ];
+
+const APPROVAL_EMPTY: Record<"PENDING" | "REJECTED", string> = {
+  PENDING: "Nenhum evento aguardando aprovação.",
+  REJECTED: "Nenhum evento rejeitado.",
+};
+
+// Fila de aprovação: cada aba busca só o seu status (o backend exige community_id
+// junto do approval_status) e o item sai da lista quando é decidido.
+function CommunityApprovalSection({ communityId }: { communityId: string }) {
+  const [tab, setTab] = useState<"PENDING" | "REJECTED">("PENDING");
+  const fetcher = useCallback(
+    (page: number) => listEvents({ page, communityId, approvalStatus: tab }),
+    [communityId, tab],
+  );
+  const { items, hasNext, loading, error, loadMore, reset } = usePageable(fetcher);
+
+  const isFirstRun = useRef(true);
+  useEffect(() => {
+    // O usePageable já carrega a página 1 no mount: só reseta quando a aba muda.
+    if (isFirstRun.current) {
+      isFirstRun.current = false;
+      return;
+    }
+    reset();
+  }, [tab, reset]);
+
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="text-ink text-base font-semibold">Aprovação de eventos</h2>
+
+      <div className="flex flex-wrap gap-2">
+        {APPROVAL_TABS.map((option) => (
+          <Button
+            key={option.status}
+            size="sm"
+            variant={tab === option.status ? "primary" : "ghost"}
+            aria-pressed={tab === option.status}
+            onClick={() => setTab(option.status)}
+          >
+            {option.label}
+          </Button>
+        ))}
+      </div>
+
+      {loading && items.length === 0 ? <PageSpinner /> : null}
+
+      {error && items.length === 0 ? (
+        <Alert
+          variant="error"
+          title="Não foi possível carregar a fila de aprovação"
+          action={
+            <button type="button" onClick={reset} className="text-brand text-sm hover:underline">
+              Tentar novamente
+            </button>
+          }
+        >
+          {apiErrorMessage(error)}
+        </Alert>
+      ) : null}
+
+      {!loading && !error && items.length === 0 ? (
+        <EmptyState title={APPROVAL_EMPTY[tab]} />
+      ) : null}
+
+      {items.length > 0 ? (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {items.map((event) => (
+            <li key={event.id} className="flex flex-col gap-2">
+              <EventCard event={event} compact />
+              <EventApprovalControls event={event} onDecided={reset} />
             </li>
           ))}
         </ul>
@@ -297,6 +385,8 @@ export function CommunityDetailPage() {
         onConfirm={() => void handleDelete()}
         onClose={() => setConfirmingDelete(false)}
       />
+
+      {canManage ? <CommunityApprovalSection communityId={community.id} /> : null}
 
       <CommunityEventsSection communityId={community.id} />
 

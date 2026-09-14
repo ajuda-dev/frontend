@@ -1,18 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventItem, Pageable } from "../types/api";
 import { api } from "./api";
-import { createEvent, deleteEvent, findEventById, listEvents } from "./event";
+import { createEvent, deleteEvent, findEventById, listEvents, approveEvent } from "./event";
 
 // `isApiError` precisa ser o real (a implementação de findEventById depende dele
 // para mapear 404 → null); só a instância `api` é dublada.
 vi.mock("./api", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./api")>();
-  return { ...actual, api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() } };
+  return { ...actual, api: { get: vi.fn(), post: vi.fn(), delete: vi.fn(), put: vi.fn() } };
 });
 
 const mockedGet = vi.mocked(api.get);
 const mockedPost = vi.mocked(api.post);
 const mockedDelete = vi.mocked(api.delete);
+const mockedPut = vi.mocked(api.put);
 
 function axiosErrorWithStatus(status: number) {
   return Object.assign(new Error(`Request failed with status code ${status}`), {
@@ -100,6 +101,28 @@ describe("listEvents", () => {
 
     expect(mockedGet).toHaveBeenCalledWith("/event", {
       params: { page: 1, limit: 10, community_id: "c1" },
+      signal: undefined,
+    });
+  });
+
+  it("envia approval_status junto do community_id (fila de aprovação)", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listEvents({ page: 1, communityId: "c1", approvalStatus: "PENDING" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/event", {
+      params: { page: 1, limit: 10, community_id: "c1", approval_status: "PENDING" },
+      signal: undefined,
+    });
+  });
+
+  it("approval_status sem community_id não é enviado (o backend responde 403)", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listEvents({ page: 1, approvalStatus: "REJECTED" });
+
+    expect(mockedGet).toHaveBeenCalledWith("/event", {
+      params: { page: 1, limit: 10 },
       signal: undefined,
     });
   });
@@ -330,5 +353,29 @@ describe("deleteEvent", () => {
     await deleteEvent("e1");
 
     expect(mockedDelete).toHaveBeenCalledWith("/event/e1");
+  });
+});
+
+describe("approveEvent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT em /event/:id/approval com o status e devolve o evento atualizado", async () => {
+    const approved = { ...event("e1"), status: "APPROVED" as const };
+    mockedPut.mockResolvedValue({ data: approved });
+
+    const result = await approveEvent("e1", "APPROVED");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/approval", { status: "APPROVED" });
+    expect(result).toEqual(approved);
+  });
+
+  it("rejeitar usa o mesmo endpoint com REJECTED", async () => {
+    mockedPut.mockResolvedValue({ data: { ...event("e1"), status: "REJECTED" } });
+
+    await approveEvent("e1", "REJECTED");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/approval", { status: "REJECTED" });
   });
 });

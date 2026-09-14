@@ -16,6 +16,7 @@ vi.mock("../../services/community", () => ({
 
 vi.mock("../../services/event", () => ({
   listEvents: vi.fn(),
+  approveEvent: vi.fn(),
 }));
 
 import {
@@ -24,13 +25,14 @@ import {
   joinCommunity,
   leaveCommunity,
 } from "../../services/community";
-import { listEvents } from "../../services/event";
+import { listEvents, approveEvent } from "../../services/event";
 
 const mockedFind = vi.mocked(findCommunityById);
 const mockedJoin = vi.mocked(joinCommunity);
 const mockedLeave = vi.mocked(leaveCommunity);
 const mockedDelete = vi.mocked(deleteCommunity);
 const mockedListEvents = vi.mocked(listEvents);
+const mockedApprove = vi.mocked(approveEvent);
 
 const COMMUNITY: Community = {
   id: "c1",
@@ -319,5 +321,90 @@ describe("CommunityDetailPage", () => {
     renderDetail({ community: COMMUNITY });
 
     expect(await screen.findByText("Nenhum evento por aqui ainda.")).toBeInTheDocument();
+  });
+
+  it("USER que não é owner não vê a fila de aprovação", async () => {
+    renderDetail({ community: COMMUNITY });
+
+    await screen.findByRole("heading", { name: "Dev SP" });
+    expect(screen.queryByText("Aprovação de eventos")).not.toBeInTheDocument();
+    expect(mockedListEvents).toHaveBeenCalledTimes(1);
+    expect(mockedListEvents).toHaveBeenCalledWith({ page: 1, communityId: "c1" });
+  });
+
+  it("owner vê a fila e a aba default busca PENDING", async () => {
+    seedSession("owner-1");
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByText("Aprovação de eventos")).toBeInTheDocument();
+    expect(mockedListEvents).toHaveBeenCalledWith({
+      page: 1,
+      communityId: "c1",
+      approvalStatus: "PENDING",
+    });
+    expect(await screen.findByText("Nenhum evento aguardando aprovação.")).toBeInTheDocument();
+  });
+
+  it("MODERATOR também vê a fila", async () => {
+    seedSession("mod-1", "MODERATOR");
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByText("Aprovação de eventos")).toBeInTheDocument();
+  });
+
+  it("trocar para a aba Rejeitados busca REJECTED", async () => {
+    seedSession("owner-1");
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Rejeitados" }));
+
+    expect(mockedListEvents).toHaveBeenLastCalledWith({
+      page: 1,
+      communityId: "c1",
+      approvalStatus: "REJECTED",
+    });
+    expect(await screen.findByText("Nenhum evento rejeitado.")).toBeInTheDocument();
+  });
+
+  it("aprovar na fila recarrega a lista de pendentes", async () => {
+    seedSession("owner-1");
+    mockedListEvents.mockImplementation(async (params) => {
+      if (params.approvalStatus === "PENDING") {
+        return {
+          data: [
+            {
+              id: "e1",
+              title: "Meetup Dev SP",
+              description: "Encontro mensal",
+              category: "COMMUNITY_EVENT",
+              type: "ONLINE",
+              start_at: "2026-10-01T18:00:00-03:00",
+              duration_min: 60,
+              status: "PENDING",
+            },
+          ],
+          has_next: false,
+        };
+      }
+      return { data: [], has_next: false };
+    });
+    mockedApprove.mockResolvedValue({
+      id: "e1",
+      title: "Meetup Dev SP",
+      description: "Encontro mensal",
+      category: "COMMUNITY_EVENT",
+      type: "ONLINE",
+      start_at: "2026-10-01T18:00:00-03:00",
+      duration_min: 60,
+      status: "APPROVED",
+    });
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Aprovar" }));
+
+    expect(mockedApprove).toHaveBeenCalledWith("e1", "APPROVED");
+    expect(mockedListEvents).toHaveBeenCalledTimes(3);
   });
 });

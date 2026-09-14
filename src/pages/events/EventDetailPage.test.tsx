@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -11,6 +11,7 @@ vi.mock("../../services/event", () => ({
   listEvents: vi.fn(),
   createEvent: vi.fn(),
   deleteEvent: vi.fn(),
+  approveEvent: vi.fn(),
 }));
 
 vi.mock("../../services/eventUser", () => ({
@@ -21,11 +22,12 @@ vi.mock("../../services/eventUser", () => ({
   updateParticipantStatus: vi.fn(),
 }));
 
-import { deleteEvent, findEventById } from "../../services/event";
+import { deleteEvent, findEventById, approveEvent } from "../../services/event";
 import { getParticipants, updateParticipantStatus } from "../../services/eventUser";
 
 const mockedFind = vi.mocked(findEventById);
 const mockedDelete = vi.mocked(deleteEvent);
+const mockedApprove = vi.mocked(approveEvent);
 const mockedParticipants = vi.mocked(getParticipants);
 const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
 
@@ -294,5 +296,90 @@ describe("EventDetailPage", () => {
 
     expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
     expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
+  });
+
+  it("dono da comunidade vê o painel de aprovação e aprova atualizando o badge", async () => {
+    seedSession("owner-1");
+    mockedApprove.mockResolvedValue({ ...EVENT, status: "APPROVED" });
+    const user = userEvent.setup();
+    renderDetail({
+      event: {
+        ...EVENT,
+        status: "PENDING",
+        community: {
+          id: "c1",
+          name: "Dev SP",
+          description: "Comunidade de São Paulo",
+          owner: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+        },
+      },
+    });
+
+    expect(await screen.findByText("Aprovação do evento")).toBeInTheDocument();
+    expect(screen.getByText("Aguardando aprovação")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Aprovar" }));
+
+    expect(mockedApprove).toHaveBeenCalledWith("e1", "APPROVED");
+    // A página some com o painel e com o badge: o criador é owner do evento, então
+    // quem aparece abaixo é o painel do anfitrião, não a zona de participação.
+    expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
+    expect(screen.queryByText("Aprovação do evento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aguardando aprovação")).not.toBeInTheDocument();
+  });
+
+  it("criador que não é dono da comunidade vê o aviso e não os botões", async () => {
+    seedSession("owner-1");
+    renderDetail({
+      event: {
+        ...EVENT,
+        status: "PENDING",
+        community: {
+          id: "c1",
+          name: "Dev SP",
+          description: "Comunidade de São Paulo",
+          owner: { id: "outro", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+        },
+      },
+    });
+
+    // O texto do badge e o título do alerta são iguais ("Aguardando aprovação"),
+    // então o título é buscado dentro do próprio alerta.
+    const notice = await screen.findByText(
+      /O responsável pela comunidade ainda não liberou este evento/,
+    );
+    const alertBox = notice.closest('[role="status"]');
+    expect(alertBox).not.toBeNull();
+    expect(within(alertBox as HTMLElement).getByText("Aguardando aprovação")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aprovar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Rejeitar" })).not.toBeInTheDocument();
+  });
+
+  it("criador vê o aviso de rejeitado", async () => {
+    seedSession("owner-1");
+    renderDetail({
+      event: {
+        ...EVENT,
+        status: "REJECTED",
+        community: {
+          id: "c1",
+          name: "Dev SP",
+          description: "Comunidade de São Paulo",
+          owner: { id: "outro", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+        },
+      },
+    });
+
+    expect(await screen.findByText("Rejeitado")).toBeInTheDocument();
+    expect(screen.getByText(/Este evento foi rejeitado pelo responsável pela comunidade/)).toBeInTheDocument();
+  });
+
+  it("terceiro em evento aprovado não vê nada de aprovação", async () => {
+    renderDetail({ event: { ...EVENT, status: "APPROVED" } });
+
+    await screen.findByRole("heading", { name: "Meetup Dev SP" });
+    expect(screen.queryByText("Aprovação do evento")).not.toBeInTheDocument();
+    expect(screen.queryByText("Aguardando aprovação")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rejeitado")).not.toBeInTheDocument();
   });
 });

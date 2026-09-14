@@ -4,6 +4,7 @@ import { formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
 import { Badge } from "../ui/Badge";
 import { Card } from "../ui/Card";
+import { EventApprovalBadge } from "./EventApprovalBadge";
 
 interface EventCardProps {
   event: EventItem;
@@ -37,6 +38,7 @@ export function EventCard({ event, compact = false }: EventCardProps) {
             {EVENT_CATEGORY_LABEL[event.category]}
           </Badge>
           <Badge tone="ink-muted">{EVENT_TYPE_LABEL[event.type]}</Badge>
+          <EventApprovalBadge event={event} />
         </div>
       </Card>
     );
@@ -57,6 +59,7 @@ export function EventCard({ event, compact = false }: EventCardProps) {
 
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="ink-muted">{EVENT_TYPE_LABEL[event.type]}</Badge>
+        <EventApprovalBadge event={event} />
       </div>
 
       <dl className="text-ink-muted flex flex-col gap-1 text-xs">

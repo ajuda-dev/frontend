@@ -1,5 +1,6 @@
 import type {
   CreatorRole,
+  EventApprovalStatus,
   EventCategory,
   EventItem,
   EventType,
@@ -17,6 +18,9 @@ export interface ListEventsParams {
   city?: string;
   upcoming?: boolean;
   communityId?: string;
+  // Filtro de aprovação: o backend exige o `community_id` junto (sem ele responde
+  // 403, inclusive para o dono da comunidade), então só é enviado em par.
+  approvalStatus?: EventApprovalStatus;
   // Recorte da agenda pessoal: o backend junta event_users e filtra por usuário
   // combinado com papel/status da participação.
   userId?: string;
@@ -32,6 +36,7 @@ export async function listEvents({
   city,
   upcoming,
   communityId,
+  approvalStatus,
   userId,
   role,
   status,
@@ -49,6 +54,8 @@ export async function listEvents({
   // `upcoming` só é enviado quando ligado: omitido, a API devolve passados e futuros.
   if (upcoming) params.upcoming = true;
   if (communityId) params.community_id = communityId;
+  // O par é obrigatório: sem `community_id` o backend responde 403 mesmo para o dono.
+  if (approvalStatus && communityId) params.approval_status = approvalStatus;
   if (userId) params.user_id = userId;
   if (role) params.role = role;
   if (status) params.status = status;
@@ -109,4 +116,15 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
 
 export async function deleteEvent(eventId: string): Promise<void> {
   await api.delete(`/event/${eventId}`);
+}
+
+// PUT /v1/event/:id/approval — só o dono da comunidade (ou ≥ MODERATOR) aprova; o
+// criador do evento não. Transições válidas: PENDING → APPROVED|REJECTED e
+// REJECTED → APPROVED (o resto é 400). A resposta já traz o evento atualizado.
+export async function approveEvent(
+  eventId: string,
+  status: Extract<EventApprovalStatus, "APPROVED" | "REJECTED">,
+): Promise<EventItem> {
+  const { data } = await api.put<EventItem>(`/event/${eventId}/approval`, { status });
+  return data;
 }
