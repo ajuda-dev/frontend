@@ -22,7 +22,6 @@ export interface UserSummary {
   name: string;
   email: string;
   role: UserRole;
-  token?: string;
   description?: string;
   configVisibility?: ConfigVisibility;
 }
@@ -105,11 +104,6 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
-}
-
-export interface Session {
-  token: string;
-  user: AuthUser;
 }
 
 export interface LoginUserInput {

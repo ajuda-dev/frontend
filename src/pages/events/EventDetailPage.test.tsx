@@ -45,7 +45,6 @@ const EVENT: EventItem = {
 };
 
 function seedSession(id = "u1") {
-  localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
@@ -191,7 +190,6 @@ describe("EventDetailPage", () => {
   });
 
   it("moderador excluindo evento alheio vê confirmação reforçada", async () => {
-    localStorage.setItem("ajudadev.token", "token-123");
     localStorage.setItem(
       "ajudadev.user",
       JSON.stringify({
@@ -404,7 +402,6 @@ describe("EventDetailPage", () => {
   });
 
   it("moderador vê a gestão do evento e pode excluir", async () => {
-    localStorage.setItem("ajudadev.token", "token-123");
     localStorage.setItem(
       "ajudadev.user",
       JSON.stringify({ id: "u9", name: "Mod", email: "mod@ajudadev.dev", role: "MODERATOR" }),

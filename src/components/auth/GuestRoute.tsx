@@ -2,9 +2,9 @@ import { Navigate, Outlet } from "react-router";
 import { useAuth } from "../../context/useAuth";
 
 export function GuestRoute() {
-  const { session } = useAuth();
+  const { user } = useAuth();
 
-  if (session) {
+  if (user) {
     return <Navigate to="/" replace />;
   }
 

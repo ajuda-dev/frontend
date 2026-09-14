@@ -1,41 +1,45 @@
 import { createContext, useContext } from "react";
-import type { AuthUser, Session } from "../types/api";
+import type { AuthUser } from "../types/api";
 
-export const TOKEN_KEY = "ajudadev.token";
 export const USER_KEY = "ajudadev.user";
+const LEGACY_TOKEN_KEY = "ajudadev.token";
 
 export interface AuthContextValue {
-  session: Session | null;
-  user: Session["user"] | null;
-  login: (email: string, password: string) => Promise<Session>;
-  register: (name: string, email: string, password: string) => Promise<Session>;
+  user: AuthUser | null;
+  refreshSession: () => Promise<AuthUser | null>;
+  login: (email: string, password: string) => Promise<AuthUser>;
+  register: (name: string, email: string, password: string) => Promise<AuthUser>;
   updateProfile: (name: string) => Promise<AuthUser>;
   logout: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function readStoredSession(): Session | null {
+// O token vive em cookie HttpOnly; aqui só é guardado o usuário (id/nome/email/role), que não é segredo.
+export function readStoredUser(): AuthUser | null {
   try {
-    const token = localStorage.getItem(TOKEN_KEY);
     const rawUser = localStorage.getItem(USER_KEY);
-    if (!token || !rawUser) return null;
-    const user = JSON.parse(rawUser) as Session["user"];
+    if (!rawUser) return null;
+    const user = JSON.parse(rawUser) as AuthUser;
     if (!user?.id || !user?.email || !user?.role) return null;
-    return { token, user };
+    return user;
   } catch {
     return null;
   }
 }
 
-export function persistSession(session: Session): void {
-  localStorage.setItem(TOKEN_KEY, session.token);
-  localStorage.setItem(USER_KEY, JSON.stringify(session.user));
+export function persistUser(user: AuthUser): void {
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
-export function clearStoredSession(): void {
-  localStorage.removeItem(TOKEN_KEY);
+export function clearStoredUser(): void {
   localStorage.removeItem(USER_KEY);
+}
+
+// Limpeza da chave antiga: o token agora vive no cookie HttpOnly, mas navegadores que usaram
+// a versão anterior guardam um JWT em `ajudadev.token` — precisa sumir de lá.
+export function purgeLegacyToken(): void {
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
 }
 
 export function useAuth(): AuthContextValue {

@@ -42,7 +42,6 @@ const COMMUNITY: Community = {
 };
 
 function seedSession() {
-  localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),

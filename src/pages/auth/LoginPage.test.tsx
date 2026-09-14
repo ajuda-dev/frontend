@@ -8,6 +8,7 @@ import { LoginPage } from "./LoginPage";
 vi.mock("../../services/auth", () => ({
   login: vi.fn(),
   register: vi.fn(),
+  githubLoginUrl: vi.fn(() => "/v1/auth/github/login"),
 }));
 
 import * as authService from "../../services/auth";
@@ -64,8 +65,10 @@ describe("LoginPage", () => {
   it("sucesso grava a sessão e redireciona para a home", async () => {
     const user = userEvent.setup();
     mockedLogin.mockResolvedValue({
-      token: "token-123",
-      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
     });
     renderLogin();
 
@@ -74,15 +77,17 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     expect(await screen.findByText("Home protegida")).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
+    expect(localStorage.getItem("ajudadev.token")).toBeNull();
     expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").email).toBe("lucas@ajudadev.dev");
   });
 
   it("volta para a página de origem informada em state.from", async () => {
     const user = userEvent.setup();
     mockedLogin.mockResolvedValue({
-      token: "token-123",
-      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
     });
     render(
       <MemoryRouter initialEntries={[{ pathname: "/login", state: { from: "/comunidades" } }]}>
@@ -101,5 +106,12 @@ describe("LoginPage", () => {
     await user.click(screen.getByRole("button", { name: "Entrar" }));
 
     expect(await screen.findByText("Comunidades")).toBeInTheDocument();
+  });
+
+  it("mostra o botão de entrar com GitHub apontando para o OAuth do backend", () => {
+    renderLogin();
+
+    const link = screen.getByRole("link", { name: "Entrar com GitHub" });
+    expect(link).toHaveAttribute("href", "/v1/auth/github/login");
   });
 });

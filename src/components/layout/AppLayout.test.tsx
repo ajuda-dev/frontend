@@ -7,7 +7,6 @@ import { AppLayout } from "./AppLayout";
 import { NAV_ITEMS } from "./navItems";
 
 function seedSession(role: "USER" | "ADMIN" = "USER") {
-  localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role }),
@@ -50,7 +49,7 @@ describe("AppLayout", () => {
     await user.click(screen.getByRole("menuitem", { name: "Sair" }));
 
     expect(await screen.findByText("Tela de login")).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBeNull();
+    expect(localStorage.getItem("ajudadev.user")).toBeNull();
   });
 
   it("renderiza o conteúdo da rota filha", () => {

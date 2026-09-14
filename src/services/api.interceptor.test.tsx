@@ -1,4 +1,3 @@
-import { AxiosHeaders } from "axios";
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,14 +5,20 @@ import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { AuthProvider } from "../context/AuthContext";
 import { LoginPage } from "../pages/auth/LoginPage";
 import { api } from "./api";
+import { me } from "./auth";
 
-vi.mock("../services/auth", () => ({
+vi.mock("./auth", () => ({
   login: vi.fn(),
   register: vi.fn(),
+  me: vi.fn(),
+  logout: vi.fn(),
+  githubLoginUrl: vi.fn(() => "/v1/auth/github/login"),
 }));
 
+const mockedMe = vi.mocked(me);
+mockedMe.mockResolvedValue({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" });
+
 function seedSession() {
-  localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
@@ -61,7 +66,7 @@ describe("interceptor de 401", () => {
     await expect(handler.handlers[0].rejected(unauthorizedError("/community"))).rejects.toBeTruthy();
 
     expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBeNull();
+    expect(localStorage.getItem("ajudadev.user")).toBeNull();
   });
 
   it("401 no login não dispara logout", async () => {
@@ -74,37 +79,29 @@ describe("interceptor de 401", () => {
     await expect(handler.handlers[0].rejected(unauthorizedError("/user/login"))).rejects.toBeTruthy();
 
     expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
-  });
-});
-
-describe("interceptor de request", () => {
-  beforeEach(() => {
-    localStorage.clear();
-    vi.clearAllMocks();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
   });
 
-  function runRequestInterceptor(headers: AxiosHeaders) {
-    const handler = api.interceptors.request as unknown as {
-      handlers: { fulfilled: (config: { headers: AxiosHeaders }) => { headers: AxiosHeaders } }[];
-    };
-    return handler.handlers[0].fulfilled({ headers });
-  }
-
-  it("envia Authorization: Bearer quando há sessão", () => {
+  it("401 no /user/me não dispara logout", async () => {
     seedSession();
     renderApp();
 
-    const config = runRequestInterceptor(new AxiosHeaders());
+    const handler = api.interceptors.response as unknown as {
+      handlers: { rejected: (error: unknown) => Promise<unknown> }[];
+    };
+    await expect(handler.handlers[0].rejected(unauthorizedError("/user/me"))).rejects.toBeTruthy();
 
-    expect(config.headers.get("Authorization")).toBe("Bearer token-123");
+    expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
+  });
+});
+
+describe("sessão por cookie", () => {
+  it("envia credenciais em toda requisição (cookie HttpOnly)", () => {
+    expect(api.defaults.withCredentials).toBe(true);
   });
 
-  it("não envia Authorization sem sessão", () => {
-    renderApp();
-
-    const config = runRequestInterceptor(new AxiosHeaders());
-
-    expect(config.headers.get("Authorization")).toBeUndefined();
+  it("não monta header Authorization (o token não passa pelo JS)", () => {
+    expect(api.defaults.headers.common["Authorization"]).toBeUndefined();
   });
 });

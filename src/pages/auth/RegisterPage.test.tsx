@@ -82,15 +82,18 @@ describe("RegisterPage", () => {
 
   it("sucesso grava a sessão (auto-login) e redireciona", async () => {
     mockedRegister.mockResolvedValue({
-      token: "token-abc",
-      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
     });
     renderRegister();
 
     await fillForm("Lucas Rocha", "lucas@ajudadev.dev", "senha-secreta");
 
     expect(await screen.findByText("Home protegida")).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBe("token-abc");
+    expect(localStorage.getItem("ajudadev.token")).toBeNull();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
     expect(mockedRegister).toHaveBeenCalledWith("Lucas Rocha", "lucas@ajudadev.dev", "senha-secreta");
   });
 });

@@ -25,12 +25,12 @@ Planos de implementação: `C:\Users\Lucas\dev\ajudadev\docs\implementacao\front
 
 - **Idioma:** código/rotas/arquivos em inglês; todo texto visível em **pt-BR**.
 - **Identidade visual:** tema dark-only com tokens `@theme` (`bg-bg`, `bg-surface`, `bg-surface-2`, `border-line`, `text-ink`, `text-ink-muted`, `text-brand` #31f9a9, `danger/warning/info`). Primitivas e páginas usam **somente** classes dos tokens — nenhuma cor Tailwind solta (slate/emerald etc.). Logo: wordmark `<AJUDA-DEV/>` em `font-mono text-brand`; asset em `public/logo-ajudadev.png`.
-- **Contratos:** tipos de API somente em `src/types/api.ts`, espelhando as definitions `dto.*` do swagger.yaml do backend. `UserSummary.token` aparece vazio em respostas aninhadas — ignorar fora de login/register.
+- **Contratos:** tipos de API somente em `src/types/api.ts`, espelhando as definitions `dto.*` do swagger.yaml do backend. Campos aninhados de usuário vêm sem `token` (desde 14/09/2026 o token só vai no corpo para clientes nativos com `X-Client-Type: native`).
 - **Camadas:** páginas (`src/pages/<feature>`) → hooks (`src/hooks`) → services (`src/services/<area>.ts`, um módulo por área) → `services/api.ts`. Componentes compartilhados em `src/components/ui` (primitivas) e `src/components/<feature>`.
 - **Erros da API:** corpo `rest_err` tipado em `ApiErrorBody`; tradução de mensagens para pt-BR e `FIELD_LABELS` em `src/utils/apiError.ts` (tabela única — toda mensagem nova vista deve ser adicionada lá).
 - **Datas:** sempre via helpers de `src/utils/format.ts` (fuso fixo `America/Sao_Paulo`); enviar `toISOString()`. Nunca formatar manualmente.
 - **Paginação:** padrão backend `page`/`limit` + `{data, has_next}`; UI usa "Carregar mais" (`usePageable`), nunca pagina numerada.
-- **Sessão/autorização:** localStorage `ajudadev.token` / `ajudadev.user`; gates de UI por `src/utils/roles.ts` (`roleRank`, `canAtLeast`), espelhando `authorization.go` do backend.
+- **Sessão/autorização:** JWT em cookie HttpOnly `ajudadev_session` (o front nunca lê o token; axios com `withCredentials: true`); localStorage guarda só `ajudadev.user` (não é segredo — alimenta o cabeçalho) e o boot confirma a sessão com `GET /v1/user/me`; logout = `POST /v1/user/logout` + limpar `ajudadev.user`; rota pública `/auth/callback` trata o retorno do OAuth. Gates de UI por `src/utils/roles.ts` (`roleRank`, `canAtLeast`), espelhando `authorization.go` do backend.
 - **Enums:** constantes + labels pt-BR em `src/types/api.ts` / `src/utils/labels.ts` (valores exatos do backend: USER/MODERATOR/ADMIN; COMMUNITY_EVENT/MENTORING/WEBINAR; ONLINE/INPERSON/HYBRID; HOST/MENTOR/MENTEE/SPEAKER/ATTENDEE; REQUESTED/CONFIRMED/REJECTED/CANCELLED; WANT_TO_LEARN/LEARN_AND_TEACH/TEACH).
 - Sem comentários desnecessários no código; comentários apenas para "porquê" (contornos de limitações da API).
 

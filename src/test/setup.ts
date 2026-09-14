@@ -7,7 +7,7 @@ afterEach(() => {
 });
 
 // Contorno: o localStorage do jsdom deste ambiente é um objeto vazio, sem a Storage API
-// usada pela sessão (token/user). Só entra em cena quando a API real não está disponível.
+// usada pela sessão (usuário guardado). Só entra em cena quando a API real não está disponível.
 function createMemoryStorage(): Storage {
   const items = new Map<string, string>();
 

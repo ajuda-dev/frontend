@@ -3,6 +3,7 @@ import { GuestRoute } from "./components/auth/GuestRoute";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { AuthCallbackPage } from "./pages/auth/AuthCallbackPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
 import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
@@ -21,6 +22,8 @@ import { SkillsPage } from "./pages/skills/SkillsPage";
 export function AppRoutes() {
   return (
     <Routes>
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
       <Route element={<GuestRoute />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/registro" element={<RegisterPage />} />

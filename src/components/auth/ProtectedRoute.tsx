@@ -2,10 +2,10 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { useAuth } from "../../context/useAuth";
 
 export function ProtectedRoute() {
-  const { session } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
 
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />;
   }
 

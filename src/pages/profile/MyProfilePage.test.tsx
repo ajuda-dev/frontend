@@ -63,7 +63,6 @@ function apiError(status: number, data: unknown) {
 }
 
 function seedSession(id = "u1") {
-  localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
@@ -244,7 +243,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha Silva",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
     });
     const user = userEvent.setup();
     renderPage();
@@ -259,7 +257,7 @@ describe("MyProfilePage", () => {
     expect(mockedUpdateName).toHaveBeenCalledWith("u1", "Lucas Rocha Silva");
     expect(screen.getByRole("heading", { name: "Lucas Rocha Silva" })).toBeInTheDocument();
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
+    expect(localStorage.getItem("ajudadev.token")).toBeNull();
     expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").name).toBe("Lucas Rocha Silva");
   });
 
@@ -397,7 +395,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend",
       configVisibility: {
         email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
@@ -433,7 +430,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend",
       configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: false } },
     });
@@ -456,7 +452,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend e Go",
       configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: true } },
     });
@@ -480,7 +475,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Novo resumo",
       configVisibility: {
         email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
@@ -623,7 +617,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend",
       configVisibility: {
         email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
@@ -727,7 +720,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend",
       configVisibility: {
         email: { value: "lucas@ajudadev.dev", shareWithCommunity: true },
@@ -769,7 +761,6 @@ describe("MyProfilePage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Novo resumo",
       configVisibility: { email: { value: "lucas@ajudadev.dev", shareWithCommunity: true } },
     });
@@ -782,7 +773,7 @@ describe("MyProfilePage", () => {
     await user.click(screen.getByRole("button", { name: "Salvar" }));
 
     expect(await screen.findByText("Perfil atualizado.")).toBeInTheDocument();
-    expect(localStorage.getItem("ajudadev.token")).toBe("token-123");
+    expect(localStorage.getItem("ajudadev.token")).toBeNull();
     expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").name).toBe("Lucas Rocha");
   });
 });

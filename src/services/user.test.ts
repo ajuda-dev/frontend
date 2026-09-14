@@ -183,7 +183,6 @@ describe("updateUserName", () => {
       name: "Lucas R.",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
     };
     mockedPut.mockResolvedValue({ data: updated });
 
@@ -204,7 +203,6 @@ describe("updateUserProfile", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
-      token: "",
       description: "Dev backend",
       configVisibility: { github: { value: "https://github.com/lucas", shareWithCommunity: true } },
     };
