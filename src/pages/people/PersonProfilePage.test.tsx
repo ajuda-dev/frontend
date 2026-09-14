@@ -3,20 +3,26 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../context/AuthContext";
-import type { SkillUser, UserProfile } from "../../types/api";
+import type { EventItem, SkillUser, UserProfile } from "../../types/api";
 import { PersonProfilePage } from "./PersonProfilePage";
 
+vi.mock("../../services/event", () => ({ createEvent: vi.fn() }));
+vi.mock("../../services/eventUser", () => ({ addParticipant: vi.fn() }));
 vi.mock("../../services/user", () => ({
   getUserProfile: vi.fn(),
   getUserSkills: vi.fn(),
   deleteUser: vi.fn(),
 }));
 
+import { createEvent } from "../../services/event";
+import { addParticipant } from "../../services/eventUser";
 import { deleteUser, getUserProfile, getUserSkills } from "../../services/user";
 
 const mockedProfile = vi.mocked(getUserProfile);
 const mockedSkills = vi.mocked(getUserSkills);
 const mockedDeleteUser = vi.mocked(deleteUser);
+const mockedCreateEvent = vi.mocked(createEvent);
+const mockedAdd = vi.mocked(addParticipant);
 
 function profile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
@@ -43,6 +49,23 @@ function apiError(status: number, data: unknown) {
   });
 }
 
+// Data futura em hora local, no formato aceito pelo input datetime-local.
+function futureLocalValue(): string {
+  const date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+const CREATED_MENTORING: EventItem = {
+  id: "e1",
+  title: "Mentoria 1:1 com Ana Souza",
+  description: "",
+  category: "MENTORING",
+  type: "ONLINE",
+  start_at: "2026-10-01T21:00:00.000Z",
+  duration_min: 60,
+};
+
 function seedSession(id = "u1", role: "USER" | "MODERATOR" | "ADMIN" = "USER") {
   localStorage.setItem("ajudadev.token", "token-123");
   localStorage.setItem(
@@ -58,6 +81,7 @@ function renderPage(userId = "u2") {
         <Routes>
           <Route path="/pessoas" element={<p>Lista de pessoas</p>} />
           <Route path="/pessoas/:userId" element={<PersonProfilePage />} />
+          <Route path="/eventos/:id" element={<p>Página do 1:1</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -70,6 +94,14 @@ describe("PersonProfilePage", () => {
     vi.clearAllMocks();
     seedSession();
     mockedSkills.mockResolvedValue([]);
+    mockedCreateEvent.mockResolvedValue(CREATED_MENTORING);
+    mockedAdd.mockResolvedValue({
+      id: "p1",
+      event_id: "e1",
+      user_id: "u2",
+      role: "MENTEE",
+      status: "REQUESTED",
+    });
   });
 
   it("mostra nome, descrição, e-mail e contatos compartilhados", async () => {
@@ -332,5 +364,49 @@ describe("PersonProfilePage", () => {
 
     expect(await screen.findByText("É responsável por uma comunidade ativa")).toBeInTheDocument();
     expect(screen.getByText("É membro de uma comunidade ativa")).toBeInTheDocument();
+  });
+
+  it("no próprio perfil não oferece agendar 1:1", async () => {
+    seedSession("u2");
+    mockedProfile.mockResolvedValue(profile());
+    renderPage("u2");
+
+    await screen.findByRole("heading", { name: "Ana Souza" });
+    expect(screen.queryByRole("button", { name: "Agendar 1:1" })).not.toBeInTheDocument();
+  });
+
+  it("no perfil de outra pessoa oferece agendar 1:1", async () => {
+    mockedProfile.mockResolvedValue(profile());
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Agendar 1:1" })).toBeInTheDocument();
+  });
+
+  it("agendar 1:1 pelo perfil cria o evento MENTORING, convida a pessoa e abre a página do 1:1", async () => {
+    mockedProfile.mockResolvedValue(profile());
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Agendar 1:1" }));
+
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText(/convida Ana Souza como mentorado/)).toBeInTheDocument();
+
+    // O `datetime-local` entra em um único change: digitar caractere a caractere
+    // fica instável sob carga e não acrescenta cobertura.
+    fireEvent.change(within(dialog).getByLabelText("Data e hora"), {
+      target: { value: futureLocalValue() },
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Agendar 1:1" }));
+    expect(await screen.findByText("Página do 1:1")).toBeInTheDocument();
+    expect(mockedCreateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Mentoria 1:1 com Ana Souza",
+        category: "MENTORING",
+        type: "ONLINE",
+        creator_role: "MENTOR",
+      }),
+    );
+    expect(mockedAdd).toHaveBeenCalledWith("e1", { userId: "u2", role: "MENTEE" });
   });
 });

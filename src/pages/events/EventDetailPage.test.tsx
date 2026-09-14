@@ -438,7 +438,8 @@ describe("EventDetailPage", () => {
     renderDetail({ event: EVENT });
 
     expect(await screen.findByText("Painel do anfitrião")).toBeInTheDocument();
-    expect(screen.getByText("Sua participação")).toBeInTheDocument();
+    // A zona nasce como spinner: a lista de participantes chega em um fetch à parte.
+    expect(await screen.findByText("Sua participação")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Participar" })).toBeInTheDocument();
   });
 
@@ -457,7 +458,8 @@ describe("EventDetailPage", () => {
     });
 
     expect(await screen.findByText("Gestão do evento")).toBeInTheDocument();
-    expect(screen.getByText("Sua participação")).toBeInTheDocument();
+    // A zona nasce como spinner: a lista de participantes chega em um fetch à parte.
+    expect(await screen.findByText("Sua participação")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Participar" })).toBeInTheDocument();
   });
 });

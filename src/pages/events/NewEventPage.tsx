@@ -14,6 +14,7 @@ import { Spinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useAddresses } from "../../hooks/useAddresses";
+import { useMemberships } from "../../hooks/useMemberships";
 import { findCommunityById } from "../../services/community";
 import { createEvent } from "../../services/event";
 import { EVENT_CATEGORIES, EVENT_TYPES, CREATOR_ROLES } from "../../types/api";
@@ -64,6 +65,7 @@ export function NewEventPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const addresses = useAddresses(user?.id);
+  const memberships = useMemberships(user?.id);
 
   const communityId = searchParams.get("community_id") ?? "";
 
@@ -120,6 +122,14 @@ export function NewEventPage() {
   // PENDING para quem não é o responsável): o `owner` vem no CommunityDto das três
   // origens (busca por id, listagem e comunidades do usuário).
   const isCommunityOwner = Boolean(user && community?.owner?.id === user.id);
+  // O `useMemberships` é cache local por usuário: aqui ele só decide mostrar o atalho
+  // de entrar, nunca se o vínculo é aceito (quem decide isso é o backend).
+  const isCommunityMember = Boolean(community && memberships.isMember(community.id));
+  // O picker só oferece comunidades próprias ou em que já sou membro, então um vínculo
+  // sem membership só chega aqui pelo link `?community_id=` — é o caso que o atalho atende.
+  const isLinkedFromUrl = Boolean(communityId) && community?.id === communityId;
+  const canJoinCommunity =
+    Boolean(user?.id) && isLinkedFromUrl && !isCommunityOwner && !isCommunityMember;
 
   function handleTypeChange(next: EventType) {
     setType(next);
@@ -419,6 +429,32 @@ export function NewEventPage() {
               ? "Você é o responsável por esta comunidade: o evento entra direto no catálogo, sem fila de aprovação."
               : "Só o responsável ou membros da comunidade podem criar eventos nela, e eventos criados por membros passam pela aprovação do responsável antes de aparecer no catálogo."}
           </Alert>
+        ) : null}
+
+        {community && canJoinCommunity ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              loading={memberships.pendingId === community.id}
+              onClick={() => void memberships.join(community.id)}
+            >
+              Entrar na comunidade
+            </Button>
+            <p className="text-ink-muted text-xs">
+              É preciso ser membro para criar um evento nesta comunidade.
+            </p>
+          </div>
+        ) : null}
+
+        {memberships.notice ? (
+          <Alert variant={memberships.notice.tone === "error" ? "error" : "info"}>
+            {memberships.notice.message}
+          </Alert>
+        ) : null}
+
+        {/* O hook limpa o notice a cada join: notice presente = o último join não foi 201
+            e já tem mensagem própria, então aqui só sobra o caso de sucesso. */}
+        {isLinkedFromUrl && !isCommunityOwner && isCommunityMember && !memberships.notice ? (
+          <Alert variant="success">Você é membro desta comunidade.</Alert>
         ) : null}
 
         {loadingCommunity ? (

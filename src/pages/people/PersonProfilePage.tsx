@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
+import { ScheduleMentoringModal } from "../../components/event/ScheduleMentoringModal";
 import { Alert } from "../../components/ui/Alert";
 import { Avatar } from "../../components/ui/Avatar";
 import { Badge } from "../../components/ui/Badge";
@@ -29,6 +30,7 @@ export function PersonProfilePage() {
   const [deleteStep, setDeleteStep] = useState<"closed" | "confirm" | "sure">("closed");
   const [deleting, setDeleting] = useState(false);
   const [deleteErrors, setDeleteErrors] = useState<string[]>([]);
+  const [mentoringOpen, setMentoringOpen] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -59,6 +61,8 @@ export function PersonProfilePage() {
 
   // Só ADMIN exclui usuário (os demais cargos não veem o caminho) e nunca o próprio perfil.
   const canDeleteUser = Boolean(user && profile && user.role === "ADMIN" && user.id !== profile.id);
+  // Marcar 1:1 só faz sentido no perfil de outra pessoa; o convite sai do próprio perfil.
+  const canScheduleMentoring = Boolean(user && profile && user.id !== profile.id);
 
   const handleDelete = useCallback(async () => {
     setDeleting(true);
@@ -137,6 +141,8 @@ export function PersonProfilePage() {
                     Ir para meu perfil
                   </Link>
                 </>
+              ) : canScheduleMentoring ? (
+                <Button onClick={() => setMentoringOpen(true)}>Agendar 1:1</Button>
               ) : null
             }
           />
@@ -258,6 +264,14 @@ export function PersonProfilePage() {
         }}
         onClose={() => setDeleteStep("closed")}
       />
+
+      {mentoringOpen ? (
+        <ScheduleMentoringModal
+          person={{ id: profile.id, name: profile.name }}
+          onClose={() => setMentoringOpen(false)}
+          onScheduled={(eventId) => navigate(`/eventos/${eventId}`)}
+        />
+      ) : null}
     </div>
   );
 }

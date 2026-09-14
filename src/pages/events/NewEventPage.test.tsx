@@ -15,17 +15,25 @@ vi.mock("../../services/event", () => ({
 }));
 vi.mock("../../services/community", () => ({
   findCommunityById: vi.fn(),
+  joinCommunity: vi.fn(),
+  leaveCommunity: vi.fn(),
   listCommunities: vi.fn(),
   listUserCommunities: vi.fn(),
 }));
 
 import { createAddress } from "../../services/address";
-import { findCommunityById, listCommunities, listUserCommunities } from "../../services/community";
+import {
+  findCommunityById,
+  joinCommunity,
+  listCommunities,
+  listUserCommunities,
+} from "../../services/community";
 import { createEvent } from "../../services/event";
 
 const mockedCreateAddress = vi.mocked(createAddress);
 const mockedCreateEvent = vi.mocked(createEvent);
 const mockedFindCommunity = vi.mocked(findCommunityById);
+const mockedJoinCommunity = vi.mocked(joinCommunity);
 const mockedListCommunities = vi.mocked(listCommunities);
 const mockedListUserCommunities = vi.mocked(listUserCommunities);
 
@@ -103,6 +111,7 @@ describe("NewEventPage", () => {
     mockedCreateAddress.mockResolvedValue(ADDRESS);
     mockedCreateEvent.mockResolvedValue(CREATED);
     mockedFindCommunity.mockResolvedValue(null);
+    mockedJoinCommunity.mockResolvedValue({ id: "m1", community_id: "c1", user_id: "u1" });
     mockedListCommunities.mockResolvedValue(emptyPage());
     mockedListUserCommunities.mockResolvedValue(emptyPage());
   });
@@ -393,6 +402,104 @@ describe("NewEventPage", () => {
     renderPage("/eventos/novo?community_id=c1");
 
     expect(await screen.findByText(/passam pela aprovação do responsável/)).toBeInTheDocument();
+  });
+
+  it("comunidade da URL sem membership oferece o atalho de entrar", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(
+      await screen.findByRole("button", { name: "Entrar na comunidade" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("É preciso ser membro para criar um evento nesta comunidade."),
+    ).toBeInTheDocument();
+  });
+
+  it("entrar na comunidade chama a API, esconde o atalho e confirma", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    await user.click(await screen.findByRole("button", { name: "Entrar na comunidade" }));
+
+    expect(mockedJoinCommunity).toHaveBeenCalledWith("c1");
+    expect(await screen.findByText("Você é membro desta comunidade.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Entrar na comunidade" }),
+    ).not.toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.memberships.u1") ?? "[]")).toContain("c1");
+  });
+
+  it("400 de quem já era membro reconcilia o cache e avisa, sem duplicar confirmação", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    mockedJoinCommunity.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: { status: 400, data: { message: "user is already a member", code: 400 } },
+    });
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    await user.click(await screen.findByRole("button", { name: "Entrar na comunidade" }));
+
+    expect(await screen.findByText("Você já é membro desta comunidade.")).toBeInTheDocument();
+    expect(screen.queryByText("Você é membro desta comunidade.")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Entrar na comunidade" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falha ao entrar mostra a mensagem do hook e mantém o atalho", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    mockedJoinCommunity.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 500",
+      response: { status: 500, data: { message: "internal server error", code: 500 } },
+    });
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    await user.click(await screen.findByRole("button", { name: "Entrar na comunidade" }));
+
+    expect(await screen.findByText("Não foi possível entrar na comunidade.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar na comunidade" })).toBeInTheDocument();
+  });
+
+  it("responsável pela comunidade não vê o atalho de entrar", async () => {
+    mockedFindCommunity.mockResolvedValue({
+      ...COMMUNITY,
+      owner: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+    });
+    renderPage("/eventos/novo?community_id=c1");
+
+    await screen.findByText(/o evento entra direto no catálogo/);
+    expect(
+      screen.queryByRole("button", { name: "Entrar na comunidade" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("quem já está no cache de memberships não vê o atalho de entrar", async () => {
+    localStorage.setItem("ajudadev.memberships.u1", JSON.stringify(["c1"]));
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    renderPage("/eventos/novo?community_id=c1");
+
+    await screen.findByRole("radio", { name: /Comunidade de origem/ });
+    expect(
+      screen.queryByRole("button", { name: "Entrar na comunidade" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("comunidade escolhida no picker (própria ou de membro) não mostra o atalho", async () => {
+    mockedListCommunities.mockResolvedValue({ data: [COMMUNITY], has_next: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("radio", { name: /Comunidade de origem/ }));
+
+    expect(
+      screen.queryByRole("button", { name: "Entrar na comunidade" }),
+    ).not.toBeInTheDocument();
   });
 
   it("sem vínculo com comunidade o aviso não aparece", async () => {
