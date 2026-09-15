@@ -225,7 +225,11 @@ export type CreatorRole = (typeof CREATOR_ROLES)[number];
 
 export const NOTIFICATION_TYPES = [
   "COMMUNITY_EVENT_PENDING_APPROVAL",
+  "COMMUNITY_EVENT_APPROVED",
+  "COMMUNITY_EVENT_REJECTED",
   "MENTORING_INVITE_PENDING",
+  "MENTORING_INVITE_ACCEPTED",
+  "MENTORING_INVITE_REJECTED",
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -237,6 +241,8 @@ export interface NotificationPayload {
   title?: string;
   community_id?: string;
   category?: EventCategory;
+  status?: string;
+  actor_id?: string;
 }
 
 export interface Notification {

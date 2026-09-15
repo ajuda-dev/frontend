@@ -58,7 +58,11 @@ export const EVENT_APPROVAL_STATUS_LABEL: Record<EventApprovalStatus, string> = 
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   COMMUNITY_EVENT_PENDING_APPROVAL: "Evento para aprovar",
+  COMMUNITY_EVENT_APPROVED: "Evento aprovado",
+  COMMUNITY_EVENT_REJECTED: "Evento recusado",
   MENTORING_INVITE_PENDING: "Convite de mentoria",
+  MENTORING_INVITE_ACCEPTED: "Convite aceito",
+  MENTORING_INVITE_REJECTED: "Convite recusado",
 };
 
 export function isInAppNotificationType(type: string): type is NotificationType {

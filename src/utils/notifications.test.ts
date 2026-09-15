@@ -38,6 +38,37 @@ describe("notificationTitle", () => {
       ),
     ).toBe("Você recebeu um convite de mentoria 1:1");
   });
+
+  it("descreve aceite e recusa de evento da comunidade", () => {
+    expect(
+      notificationTitle(item(3, { type: "COMMUNITY_EVENT_APPROVED", payload: { title: "Meetup Dev" } })),
+    ).toBe("Meetup Dev foi aprovado");
+    expect(notificationTitle(item(4, { type: "COMMUNITY_EVENT_APPROVED", payload: {} }))).toBe(
+      "Seu evento da comunidade foi aprovado",
+    );
+    expect(
+      notificationTitle(item(5, { type: "COMMUNITY_EVENT_REJECTED", payload: { title: "Meetup Dev" } })),
+    ).toBe("Meetup Dev foi recusado");
+    expect(notificationTitle(item(6, { type: "COMMUNITY_EVENT_REJECTED", payload: {} }))).toBe(
+      "Seu evento da comunidade foi recusado",
+    );
+  });
+
+  it("descreve aceite e recusa de convite de mentoria", () => {
+    expect(
+      notificationTitle(
+        item(7, { type: "MENTORING_INVITE_ACCEPTED", payload: { title: "Mentoria Go", category: "MENTORING" } }),
+      ),
+    ).toBe("O convite de mentoria Mentoria Go foi aceito");
+    expect(notificationTitle(item(8, { type: "MENTORING_INVITE_ACCEPTED", payload: {} }))).toBe(
+      "Um convite de mentoria 1:1 foi aceito",
+    );
+    expect(
+      notificationTitle(
+        item(9, { type: "MENTORING_INVITE_REJECTED", payload: { title: "Mentoria Go", category: "MENTORING" } }),
+      ),
+    ).toBe("O convite de mentoria Mentoria Go foi recusado");
+  });
 });
 
 describe("notificationHref", () => {
@@ -68,6 +99,13 @@ describe("mergeNotifications", () => {
     const read = item(3, { read_at: "2026-09-14T13:00:00.000Z" });
 
     expect(mergeNotifications([unread, unknown, read], [])).toEqual([unread]);
+  });
+
+  it("mantém aceite e recusa na inbox in-app", () => {
+    const approved = item(10, { type: "COMMUNITY_EVENT_APPROVED" });
+    const accepted = item(11, { type: "MENTORING_INVITE_ACCEPTED" });
+
+    expect(mergeNotifications([approved, accepted], []).map((n) => n.id)).toEqual([11, 10]);
   });
 });
 

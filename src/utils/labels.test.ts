@@ -77,7 +77,11 @@ describe("labels pt-BR", () => {
 
   it("cobre os types in-app da inbox e cai em Aviso quando desconhecido", () => {
     expect(notificationTypeLabel("COMMUNITY_EVENT_PENDING_APPROVAL")).toBe("Evento para aprovar");
+    expect(notificationTypeLabel("COMMUNITY_EVENT_APPROVED")).toBe("Evento aprovado");
+    expect(notificationTypeLabel("COMMUNITY_EVENT_REJECTED")).toBe("Evento recusado");
     expect(notificationTypeLabel("MENTORING_INVITE_PENDING")).toBe("Convite de mentoria");
+    expect(notificationTypeLabel("MENTORING_INVITE_ACCEPTED")).toBe("Convite aceito");
+    expect(notificationTypeLabel("MENTORING_INVITE_REJECTED")).toBe("Convite recusado");
     expect(notificationTypeLabel("SOMETHING_NEW")).toBe("Aviso");
     for (const type of NOTIFICATION_TYPES) {
       expect(isInAppNotificationType(type)).toBe(true);

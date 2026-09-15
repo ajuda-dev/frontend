@@ -136,6 +136,21 @@ describe("NotificationContext", () => {
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
+  it("inclui aceite e recusa vindos do stream", async () => {
+    renderProvider();
+    await waitFor(() => expect(mockedOpen).toHaveBeenCalled());
+
+    act(() => {
+      handlers?.onNotification({
+        id: 8,
+        type: "COMMUNITY_EVENT_APPROVED",
+        payload: { event_id: "e8", title: "Meetup" },
+      });
+    });
+
+    expect(await screen.findByRole("button", { name: "8:Meetup" })).toBeInTheDocument();
+  });
+
   it("marca lida de forma otimista, chama PUT e navega", async () => {
     const user = userEvent.setup();
     mockedList.mockResolvedValue({ data: [item(42)], has_next: false });
