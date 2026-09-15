@@ -168,6 +168,14 @@ describe("translateApiMessage", () => {
       "E-mail e senha não podem ser alterados por este endpoint",
     );
   });
+
+  it("traduz as mensagens da inbox (plano 21)", () => {
+    expect(translateApiMessage("status must be unread, read or all")).toBe(
+      "Status deve ser não lidas, lidas ou todas",
+    );
+    expect(translateApiMessage("id must be a positive integer")).toBe("Identificador inválido");
+    expect(translateApiMessage("notification not found")).toBe("Notificação não encontrada");
+  });
 });
 
 describe("fieldLabel", () => {

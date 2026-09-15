@@ -222,3 +222,31 @@ export type EventApprovalStatus = (typeof EVENT_APPROVAL_STATUSES)[number];
 
 export const CREATOR_ROLES = ["MENTOR", "MENTEE"] as const;
 export type CreatorRole = (typeof CREATOR_ROLES)[number];
+
+export const NOTIFICATION_TYPES = [
+  "COMMUNITY_EVENT_PENDING_APPROVAL",
+  "MENTORING_INVITE_PENDING",
+] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export const NOTIFICATION_INBOX_STATUSES = ["unread", "read", "all"] as const;
+export type NotificationInboxStatus = (typeof NOTIFICATION_INBOX_STATUSES)[number];
+
+export interface NotificationPayload {
+  event_id?: string;
+  title?: string;
+  community_id?: string;
+  category?: EventCategory;
+}
+
+export interface Notification {
+  id: number;
+  type: NotificationType | string;
+  payload: NotificationPayload;
+  created_at: string;
+  read_at: string | null;
+}
+
+export function isNotificationType(value: string): value is NotificationType {
+  return (NOTIFICATION_TYPES as readonly string[]).includes(value);
+}

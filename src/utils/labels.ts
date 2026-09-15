@@ -1,12 +1,14 @@
 import type { BadgeTone } from "../components/ui/Badge";
-import type {
-  EventApprovalStatus,
-  EventCategory,
-  EventType,
-  ParticipationRole,
-  ParticipationStatus,
-  SkillLevel,
-  UserRole,
+import {
+  isNotificationType,
+  type EventApprovalStatus,
+  type EventCategory,
+  type EventType,
+  type NotificationType,
+  type ParticipationRole,
+  type ParticipationStatus,
+  type SkillLevel,
+  type UserRole,
 } from "../types/api";
 
 export const USER_ROLE_LABEL: Record<UserRole, string> = {
@@ -53,6 +55,20 @@ export const EVENT_APPROVAL_STATUS_LABEL: Record<EventApprovalStatus, string> = 
   APPROVED: "Aprovado",
   REJECTED: "Rejeitado",
 };
+
+export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
+  COMMUNITY_EVENT_PENDING_APPROVAL: "Evento para aprovar",
+  MENTORING_INVITE_PENDING: "Convite de mentoria",
+};
+
+export function isInAppNotificationType(type: string): type is NotificationType {
+  return isNotificationType(type);
+}
+
+export function notificationTypeLabel(type: string): string {
+  if (isNotificationType(type)) return NOTIFICATION_TYPE_LABEL[type];
+  return "Aviso";
+}
 
 export const EVENT_CATEGORY_COLOR: Record<EventCategory, BadgeTone> = {
   COMMUNITY_EVENT: "info",

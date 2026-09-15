@@ -1,15 +1,23 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { NotificationProvider } from "../../context/NotificationContext";
 import { useAuth } from "../../context/useAuth";
 import { USER_ROLE_LABEL } from "../../utils/labels";
 import { Button } from "../ui/Button";
+import { NotificationBell } from "./NotificationBell";
 import { visibleNavItems } from "./navItems";
 
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+
+  const handleBellOpenChange = useCallback((open: boolean) => {
+    if (open) setMenuOpen(false);
+    setBellOpen(open);
+  }, []);
 
   const items = visibleNavItems(user?.role);
 
@@ -19,7 +27,8 @@ export function AppLayout() {
   }
 
   return (
-    <div className="bg-bg text-ink flex min-h-svh flex-col">
+    <NotificationProvider>
+      <div className="bg-bg text-ink flex min-h-svh flex-col">
       <header className="bg-surface border-line sticky top-0 z-40 border-b">
         <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3">
           <Link to="/" className="font-mono text-brand text-lg" onClick={() => setNavOpen(false)}>
@@ -43,12 +52,16 @@ export function AppLayout() {
           </nav>
 
           <div className="flex items-center gap-2">
+            <NotificationBell open={bellOpen} onOpenChange={handleBellOpenChange} />
             <div className="relative">
               <button
                 type="button"
                 aria-haspopup="menu"
                 aria-expanded={menuOpen}
-                onClick={() => setMenuOpen((open) => !open)}
+                onClick={() => {
+                  setBellOpen(false);
+                  setMenuOpen((open) => !open);
+                }}
                 className="border-line hover:bg-surface-2 flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm"
               >
                 <span className="text-ink">{user?.name}</span>
@@ -112,5 +125,6 @@ export function AppLayout() {
         <Outlet />
       </main>
     </div>
+    </NotificationProvider>
   );
 }

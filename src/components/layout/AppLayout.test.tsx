@@ -1,10 +1,19 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../context/AuthContext";
 import { AppLayout } from "./AppLayout";
 import { NAV_ITEMS } from "./navItems";
+
+vi.mock("../../services/notification", () => ({
+  listNotifications: vi.fn().mockResolvedValue({ data: [], has_next: false }),
+  markNotificationRead: vi.fn(),
+}));
+
+vi.mock("../../services/notificationStream", () => ({
+  openNotificationStream: vi.fn(() => vi.fn()),
+}));
 
 function seedSession(role: "USER" | "ADMIN" = "USER") {
   localStorage.setItem(
@@ -38,6 +47,12 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.getByText("Lucas Rocha")).toBeInTheDocument();
     expect(screen.getByText("Usuário")).toBeInTheDocument();
+  });
+
+  it("mostra o sino de notificações", () => {
+    seedSession();
+    renderLayout();
+    expect(screen.getByRole("button", { name: /Notificações/ })).toBeInTheDocument();
   });
 
   it("Sair encerra a sessão e vai para o login", async () => {

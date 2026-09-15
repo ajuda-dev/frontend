@@ -1,8 +1,17 @@
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "./context/AuthContext";
 import { AppRoutes } from "./routes";
+
+vi.mock("./services/notification", () => ({
+  listNotifications: vi.fn().mockResolvedValue({ data: [], has_next: false }),
+  markNotificationRead: vi.fn(),
+}));
+
+vi.mock("./services/notificationStream", () => ({
+  openNotificationStream: vi.fn(() => vi.fn()),
+}));
 
 function renderAt(path: string) {
   return render(

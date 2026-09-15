@@ -3,6 +3,7 @@ import {
   EVENT_APPROVAL_STATUSES,
   EVENT_CATEGORIES,
   EVENT_TYPES,
+  NOTIFICATION_TYPES,
   PARTICIPATION_ROLES,
   PARTICIPATION_STATUSES,
   SKILL_LEVELS,
@@ -13,7 +14,9 @@ import {
   EVENT_APPROVAL_STATUS_LABEL,
   EVENT_CATEGORY_LABEL,
   EVENT_TYPE_LABEL,
+  isInAppNotificationType,
   LABEL_COLORS,
+  notificationTypeLabel,
   PARTICIPATION_ROLE_LABEL,
   PARTICIPATION_STATUS_COLOR,
   PARTICIPATION_STATUS_LABEL,
@@ -70,5 +73,16 @@ describe("labels pt-BR", () => {
   it("LABEL_COLORS expõe a aprovação sem trocar a chave status (participação)", () => {
     expect(LABEL_COLORS.approvalStatus).toBe(EVENT_APPROVAL_STATUS_COLOR);
     expect(LABEL_COLORS.status).toBe(PARTICIPATION_STATUS_COLOR);
+  });
+
+  it("cobre os types in-app da inbox e cai em Aviso quando desconhecido", () => {
+    expect(notificationTypeLabel("COMMUNITY_EVENT_PENDING_APPROVAL")).toBe("Evento para aprovar");
+    expect(notificationTypeLabel("MENTORING_INVITE_PENDING")).toBe("Convite de mentoria");
+    expect(notificationTypeLabel("SOMETHING_NEW")).toBe("Aviso");
+    for (const type of NOTIFICATION_TYPES) {
+      expect(isInAppNotificationType(type)).toBe(true);
+      expect(notificationTypeLabel(type)).toBeTruthy();
+    }
+    expect(isInAppNotificationType("SOMETHING_NEW")).toBe(false);
   });
 });

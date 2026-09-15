@@ -186,6 +186,9 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "unauthorized": "Sessão expirada",
   "forbidden": "Você não tem permissão para esta ação",
   "not found": "Registro não encontrado",
+  "status must be unread, read or all": "Status deve ser não lidas, lidas ou todas",
+  "id must be a positive integer": "Identificador inválido",
+  "notification not found": "Notificação não encontrada",
 };
 
 export const GENERIC_ERROR_MESSAGE = "Não foi possível concluir a operação. Tente novamente.";

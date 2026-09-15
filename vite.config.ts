@@ -8,7 +8,18 @@ export default defineConfig({
   server: {
     host: "127.0.0.1",
     proxy: {
-      "/v1": "http://localhost:8080",
+      "/v1": {
+        target: "http://localhost:8080",
+        changeOrigin: false,
+        configure(proxy) {
+          proxy.on("proxyRes", (proxyRes, req) => {
+            if (req.url?.includes("/notifications/stream")) {
+              proxyRes.headers["cache-control"] = "no-cache";
+              proxyRes.headers["x-accel-buffering"] = "no";
+            }
+          });
+        },
+      },
     },
   },
   test: {
