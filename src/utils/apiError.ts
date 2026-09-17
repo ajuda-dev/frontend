@@ -74,6 +74,15 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
     "Muitas tentativas de confirmação. Aguarde e tente de novo",
   "too many verification emails":
     "Muitos reenvios. Aguarde um pouco antes de pedir outro código",
+  "too many community creations": "Muitas criações de comunidade. Aguarde e tente de novo",
+  "too many community joins": "Muitas entradas em comunidades. Aguarde e tente de novo",
+  "too many event creations": "Muitas criações de evento. Aguarde e tente de novo",
+  "owned communities limit reached": "Você atingiu o limite de comunidades que pode criar",
+  "community memberships limit reached":
+    "Você atingiu o limite de comunidades das quais pode participar",
+  "pending events limit reached": "Você atingiu o limite de eventos aguardando aprovação",
+  "active events limit reached": "Você atingiu o limite de eventos ativos",
+  "skills limit reached": "Você atingiu o limite de habilidades neste perfil",
   "email is not verified": EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   "invalid user data": "Dados do usuário inválidos",
   "invalid community data": "Dados da comunidade inválidos",

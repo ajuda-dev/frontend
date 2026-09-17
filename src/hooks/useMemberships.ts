@@ -93,7 +93,8 @@ export function useMemberships(userId: string | null | undefined): UseMembership
           setNotice({ tone: "info", message: "Você já é membro desta comunidade." });
         } else if (status === 404) {
           setNotice({ tone: "error", message: "Comunidade não encontrada." });
-        } else if (status === 403) {
+        } else if (status === 403 || status === 429) {
+          // 429 é quota/rate: não marcar membro. 403 (e-mail) e 429 usam a tradução da API.
           setNotice({ tone: "error", message: apiErrorMessage(error) });
         } else {
           setNotice({ tone: "error", message: "Não foi possível entrar na comunidade." });

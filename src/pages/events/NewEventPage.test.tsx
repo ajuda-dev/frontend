@@ -471,6 +471,32 @@ describe("NewEventPage", () => {
     expect(screen.getByRole("button", { name: "Entrar na comunidade" })).toBeInTheDocument();
   });
 
+  it("429 ao entrar na comunidade mostra a quota e mantém o atalho", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    mockedJoinCommunity.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: {
+          message: "community memberships limit reached",
+          error: "too_many_requests",
+          code: 429,
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    await user.click(await screen.findByRole("button", { name: "Entrar na comunidade" }));
+
+    expect(
+      await screen.findByText("Você atingiu o limite de comunidades das quais pode participar"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar na comunidade" })).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.memberships.u1") ?? "[]")).not.toContain("c1");
+  });
+
   it("responsável pela comunidade não vê o atalho de entrar", async () => {
     mockedFindCommunity.mockResolvedValue({
       ...COMMUNITY,
@@ -636,5 +662,61 @@ describe("NewEventPage", () => {
     await user.click(screen.getByRole("link", { name: "Confirmar e-mail" }));
     expect(mockedCreateEvent).not.toHaveBeenCalled();
     expect(mockedJoinCommunity).not.toHaveBeenCalled();
+  });
+
+  it("429 de quota mostra o alerta em pt-BR e permanece no formulário", async () => {
+    mockedCreateEvent.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: { message: "pending events limit reached", error: "too_many_requests", code: 429 },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Você atingiu o limite de eventos aguardando aprovação"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Título")).toHaveValue("Meetup Dev SP");
+  });
+
+  it("429 de eventos ativos e de rate aparecem traduzidos, sem redirect", async () => {
+    mockedCreateEvent.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: { message: "active events limit reached", error: "too_many_requests", code: 429 },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Você atingiu o limite de eventos ativos")).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
+
+    mockedCreateEvent.mockRejectedValueOnce({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: { message: "too many event creations", error: "too_many_requests", code: 429 },
+      },
+    });
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Muitas criações de evento. Aguarde e tente de novo"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
   });
 });

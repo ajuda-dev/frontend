@@ -17,7 +17,7 @@ export function NewCommunityPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Nova comunidade"
-        description="Cadastre o endereço e descreva a comunidade para publicá-la no catálogo."
+        description="Cadastre o endereço e descreva a comunidade para publicá-la no catálogo. No padrão da plataforma, cada pessoa pode criar até 5 comunidades — moderadores, administradores e a configuração do servidor podem ter limites diferentes."
       />
 
       <EmailVerificationGate>

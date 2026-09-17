@@ -233,7 +233,7 @@ export function NewEventPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Novo evento"
-        description="Descreva o encontro, escolha o formato e publique no catálogo."
+        description="Descreva o encontro, escolha o formato e publique no catálogo. No padrão da plataforma, cada pessoa pode ter até 5 eventos aguardando aprovação e 20 eventos ativos — moderadores, administradores e a configuração do servidor podem ter limites diferentes."
       />
 
       <EmailVerificationGate>

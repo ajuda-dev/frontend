@@ -640,6 +640,9 @@ export function MyProfilePage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-ink text-base font-semibold">Minhas habilidades</h2>
+        <p className="text-ink-muted text-sm">
+          Se o servidor limitar habilidades por perfil, um aviso aparece ao atingir o teto.
+        </p>
 
         <AddSkillForm onAdd={handleAddSkill} />
 

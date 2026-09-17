@@ -168,6 +168,32 @@ describe("MyProfilePage", () => {
     expect(await screen.findByLabelText("Mudar nível")).toHaveValue("TEACH");
   });
 
+  it("429 de quota de skills mostra o erro e não inclui a habilidade na lista", async () => {
+    mockedListSkills.mockResolvedValue(page([{ id: "s1", name: "GO" }]));
+    mockedSkills.mockResolvedValue([]);
+    mockedAssign.mockRejectedValue(
+      apiError(429, {
+        message: "skills limit reached",
+        error: "too_many_requests",
+        code: 429,
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.type(await screen.findByLabelText("Buscar habilidade no catálogo"), "GO");
+    await user.click(await screen.findByRole("radio", { name: "GO" }));
+    await user.selectOptions(screen.getByLabelText("Nível de domínio"), "TEACH");
+    await user.click(screen.getByRole("button", { name: "Adicionar habilidade" }));
+
+    expect(
+      await screen.findByText("Você atingiu o limite de habilidades neste perfil"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Habilidade adicionada: GO.")).not.toBeInTheDocument();
+    expect(screen.getByText("Você ainda não cadastrou habilidades.")).toBeInTheDocument();
+    expect(mockedSkills).toHaveBeenCalledTimes(1);
+  });
+
   it("duplicado avisa para ajustar o nível na linha existente", async () => {
     mockedListSkills.mockResolvedValue(page([{ id: "s1", name: "GO" }]));
     mockedSkills.mockResolvedValue([skillEntry("su1", "s1", "GO", "WANT_TO_LEARN")]);

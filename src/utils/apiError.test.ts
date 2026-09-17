@@ -208,6 +208,33 @@ describe("translateApiMessage", () => {
     );
   });
 
+  it("traduz as mensagens de quota e rate limit por usuário (plano 28)", () => {
+    expect(translateApiMessage("owned communities limit reached")).toBe(
+      "Você atingiu o limite de comunidades que pode criar",
+    );
+    expect(translateApiMessage("community memberships limit reached")).toBe(
+      "Você atingiu o limite de comunidades das quais pode participar",
+    );
+    expect(translateApiMessage("pending events limit reached")).toBe(
+      "Você atingiu o limite de eventos aguardando aprovação",
+    );
+    expect(translateApiMessage("active events limit reached")).toBe(
+      "Você atingiu o limite de eventos ativos",
+    );
+    expect(translateApiMessage("skills limit reached")).toBe(
+      "Você atingiu o limite de habilidades neste perfil",
+    );
+    expect(translateApiMessage("too many community creations")).toBe(
+      "Muitas criações de comunidade. Aguarde e tente de novo",
+    );
+    expect(translateApiMessage("too many community joins")).toBe(
+      "Muitas entradas em comunidades. Aguarde e tente de novo",
+    );
+    expect(translateApiMessage("too many event creations")).toBe(
+      "Muitas criações de evento. Aguarde e tente de novo",
+    );
+  });
+
   it("traduz as mensagens da inbox (plano 21)", () => {
     expect(translateApiMessage("status must be unread, read or all")).toBe(
       "Status deve ser não lidas, lidas ou todas",
@@ -250,6 +277,14 @@ describe("toUserMessages", () => {
   it("403 email is not verified usa a mesma frase do gate", () => {
     const result = toUserMessages(apiError(403, { message: "email is not verified", code: 403 }));
     expect(result.summary).toBe("Confirme seu e-mail para continuar");
+  });
+
+  it("429 de quota/rate usa a mensagem traduzida, sem causes", () => {
+    const result = toUserMessages(
+      apiError(429, { message: "owned communities limit reached", error: "too_many_requests", code: 429 }),
+    );
+    expect(result.summary).toBe("Você atingiu o limite de comunidades que pode criar");
+    expect(result.fields).toEqual({});
   });
 
   it("corpo sem causes usa o summary do message", () => {

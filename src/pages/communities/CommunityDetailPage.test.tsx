@@ -135,6 +135,51 @@ describe("CommunityDetailPage", () => {
     expect(mockedJoin).toHaveBeenCalledWith("c1");
   });
 
+  it("429 de quota no join mostra o erro e mantém o botão Entrar", async () => {
+    mockedJoin.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: {
+          message: "community memberships limit reached",
+          error: "too_many_requests",
+          code: 429,
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Entrar" }));
+
+    expect(
+      await screen.findByText("Você atingiu o limite de comunidades das quais pode participar"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Entrar" })).toBeInTheDocument();
+    expect(screen.queryByText("Você é membro")).not.toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.memberships.u1")).toBeNull();
+  });
+
+  it("400 de quem já era membro continua marcando membership", async () => {
+    mockedJoin.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: { message: "user is already a member of this community", code: 400 },
+      },
+    });
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByRole("button", { name: "Sair" })).toBeInTheDocument();
+    expect(screen.getByText("Você já é membro desta comunidade.")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.memberships.u1") ?? "[]")).toContain("c1");
+  });
+
   it("e-mail não verificado troca Entrar pelo aviso e não chama a API", async () => {
     seedSession("u1", "USER", false);
     const user = userEvent.setup();

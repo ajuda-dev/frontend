@@ -12,11 +12,11 @@ import { joinCommunity, leaveCommunity } from "../services/community";
 const mockedJoin = vi.mocked(joinCommunity);
 const mockedLeave = vi.mocked(leaveCommunity);
 
-function apiError(status: number) {
+function apiError(status: number, message = "erro") {
   return {
     isAxiosError: true,
     message: `Request failed with status code ${status}`,
-    response: { status, data: { message: "erro", code: status } },
+    response: { status, data: { message, code: status } },
   };
 }
 
@@ -144,11 +144,7 @@ describe("useMemberships", () => {
   });
 
   it("join 403 de e-mail não verificado mostra a mensagem traduzida e não marca membro", async () => {
-    mockedJoin.mockRejectedValue({
-      isAxiosError: true,
-      message: "Request failed with status code 403",
-      response: { status: 403, data: { message: "email is not verified", code: 403 } },
-    });
+    mockedJoin.mockRejectedValue(apiError(403, "email is not verified"));
     const { result } = renderHook(() => useMemberships("u1"));
 
     await act(async () => {
@@ -159,6 +155,37 @@ describe("useMemberships", () => {
     expect(result.current.notice).toEqual({
       tone: "error",
       message: "Confirme seu e-mail para continuar",
+    });
+  });
+
+  it("join 429 de quota não marca membro e mostra a mensagem traduzida", async () => {
+    mockedJoin.mockRejectedValue(apiError(429, "community memberships limit reached"));
+    const { result } = renderHook(() => useMemberships("u1"));
+
+    await act(async () => {
+      await result.current.join("c1");
+    });
+
+    expect(result.current.isMember("c1")).toBe(false);
+    expect(result.current.notice).toEqual({
+      tone: "error",
+      message: "Você atingiu o limite de comunidades das quais pode participar",
+    });
+    expect(localStorage.getItem("ajudadev.memberships.u1")).toBeNull();
+  });
+
+  it("join 429 de rate não marca membro e pede para aguardar", async () => {
+    mockedJoin.mockRejectedValue(apiError(429, "too many community joins"));
+    const { result } = renderHook(() => useMemberships("u1"));
+
+    await act(async () => {
+      await result.current.join("c1");
+    });
+
+    expect(result.current.isMember("c1")).toBe(false);
+    expect(result.current.notice).toEqual({
+      tone: "error",
+      message: "Muitas entradas em comunidades. Aguarde e tente de novo",
     });
   });
 });

@@ -220,4 +220,52 @@ describe("NewCommunityPage", () => {
     await user.click(screen.getByRole("link", { name: "Confirmar e-mail" }));
     expect(mockedCreateCommunity).not.toHaveBeenCalled();
   });
+
+  it("429 de quota mostra o alerta em pt-BR e permanece no formulário", async () => {
+    mockedCreateCommunity.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: { message: "owned communities limit reached", error: "too_many_requests", code: 429 },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillAddress(user);
+    await user.type(screen.getByLabelText("Nome"), "Dev SP");
+    await user.type(screen.getByLabelText("Descrição"), "Encontros de dev");
+    await user.click(screen.getByRole("button", { name: "Criar comunidade" }));
+
+    expect(
+      await screen.findByText("Você atingiu o limite de comunidades que pode criar"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe da comunidade")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveValue("Dev SP");
+    expect(screen.getByLabelText("Descrição")).toHaveValue("Encontros de dev");
+  });
+
+  it("429 de rate mostra o alerta para aguardar e não navega", async () => {
+    mockedCreateCommunity.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 429",
+      response: {
+        status: 429,
+        data: { message: "too many community creations", error: "too_many_requests", code: 429 },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillAddress(user);
+    await user.type(screen.getByLabelText("Nome"), "Dev SP");
+    await user.type(screen.getByLabelText("Descrição"), "Encontros de dev");
+    await user.click(screen.getByRole("button", { name: "Criar comunidade" }));
+
+    expect(
+      await screen.findByText("Muitas criações de comunidade. Aguarde e tente de novo"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe da comunidade")).not.toBeInTheDocument();
+  });
 });
