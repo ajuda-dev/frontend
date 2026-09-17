@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -12,6 +12,7 @@ vi.mock("../../services/event", () => ({
   createEvent: vi.fn(),
   deleteEvent: vi.fn(),
   approveEvent: vi.fn(),
+  rescheduleEvent: vi.fn(),
 }));
 
 vi.mock("../../services/eventUser", () => ({
@@ -22,13 +23,15 @@ vi.mock("../../services/eventUser", () => ({
   updateParticipantStatus: vi.fn(),
 }));
 
-import { deleteEvent, findEventById, approveEvent } from "../../services/event";
-import { getParticipants, updateParticipantStatus } from "../../services/eventUser";
+import { deleteEvent, findEventById, approveEvent, rescheduleEvent } from "../../services/event";
+import { getParticipants, joinEvent, updateParticipantStatus } from "../../services/eventUser";
 
 const mockedFind = vi.mocked(findEventById);
 const mockedDelete = vi.mocked(deleteEvent);
 const mockedApprove = vi.mocked(approveEvent);
+const mockedReschedule = vi.mocked(rescheduleEvent);
 const mockedParticipants = vi.mocked(getParticipants);
+const mockedJoinEvent = vi.mocked(joinEvent);
 const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
 
 const EVENT: EventItem = {
@@ -44,10 +47,16 @@ const EVENT: EventItem = {
   community: { id: "c1", name: "Dev SP", description: "Comunidade de São Paulo" },
 };
 
-function seedSession(id = "u1") {
+function seedSession(id = "u1", emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
+    JSON.stringify({
+      id,
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      emailVerified,
+    }),
   );
 }
 
@@ -63,6 +72,13 @@ function renderDetail(state?: { event: EventItem }) {
       </AuthProvider>
     </MemoryRouter>,
   );
+}
+
+// Data futura em hora local, no formato aceito pelo input datetime-local.
+function futureLocalValue(): string {
+  const date = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  const offsetMs = date.getTimezoneOffset() * 60_000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
 }
 
 describe("EventDetailPage", () => {
@@ -184,9 +200,14 @@ describe("EventDetailPage", () => {
     expect(screen.getByText("Excluir evento? Esta ação não pode ser desfeita.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Excluir" }));
+    expect(await screen.findByText("Informe o motivo do cancelamento")).toBeInTheDocument();
+    expect(mockedDelete).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Motivo do cancelamento"), "Mudança de data");
+    await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(await screen.findByText("Lista de eventos")).toBeInTheDocument();
-    expect(mockedDelete).toHaveBeenCalledWith("e1");
+    expect(mockedDelete).toHaveBeenCalledWith("e1", "Mudança de data");
   });
 
   it("moderador excluindo evento alheio vê confirmação reforçada", async () => {
@@ -222,6 +243,7 @@ describe("EventDetailPage", () => {
     renderDetail({ event: EVENT });
 
     await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+    await user.type(screen.getByLabelText("Motivo do cancelamento"), "Já removido");
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(await screen.findByText("Lista de eventos")).toBeInTheDocument();
@@ -238,6 +260,7 @@ describe("EventDetailPage", () => {
     renderDetail({ event: EVENT });
 
     await user.click(await screen.findByRole("button", { name: "Excluir evento" }));
+    await user.type(screen.getByLabelText("Motivo do cancelamento"), "Falha esperada");
     await user.click(screen.getByRole("button", { name: "Excluir" }));
 
     expect(await screen.findByText("Erro interno no servidor")).toBeInTheDocument();
@@ -458,5 +481,161 @@ describe("EventDetailPage", () => {
     // A zona nasce como spinner: a lista de participantes chega em um fetch à parte.
     expect(await screen.findByText("Sua participação")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Participar" })).toBeInTheDocument();
+  });
+
+  it("e-mail não verificado ainda permite participar do evento", async () => {
+    seedSession("u1", false);
+    mockedFind.mockResolvedValue(EVENT);
+    mockedJoinEvent.mockResolvedValue({
+      id: "p1",
+      event_id: "e1",
+      user_id: "u1",
+      role: "ATTENDEE",
+      status: "CONFIRMED",
+    });
+    mockedParticipants
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        { id: "p1", event_id: "e1", user_id: "u1", role: "ATTENDEE", status: "CONFIRMED" },
+      ]);
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Participar" }));
+
+    expect(mockedJoinEvent).toHaveBeenCalledWith("e1");
+    expect(await screen.findByText("Você participa")).toBeInTheDocument();
+    expect(screen.queryByText("Confirme seu e-mail para continuar")).not.toBeInTheDocument();
+  });
+
+  it("e-mail não verificado ainda permite aceitar convite de mentoria", async () => {
+    seedSession("u1", false);
+    const requestedRow = {
+      id: "p2",
+      event_id: "e1",
+      user_id: "u1",
+      role: "MENTEE" as const,
+      status: "REQUESTED" as const,
+      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" as const },
+    };
+    mockedParticipants
+      .mockResolvedValueOnce([requestedRow])
+      .mockResolvedValueOnce([{ ...requestedRow, status: "CONFIRMED" }]);
+    mockedUpdateStatus.mockResolvedValue({ ...requestedRow, status: "CONFIRMED" });
+    mockedFind.mockResolvedValue({ ...EVENT, category: "MENTORING", max_slots: 2 });
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+    expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
+  });
+
+  it("convidado de mentoria vê Reagendar e não vê Excluir", async () => {
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p2",
+        event_id: "e1",
+        user_id: "u1",
+        role: "MENTEE",
+        status: "REQUESTED",
+        user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    await user.click(await screen.findByRole("button", { name: "Reagendar" }));
+    expect(
+      screen.getByText("Ao reagendar, você confirma o novo horário. A outra pessoa precisa aceitar de novo."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
+  });
+
+  it("inscrito de evento de comunidade não vê Reagendar", async () => {
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p1",
+        event_id: "e1",
+        user_id: "u1",
+        role: "ATTENDEE",
+        status: "CONFIRMED",
+        user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByText("Você participa")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Reagendar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
+  });
+
+  it("quem gerencia vê Reagendar e Excluir", async () => {
+    seedSession("owner-1");
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByRole("button", { name: "Reagendar" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Excluir evento" })).toBeInTheDocument();
+  });
+
+  it("reagendar chama o service e atualiza a data na tela", async () => {
+    seedSession("owner-1");
+    mockedReschedule.mockResolvedValue({
+      ...EVENT,
+      start_at: "2026-11-02T20:00:00-03:00",
+      comment: "Conflito de agenda",
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Reagendar" }));
+    expect(
+      screen.queryByText(/A outra pessoa precisa aceitar de novo/),
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Nova data e hora"), {
+      target: { value: futureLocalValue() },
+    });
+    await user.type(screen.getByLabelText("Motivo do reagendamento"), "Conflito de agenda");
+    await user.click(screen.getByRole("button", { name: "Confirmar reagendamento" }));
+
+    expect(mockedReschedule).toHaveBeenCalledWith("e1", {
+      startAt: new Date(futureLocalValue()).toISOString(),
+      comment: "Conflito de agenda",
+    });
+    expect((await screen.findAllByText("02/11/2026, 20:00")).length).toBeGreaterThan(0);
+    expect(screen.getByText("Conflito de agenda")).toBeInTheDocument();
+  });
+
+  it("criador de 1:1 com convite pendente vê Aceitar e Recusar", async () => {
+    seedSession("owner-1");
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p1",
+        event_id: "e1",
+        user_id: "owner-1",
+        role: "MENTEE",
+        status: "REQUESTED",
+        user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
+    expect(screen.getByText("Painel do anfitrião")).toBeInTheDocument();
+  });
+
+  it("comentário vazio no reagendamento é barrado localmente", async () => {
+    seedSession("owner-1");
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Reagendar" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar reagendamento" }));
+
+    expect(await screen.findByText("Informe o motivo do reagendamento")).toBeInTheDocument();
+    expect(mockedReschedule).not.toHaveBeenCalled();
   });
 });

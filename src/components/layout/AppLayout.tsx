@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from "react-router";
 import { NotificationProvider } from "../../context/NotificationContext";
 import { useAuth } from "../../context/useAuth";
 import { USER_ROLE_LABEL } from "../../utils/labels";
+import { EmailVerificationBanner } from "../auth/EmailVerificationBanner";
 import { Button } from "../ui/Button";
 import { NotificationBell } from "./NotificationBell";
 import { visibleNavItems } from "./navItems";
@@ -120,6 +121,8 @@ export function AppLayout() {
           </nav>
         ) : null}
       </header>
+
+      {user && !user.emailVerified ? <EmailVerificationBanner /> : null}
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
         <Outlet />

@@ -143,18 +143,31 @@ describe("ParticipationZone", () => {
     expect(await screen.findByText("Você é o mentor")).toBeInTheDocument();
   });
 
-  it("convite de mentoria pendente pode ser recusado", async () => {
+  it("convite de mentoria pendente exige motivo para recusar", async () => {
     mockedGet
       .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "REQUESTED" })])
-      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "REJECTED" })]);
-    mockedUpdate.mockResolvedValue(row({ user_id: "u1", role: "MENTEE", status: "REJECTED" }));
+      .mockResolvedValueOnce([
+        row({ user_id: "u1", role: "MENTEE", status: "REJECTED", comment: "Agenda conflitou" }),
+      ]);
+    mockedUpdate.mockResolvedValue(
+      row({ user_id: "u1", role: "MENTEE", status: "REJECTED", comment: "Agenda conflitou" }),
+    );
     const user = userEvent.setup();
     render(<Harness eventItem={event({ category: "MENTORING", max_slots: 2 })} />);
 
     await user.click(await screen.findByRole("button", { name: "Recusar" }));
+    expect(mockedUpdate).not.toHaveBeenCalled();
 
-    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED");
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+    expect(await screen.findByText("Informe o motivo da recusa")).toBeInTheDocument();
+    expect(mockedUpdate).not.toHaveBeenCalled();
+
+    await user.type(screen.getByLabelText("Motivo da recusa"), "Agenda conflitou");
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED", "Agenda conflitou");
     expect(await screen.findByText("Você recusou o convite desta mentoria.")).toBeInTheDocument();
+    expect(screen.getByText("Agenda conflitou")).toBeInTheDocument();
   });
 
   it("erro de ação aparece na zona com a mensagem traduzida", async () => {

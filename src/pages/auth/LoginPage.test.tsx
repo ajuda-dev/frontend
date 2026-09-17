@@ -69,6 +69,7 @@ describe("LoginPage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
+      emailVerified: true,
     });
     renderLogin();
 
@@ -81,6 +82,35 @@ describe("LoginPage", () => {
     expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").email).toBe("lucas@ajudadev.dev");
   });
 
+  it("usuário sem e-mail confirmado entra na home, não na confirmação", async () => {
+    const user = userEvent.setup();
+    mockedLogin.mockResolvedValue({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      emailVerified: false,
+    });
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/" element={<p>Home protegida</p>} />
+            <Route path="/confirmar-email" element={<p>Confirmar e-mail</p>} />
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+
+    await user.type(screen.getByLabelText("E-mail"), "lucas@ajudadev.dev");
+    await user.type(screen.getByLabelText("Senha"), "senha-secreta");
+    await user.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByText("Home protegida")).toBeInTheDocument();
+    expect(screen.queryByText("Confirmar e-mail")).not.toBeInTheDocument();
+  });
+
   it("volta para a página de origem informada em state.from", async () => {
     const user = userEvent.setup();
     mockedLogin.mockResolvedValue({
@@ -88,6 +118,7 @@ describe("LoginPage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
+      emailVerified: true,
     });
     render(
       <MemoryRouter initialEntries={[{ pathname: "/login", state: { from: "/comunidades" } }]}>
@@ -113,5 +144,14 @@ describe("LoginPage", () => {
 
     const link = screen.getByRole("link", { name: "Entrar com GitHub" });
     expect(link).toHaveAttribute("href", "/v1/auth/github/login");
+  });
+
+  it("mostra o link para recuperar a senha", () => {
+    renderLogin();
+
+    expect(screen.getByRole("link", { name: "Esqueci a senha" })).toHaveAttribute(
+      "href",
+      "/esqueci-senha",
+    );
   });
 });

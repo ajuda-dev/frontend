@@ -27,8 +27,8 @@ export interface UseParticipantsResult {
   refetch: () => void;
   join: () => Promise<boolean>;
   cancel: () => Promise<boolean>;
-  accept: () => Promise<boolean>;
-  reject: () => Promise<boolean>;
+  accept: (comment?: string) => Promise<boolean>;
+  reject: (comment: string) => Promise<boolean>;
   add: (userId: string, role: InvitableRole) => Promise<boolean>;
   remove: (userId: string) => Promise<boolean>;
 }
@@ -128,15 +128,27 @@ export function useParticipants(
     return runAction("cancel", () => cancelParticipation(eventId, userId));
   }, [eventId, runAction, userId]);
 
-  const accept = useCallback(() => {
-    if (!userId) return Promise.resolve(false);
-    return runAction("accept", () => updateParticipantStatus(eventId, userId, "CONFIRMED"));
-  }, [eventId, runAction, userId]);
+  const accept = useCallback(
+    (comment?: string) => {
+      if (!userId) return Promise.resolve(false);
+      return runAction("accept", () =>
+        comment === undefined
+          ? updateParticipantStatus(eventId, userId, "CONFIRMED")
+          : updateParticipantStatus(eventId, userId, "CONFIRMED", comment),
+      );
+    },
+    [eventId, runAction, userId],
+  );
 
-  const reject = useCallback(() => {
-    if (!userId) return Promise.resolve(false);
-    return runAction("reject", () => updateParticipantStatus(eventId, userId, "REJECTED"));
-  }, [eventId, runAction, userId]);
+  const reject = useCallback(
+    (comment: string) => {
+      if (!userId) return Promise.resolve(false);
+      return runAction("reject", () =>
+        updateParticipantStatus(eventId, userId, "REJECTED", comment),
+      );
+    },
+    [eventId, runAction, userId],
+  );
 
   const add = useCallback(
     (targetUserId: string, role: InvitableRole) =>

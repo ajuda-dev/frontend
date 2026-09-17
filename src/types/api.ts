@@ -68,6 +68,8 @@ export interface EventItem {
   duration_min: number;
   max_slots?: number | null;
   meeting_link?: string;
+  // Motivo de cancelamento ou reagendamento (events.comment); omitido quando vazio.
+  comment?: string;
   // Situação de aprovação do evento (dto.EventDto.status); o backend trata
   // vazio/ausente como aprovado (isEventApproved), por isso o campo é opcional.
   status?: EventApprovalStatus;
@@ -82,6 +84,8 @@ export interface EventUser {
   user_id: string;
   role: ParticipationRole;
   status: ParticipationStatus;
+  // Motivo do accept/reject (status_comment); omitido quando vazio.
+  comment?: string;
   user?: UserSummary | null;
 }
 
@@ -104,6 +108,7 @@ export interface AuthUser {
   name: string;
   email: string;
   role: UserRole;
+  emailVerified: boolean;
 }
 
 export interface LoginUserInput {
@@ -115,6 +120,25 @@ export interface RegisterUserInput {
   name: string;
   email: string;
   password: string;
+}
+
+export interface ForgotPasswordInput {
+  email: string;
+}
+
+export interface ResetPasswordInput {
+  email: string;
+  code: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordInput {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface VerifyEmailInput {
+  code: string;
 }
 
 export interface UpdateUserInput {
@@ -180,6 +204,16 @@ export interface AddParticipantInput {
 
 export interface UpdateParticipantStatusInput {
   status: ParticipationStatus;
+  comment?: string;
+}
+
+export interface CancelEventInput {
+  comment: string;
+}
+
+export interface RescheduleEventInput {
+  start_at: string;
+  comment: string;
 }
 
 export interface AssignSkillInput {

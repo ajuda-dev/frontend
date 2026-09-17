@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
+import { EmailVerificationGate } from "../../components/auth/EmailVerificationGate";
 import { EventApprovalControls } from "../../components/event/EventApprovalControls";
 import { EventCard } from "../../components/event/EventCard";
 import { Alert } from "../../components/ui/Alert";
@@ -351,9 +352,11 @@ export function CommunityDetailPage() {
               Sair
             </Button>
           ) : (
-            <Button loading={pending} onClick={() => void memberships.join(community.id)}>
-              Entrar
-            </Button>
+            <EmailVerificationGate>
+              <Button loading={pending} onClick={() => void memberships.join(community.id)}>
+                Entrar
+              </Button>
+            </EmailVerificationGate>
           )}
         </div>
       )}

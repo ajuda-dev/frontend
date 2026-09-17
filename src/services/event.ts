@@ -8,6 +8,7 @@ import type {
   ParticipationRole,
   ParticipationStatus,
   RegisterEventInput,
+  RescheduleEventInput,
 } from "../types/api";
 import { api, isApiError } from "./api";
 
@@ -114,8 +115,23 @@ export async function createEvent(input: CreateEventInput): Promise<EventItem> {
   return data;
 }
 
-export async function deleteEvent(eventId: string): Promise<void> {
-  await api.delete(`/event/${eventId}`);
+export async function deleteEvent(eventId: string, comment: string): Promise<void> {
+  await api.delete(`/event/${eventId}`, { data: { comment: comment.trim() } });
+}
+
+// PUT /v1/event/:id/reschedule — troca só start_at + comment. Em MENTORING a API
+// confirma quem reagendou e devolve o outro para REQUESTED; a resposta não traz
+// event_users, então a página precisa refetch dos participantes.
+export async function rescheduleEvent(
+  eventId: string,
+  input: { startAt: string; comment: string },
+): Promise<EventItem> {
+  const body: RescheduleEventInput = {
+    start_at: input.startAt,
+    comment: input.comment.trim(),
+  };
+  const { data } = await api.put<EventItem>(`/event/${eventId}/reschedule`, body);
+  return data;
 }
 
 // PUT /v1/event/:id/approval — só o dono da comunidade (ou ≥ MODERATOR) aprova; o

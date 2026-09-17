@@ -32,6 +32,21 @@ describe("translateApiMessage", () => {
     );
     expect(translateApiMessage("forbidden")).toBe("Você não tem permissão para esta ação");
     expect(translateApiMessage("invalid credentials")).toBe("E-mail ou senha inválidos");
+    expect(translateApiMessage("invalid or expired code")).toBe("Código inválido ou expirado");
+    expect(translateApiMessage("too many password reset requests")).toBe(
+      "Muitas solicitações de recuperação. Aguarde um pouco e tente de novo",
+    );
+    expect(translateApiMessage("too many password reset attempts")).toBe(
+      "Muitas tentativas com este código. Aguarde e solicite um novo",
+    );
+    expect(translateApiMessage("too many verification attempts")).toBe(
+      "Muitas tentativas de confirmação. Aguarde e tente de novo",
+    );
+    expect(translateApiMessage("too many verification emails")).toBe(
+      "Muitos reenvios. Aguarde um pouco antes de pedir outro código",
+    );
+    expect(translateApiMessage("email is not verified")).toBe("Confirme seu e-mail para continuar");
+    expect(translateApiMessage("code cannot be empty")).toBe("Informe o código");
     expect(translateApiMessage("only admins can delete users")).toBe(
       "Apenas administradores podem excluir usuários",
     );
@@ -46,6 +61,23 @@ describe("translateApiMessage", () => {
     );
     expect(translateApiMessage("user already has this skill")).toBe(
       "Este usuário já possui esta habilidade",
+    );
+    expect(
+      translateApiMessage("only the user themselves or an admin can manage this user's skills"),
+    ).toBe(
+      "Apenas o próprio usuário ou um administrador podem gerenciar as habilidades deste usuário",
+    );
+    expect(translateApiMessage("comment is required when rejecting")).toBe(
+      "Informe o motivo da recusa",
+    );
+    expect(translateApiMessage("comment is required when cancelling")).toBe(
+      "Informe o motivo do cancelamento",
+    );
+    expect(translateApiMessage("comment is required when rescheduling")).toBe(
+      "Informe o motivo do reagendamento",
+    );
+    expect(translateApiMessage("comment must have at most 500 characters")).toBe(
+      "O comentário deve ter no máximo 500 caracteres",
     );
     expect(translateApiMessage("Invalid skill data")).toBe("Dados da habilidade inválidos");
     expect(translateApiMessage("Invalid skill user data")).toBe(
@@ -106,6 +138,13 @@ describe("translateApiMessage", () => {
       translateApiMessage("only the event owner, the community owner or moderators can manage this event"),
     ).toBe(
       "Apenas quem criou o evento, o responsável pela comunidade (ou moderadores e administradores) pode gerenciá-lo",
+    );
+    expect(
+      translateApiMessage(
+        "only the event owner, the invited participant, the community owner or moderators can reschedule this event",
+      ),
+    ).toBe(
+      "Apenas quem criou o evento, o convidado da mentoria, o responsável pela comunidade (ou moderadores e administradores) pode reagendá-lo",
     );
     expect(translateApiMessage("only the community owner can approve this event")).toBe(
       "Apenas o responsável pela comunidade (ou moderadores e administradores) pode aprovar este evento",
@@ -191,9 +230,11 @@ describe("fieldLabel", () => {
     expect(fieldLabel("body")).toBe("Formulário");
   });
 
-  it("resolve os campos novos de evento (plano 17)", () => {
-    expect(fieldLabel("creator_role")).toBe("Papel de quem cria");
-    expect(fieldLabel("approval_status")).toBe("Situação de aprovação");
+  it("resolve os campos de recuperação de senha", () => {
+    expect(fieldLabel("code")).toBe("Código");
+    expect(fieldLabel("newPassword")).toBe("Nova senha");
+    expect(fieldLabel("currentPassword")).toBe("Senha atual");
+    expect(fieldLabel("comment")).toBe("Comentário");
   });
 
   it("resolve as chaves de contato de configVisibility (plano 16)", () => {
@@ -206,6 +247,11 @@ describe("fieldLabel", () => {
 });
 
 describe("toUserMessages", () => {
+  it("403 email is not verified usa a mesma frase do gate", () => {
+    const result = toUserMessages(apiError(403, { message: "email is not verified", code: 403 }));
+    expect(result.summary).toBe("Confirme seu e-mail para continuar");
+  });
+
   it("corpo sem causes usa o summary do message", () => {
     const result = toUserMessages(apiError(400, { message: "Email already exists", code: 400 }));
     expect(result.summary).toBe("Este e-mail já está cadastrado");

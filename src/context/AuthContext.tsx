@@ -84,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         name: updated.name,
         email: updated.email,
         role: updated.role,
+        emailVerified: user.emailVerified,
       };
       persistUser(current);
       setUser(current);
@@ -92,9 +93,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const verifyEmail = useCallback(async (code: string) => {
+    const current = await authService.verifyEmail(code);
+    persistUser(current);
+    setUser(current);
+    return current;
+  }, []);
+
+  const resendVerification = useCallback(async () => {
+    await authService.resendVerification();
+  }, []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, refreshSession, login, register, updateProfile, logout }),
-    [user, refreshSession, login, register, updateProfile, logout],
+    () => ({
+      user,
+      refreshSession,
+      login,
+      register,
+      updateProfile,
+      verifyEmail,
+      resendVerification,
+      logout,
+    }),
+    [user, refreshSession, login, register, updateProfile, verifyEmail, resendVerification, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

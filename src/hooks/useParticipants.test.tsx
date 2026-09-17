@@ -112,19 +112,24 @@ describe("useParticipants", () => {
     expect(result.current.myRow?.status).toBe("CONFIRMED");
   });
 
-  it("reject recusa o convite (PUT REJECTED)", async () => {
+  it("reject recusa o convite (PUT REJECTED) com comment", async () => {
     mockedGet
       .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "REQUESTED" })])
-      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "REJECTED" })]);
-    mockedUpdate.mockResolvedValue(row({ user_id: "u1", role: "MENTEE", status: "REJECTED" }));
+      .mockResolvedValueOnce([
+        row({ user_id: "u1", role: "MENTEE", status: "REJECTED", comment: "Sem agenda" }),
+      ]);
+    mockedUpdate.mockResolvedValue(
+      row({ user_id: "u1", role: "MENTEE", status: "REJECTED", comment: "Sem agenda" }),
+    );
     const { result } = await renderParticipants();
 
     await act(async () => {
-      await result.current.reject();
+      await result.current.reject("Sem agenda");
     });
 
-    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED");
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED", "Sem agenda");
     expect(result.current.myRow?.status).toBe("REJECTED");
+    expect(result.current.myRow?.comment).toBe("Sem agenda");
   });
 
   it("add envia o papel e reflete o status devolvido pelo backend", async () => {
@@ -227,7 +232,7 @@ describe("useParticipants", () => {
       await result.current.join();
       await result.current.cancel();
       await result.current.accept();
-      await result.current.reject();
+      await result.current.reject("motivo");
     });
 
     expect(mockedJoin).not.toHaveBeenCalled();

@@ -147,6 +147,9 @@ export function HostPanel({ event, participation, currentUserId }: HostPanelProp
                       {PARTICIPATION_STATUS_LABEL[entry.status]}
                     </Badge>
                   </div>
+                  {entry.comment ? (
+                    <p className="text-ink-muted text-xs whitespace-pre-line">{entry.comment}</p>
+                  ) : null}
                 </div>
 
                 {self ? (

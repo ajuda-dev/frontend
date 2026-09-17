@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router";
+import { EmailVerificationGate } from "../../components/auth/EmailVerificationGate";
 import { CommunityForm } from "../../components/community/CommunityForm";
 import type { CommunityFormValues } from "../../components/community/CommunityForm";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -19,11 +20,13 @@ export function NewCommunityPage() {
         description="Cadastre o endereço e descreva a comunidade para publicá-la no catálogo."
       />
 
-      <CommunityForm
-        submitLabel="Criar comunidade"
-        cancelTo="/comunidades"
-        onSubmit={handleCreate}
-      />
+      <EmailVerificationGate>
+        <CommunityForm
+          submitLabel="Criar comunidade"
+          cancelTo="/comunidades"
+          onSubmit={handleCreate}
+        />
+      </EmailVerificationGate>
     </div>
   );
 }

@@ -20,7 +20,9 @@ export function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const locationState = location.state as { from?: string; notice?: string } | null;
+  const from = locationState?.from ?? "/";
+  const notice = locationState?.notice;
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -64,6 +66,11 @@ export function LoginPage() {
 
   return (
     <AuthLayout title="Entrar" subtitle="Acesse sua conta para participar das comunidades.">
+      {notice ? (
+        <p role="status" className="text-brand mb-4 text-sm">
+          {notice}
+        </p>
+      ) : null}
       <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <Field label="E-mail" htmlFor="email" error={errors.email}>
           <Input
@@ -88,6 +95,12 @@ export function LoginPage() {
             onChange={(event) => setPassword(event.target.value)}
           />
         </Field>
+
+        <p className="text-sm">
+          <Link to="/esqueci-senha" className="text-brand hover:underline">
+            Esqueci a senha
+          </Link>
+        </p>
 
         {formError ? (
           <p role="alert" className="text-danger text-sm">

@@ -68,10 +68,16 @@ const CREATED: EventItem = {
   duration_min: 90,
 };
 
-function seedSession() {
+function seedSession(emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
+    JSON.stringify({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      emailVerified,
+    }),
   );
 }
 
@@ -611,5 +617,24 @@ describe("NewEventPage", () => {
     await user.click(screen.getByRole("button", { name: "Criar evento" }));
 
     expect(await screen.findByText("Endereço não encontrado")).toBeInTheDocument();
+  });
+
+  it("e-mail não verificado troca o formulário pelo aviso e não chama a API", async () => {
+    seedSession(false);
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(screen.queryByRole("button", { name: "Criar evento" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entrar na comunidade" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Confirme seu e-mail para continuar");
+    expect(screen.getByRole("link", { name: "Confirmar e-mail" })).toHaveAttribute(
+      "href",
+      "/confirmar-email",
+    );
+
+    await user.click(screen.getByRole("link", { name: "Confirmar e-mail" }));
+    expect(mockedCreateEvent).not.toHaveBeenCalled();
+    expect(mockedJoinCommunity).not.toHaveBeenCalled();
   });
 });

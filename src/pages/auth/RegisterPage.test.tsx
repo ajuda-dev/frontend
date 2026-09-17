@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../context/AuthContext";
+import { GuestRoute } from "../../components/auth/GuestRoute";
 import { RegisterPage } from "./RegisterPage";
 
 vi.mock("../../services/auth", () => ({
@@ -19,7 +20,10 @@ function renderRegister() {
     <MemoryRouter initialEntries={["/registro"]}>
       <AuthProvider>
         <Routes>
-          <Route path="/registro" element={<RegisterPage />} />
+          <Route element={<GuestRoute />}>
+            <Route path="/registro" element={<RegisterPage />} />
+          </Route>
+          <Route path="/confirmar-email" element={<p>Confirmar e-mail</p>} />
           <Route path="/" element={<p>Home protegida</p>} />
         </Routes>
       </AuthProvider>
@@ -86,14 +90,15 @@ describe("RegisterPage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
+      emailVerified: false,
     });
     renderRegister();
 
     await fillForm("Lucas Rocha", "lucas@ajudadev.dev", "senha-secreta");
 
-    expect(await screen.findByText("Home protegida")).toBeInTheDocument();
+    expect(await screen.findByText("Confirmar e-mail")).toBeInTheDocument();
     expect(localStorage.getItem("ajudadev.token")).toBeNull();
-    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").emailVerified).toBe(false);
     expect(mockedRegister).toHaveBeenCalledWith("Lucas Rocha", "lucas@ajudadev.dev", "senha-secreta");
   });
 });

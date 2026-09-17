@@ -104,6 +104,20 @@ describe("HostPanel", () => {
     expect(screen.getByRole("button", { name: "Cancelar convite" })).toBeInTheDocument();
   });
 
+  it("exibe o comment do accept/reject na lista de participantes", async () => {
+    mockedGet.mockResolvedValue([
+      row({
+        user_id: "u2",
+        role: "MENTEE",
+        status: "REJECTED",
+        comment: "Agenda conflitou nesta semana",
+      }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }));
+
+    expect(await screen.findByText("Agenda conflitou nesta semana")).toBeInTheDocument();
+  });
+
   it("cancelar convite pendente chama DELETE e atualiza a lista", async () => {
     mockedGet
       .mockResolvedValueOnce([row({ user_id: "u2", role: "MENTEE", status: "REQUESTED" })])

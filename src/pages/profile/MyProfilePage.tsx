@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router";
 import { AddSkillForm } from "../../components/profile/AddSkillForm";
+import { ChangePasswordForm } from "../../components/profile/ChangePasswordForm";
 import { SkillRow } from "../../components/profile/SkillRow";
 import { Alert } from "../../components/ui/Alert";
 import { Avatar } from "../../components/ui/Avatar";
@@ -92,6 +93,7 @@ export function MyProfilePage() {
   const [emailShare, setEmailShare] = useState(false);
   const [profileErrors, setProfileErrors] = useState<Record<string, string>>({});
   const [savingProfile, setSavingProfile] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -258,6 +260,22 @@ export function MyProfilePage() {
     setProfileErrors({});
   }, []);
 
+  const startEditingPassword = useCallback(() => {
+    setActionError(null);
+    setNotice(null);
+    setEditingPassword(true);
+  }, []);
+
+  const cancelEditingPassword = useCallback(() => {
+    setEditingPassword(false);
+  }, []);
+
+  const handlePasswordChanged = useCallback(() => {
+    setEditingPassword(false);
+    setActionError(null);
+    setNotice("Senha atualizada.");
+  }, []);
+
   const setContactDraft = useCallback((key: string, patch: Partial<ContactDraft>) => {
     setContactDrafts((current) => ({
       ...current,
@@ -408,6 +426,9 @@ export function MyProfilePage() {
         </div>
       </div>
 
+      {notice ? <Alert variant="success">{notice}</Alert> : null}
+      {actionError ? <Alert variant="error">{actionError}</Alert> : null}
+
       <Card className="flex flex-col gap-3">
         <h2 className="text-ink text-base font-semibold">Conta</h2>
 
@@ -453,9 +474,20 @@ export function MyProfilePage() {
             <dd className="text-ink">••••••••</dd>
           </div>
         </dl>
-        <p className="text-ink-muted text-xs">
-          Cargo e senha são somente leitura. A troca de senha estará disponível em breve.
-        </p>
+        <p className="text-ink-muted text-xs">Cargo é somente leitura.</p>
+
+        {editingPassword ? (
+          <ChangePasswordForm onSuccess={handlePasswordChanged} onCancel={cancelEditingPassword} />
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" size="sm" onClick={startEditingPassword}>
+              Alterar senha
+            </Button>
+            <Link to="/esqueci-senha" className="text-brand text-sm hover:underline">
+              Esqueci a senha
+            </Link>
+          </div>
+        )}
       </Card>
 
       <Card className="flex flex-col gap-3">
@@ -608,9 +640,6 @@ export function MyProfilePage() {
 
       <section className="flex flex-col gap-4">
         <h2 className="text-ink text-base font-semibold">Minhas habilidades</h2>
-
-        {notice ? <Alert variant="success">{notice}</Alert> : null}
-        {actionError ? <Alert variant="error">{actionError}</Alert> : null}
 
         <AddSkillForm onAdd={handleAddSkill} />
 

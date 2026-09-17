@@ -1,11 +1,15 @@
 import { apiErrorBody, isApiError } from "../services/api";
 import type { ApiCause, ApiErrorBody } from "../types/api";
 import { contactFieldKey, contactLabel } from "./contacts";
+import { EMAIL_VERIFICATION_REQUIRED_MESSAGE } from "./emailVerification";
 
 export const FIELD_LABELS: Record<string, string> = {
   name: "Nome",
   email: "E-mail",
   password: "Senha",
+  currentPassword: "Senha atual",
+  newPassword: "Nova senha",
+  code: "Código",
   description: "Descrição",
   title: "Título",
   category: "Categoria",
@@ -28,6 +32,7 @@ export const FIELD_LABELS: Record<string, string> = {
   level: "Nível",
   role: "Papel",
   status: "Status",
+  comment: "Comentário",
   creator_role: "Papel de quem cria",
   approval_status: "Situação de aprovação",
   body: "Formulário",
@@ -60,6 +65,16 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "email cannot be empty": "Informe o e-mail",
   "password cannot be empty": "Informe a senha",
   "password must be at least 6 characters long": "A senha deve ter ao menos 6 caracteres",
+  "code cannot be empty": "Informe o código",
+  "invalid or expired code": "Código inválido ou expirado",
+  "too many password reset requests":
+    "Muitas solicitações de recuperação. Aguarde um pouco e tente de novo",
+  "too many password reset attempts": "Muitas tentativas com este código. Aguarde e solicite um novo",
+  "too many verification attempts":
+    "Muitas tentativas de confirmação. Aguarde e tente de novo",
+  "too many verification emails":
+    "Muitos reenvios. Aguarde um pouco antes de pedir outro código",
+  "email is not verified": EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   "invalid user data": "Dados do usuário inválidos",
   "invalid community data": "Dados da comunidade inválidos",
   "invalid params": "Parâmetros inválidos",
@@ -94,8 +109,14 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
     "Apenas moderadores e administradores podem alterar habilidades",
   "only the user themselves or an admin can update this user":
     "Você só pode alterar os seus próprios dados",
+  "only the user themselves or an admin can manage this user's skills":
+    "Apenas o próprio usuário ou um administrador podem gerenciar as habilidades deste usuário",
   "provide at least one field to update": "Informe ao menos um campo para alterar",
   "description must have at most 500 characters": "O resumo deve ter no máximo 500 caracteres",
+  "comment is required when rejecting": "Informe o motivo da recusa",
+  "comment is required when cancelling": "Informe o motivo do cancelamento",
+  "comment is required when rescheduling": "Informe o motivo do reagendamento",
+  "comment must have at most 500 characters": "O comentário deve ter no máximo 500 caracteres",
   "value must be a valid http or https url": "Informe um link http(s) válido (ex.: https://exemplo.com)",
   "value must have at most 500 characters": "O link deve ter no máximo 500 caracteres",
   "value must be a valid phone number": "Informe um telefone válido (8 a 15 dígitos)",
@@ -131,6 +152,8 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
     "Quem criou o evento não pode sair dele — cancele o evento",
   "only the event owner, the community owner or moderators can manage this event":
     "Apenas quem criou o evento, o responsável pela comunidade (ou moderadores e administradores) pode gerenciá-lo",
+  "only the event owner, the invited participant, the community owner or moderators can reschedule this event":
+    "Apenas quem criou o evento, o convidado da mentoria, o responsável pela comunidade (ou moderadores e administradores) pode reagendá-lo",
   "only the community owner can approve this event":
     "Apenas o responsável pela comunidade (ou moderadores e administradores) pode aprovar este evento",
   "only the community owner can filter events by approval status":

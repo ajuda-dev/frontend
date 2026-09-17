@@ -16,7 +16,13 @@ vi.mock("./auth", () => ({
 }));
 
 const mockedMe = vi.mocked(me);
-mockedMe.mockResolvedValue({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" });
+mockedMe.mockResolvedValue({
+  id: "u1",
+  name: "Lucas Rocha",
+  email: "lucas@ajudadev.dev",
+  role: "USER",
+  emailVerified: true,
+});
 
 function seedSession() {
   localStorage.setItem(
@@ -40,12 +46,12 @@ function renderApp() {
   );
 }
 
-function unauthorizedError(url: string) {
+function unauthorizedError(url: string, message = "unauthorized") {
   return {
     isAxiosError: true,
     message: "Request failed with status code 401",
     config: { url },
-    response: { status: 401, data: { message: "unauthorized", code: 401 } },
+    response: { status: 401, data: { message, code: 401 } },
   };
 }
 
@@ -90,6 +96,74 @@ describe("interceptor de 401", () => {
       handlers: { rejected: (error: unknown) => Promise<unknown> }[];
     };
     await expect(handler.handlers[0].rejected(unauthorizedError("/user/me"))).rejects.toBeTruthy();
+
+    expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
+  });
+
+  it("401 em /user/reset-password com código inválido não desloga", async () => {
+    seedSession();
+    renderApp();
+
+    const handler = api.interceptors.response as unknown as {
+      handlers: { rejected: (error: unknown) => Promise<unknown> }[];
+    };
+    await expect(
+      handler.handlers[0].rejected(
+        unauthorizedError("/user/reset-password", "invalid or expired code"),
+      ),
+    ).rejects.toBeTruthy();
+
+    expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
+  });
+
+  it("401 invalid credentials em /user/change-password não desloga", async () => {
+    seedSession();
+    renderApp();
+
+    const handler = api.interceptors.response as unknown as {
+      handlers: { rejected: (error: unknown) => Promise<unknown> }[];
+    };
+    await expect(
+      handler.handlers[0].rejected(
+        unauthorizedError("/user/change-password", "invalid credentials"),
+      ),
+    ).rejects.toBeTruthy();
+
+    expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.user")).not.toBeNull();
+  });
+
+  it("401 de sessão expirada em /user/change-password desloga", async () => {
+    seedSession();
+    renderApp();
+
+    const handler = api.interceptors.response as unknown as {
+      handlers: { rejected: (error: unknown) => Promise<unknown> }[];
+    };
+    await expect(
+      handler.handlers[0].rejected(
+        unauthorizedError("/user/change-password", "invalid or expired token"),
+      ),
+    ).rejects.toBeTruthy();
+
+    expect(await screen.findByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+    expect(localStorage.getItem("ajudadev.user")).toBeNull();
+  });
+
+  it("401 com invalid or expired code fora dos paths públicos não desloga", async () => {
+    seedSession();
+    renderApp();
+
+    const handler = api.interceptors.response as unknown as {
+      handlers: { rejected: (error: unknown) => Promise<unknown> }[];
+    };
+    await expect(
+      handler.handlers[0].rejected(
+        unauthorizedError("/user/verify-email", "invalid or expired code"),
+      ),
+    ).rejects.toBeTruthy();
 
     expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
     expect(localStorage.getItem("ajudadev.user")).not.toBeNull();

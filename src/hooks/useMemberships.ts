@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { isApiError } from "../services/api";
 import { joinCommunity, leaveCommunity } from "../services/community";
+import { apiErrorMessage } from "../utils/apiError";
 
 const STORAGE_PREFIX = "ajudadev.memberships.";
 
@@ -92,6 +93,8 @@ export function useMemberships(userId: string | null | undefined): UseMembership
           setNotice({ tone: "info", message: "Você já é membro desta comunidade." });
         } else if (status === 404) {
           setNotice({ tone: "error", message: "Comunidade não encontrada." });
+        } else if (status === 403) {
+          setNotice({ tone: "error", message: apiErrorMessage(error) });
         } else {
           setNotice({ tone: "error", message: "Não foi possível entrar na comunidade." });
         }

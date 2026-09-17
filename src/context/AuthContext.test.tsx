@@ -14,28 +14,33 @@ vi.mock("../services/auth", () => ({
   register: vi.fn(),
   me: vi.fn(),
   logout: vi.fn(),
+  verifyEmail: vi.fn(),
+  resendVerification: vi.fn(),
 }));
 
-import { me } from "../services/auth";
+import { me, verifyEmail } from "../services/auth";
 import { updateUserName } from "../services/user";
 import type { AuthUser } from "../types/api";
 
 const mockedUpdate = vi.mocked(updateUserName);
 const mockedMe = vi.mocked(me);
+const mockedVerify = vi.mocked(verifyEmail);
 
 const storedUser: AuthUser = {
   id: "u1",
   name: "Lucas Rocha",
   email: "lucas@ajudadev.dev",
   role: "USER",
+  emailVerified: true,
 };
 
 function Probe() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile, verifyEmail } = useAuth();
   return (
     <div>
       <p>{user ? `logado:${user.email}` : "sem sessão"}</p>
       <p>{`nome:${user?.name ?? "-"}`}</p>
+      <p>{`verificado:${user ? String(user.emailVerified) : "-"}`}</p>
       <button
         type="button"
         onClick={() => {
@@ -43,6 +48,14 @@ function Probe() {
         }}
       >
         editar
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          verifyEmail("AB12CD").catch(() => undefined);
+        }}
+      >
+        confirmar
       </button>
     </div>
   );
@@ -107,7 +120,7 @@ describe("AuthContext", () => {
     expect(localStorage.getItem("ajudadev.user")).toBeNull();
   });
 
-  it("updateProfile grava o nome novo e preserva id/email/role", async () => {
+  it("updateProfile grava o nome novo e preserva id/email/role/emailVerified", async () => {
     localStorage.setItem("ajudadev.user", JSON.stringify(storedUser));
     mockedMe.mockResolvedValue(storedUser);
     mockedUpdate.mockResolvedValue({
@@ -129,6 +142,7 @@ describe("AuthContext", () => {
       name: "Lucas R.",
       email: "lucas@ajudadev.dev",
       role: "USER",
+      emailVerified: true,
     });
   });
 
@@ -143,5 +157,50 @@ describe("AuthContext", () => {
 
     expect(screen.getByText("nome:Lucas Rocha")).toBeInTheDocument();
     expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").name).toBe("Lucas Rocha");
+  });
+
+  it("me com emailVerified false persiste a flag no storage", async () => {
+    const unverified: AuthUser = { ...storedUser, emailVerified: false };
+    localStorage.setItem("ajudadev.user", JSON.stringify(unverified));
+    mockedMe.mockResolvedValue(unverified);
+    renderProbe();
+
+    expect(await screen.findByText("verificado:false")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").emailVerified).toBe(false);
+  });
+
+  it("updateProfile não zera emailVerified", async () => {
+    const unverified: AuthUser = { ...storedUser, emailVerified: false };
+    localStorage.setItem("ajudadev.user", JSON.stringify(unverified));
+    mockedMe.mockResolvedValue(unverified);
+    mockedUpdate.mockResolvedValue({
+      id: "u1",
+      name: "Lucas R.",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+    });
+    const user = userEvent.setup();
+    renderProbe();
+
+    await user.click(screen.getByRole("button", { name: "editar" }));
+
+    expect(await screen.findByText("nome:Lucas R.")).toBeInTheDocument();
+    expect(await screen.findByText("verificado:false")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").emailVerified).toBe(false);
+  });
+
+  it("verifyEmail atualiza a sessão com emailVerified true", async () => {
+    const unverified: AuthUser = { ...storedUser, emailVerified: false };
+    localStorage.setItem("ajudadev.user", JSON.stringify(unverified));
+    mockedMe.mockResolvedValue(unverified);
+    mockedVerify.mockResolvedValue({ ...storedUser, emailVerified: true });
+    const user = userEvent.setup();
+    renderProbe();
+
+    await user.click(screen.getByRole("button", { name: "confirmar" }));
+
+    expect(mockedVerify).toHaveBeenCalledWith("AB12CD");
+    expect(await screen.findByText("verificado:true")).toBeInTheDocument();
+    expect(JSON.parse(localStorage.getItem("ajudadev.user") ?? "{}").emailVerified).toBe(true);
   });
 });

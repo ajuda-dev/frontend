@@ -5,10 +5,16 @@ import { AuthProvider } from "../../context/AuthContext";
 import { GuestRoute } from "./GuestRoute";
 import { ProtectedRoute } from "./ProtectedRoute";
 
-function seedSession() {
+function seedSession(emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
+    JSON.stringify({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      emailVerified,
+    }),
   );
 }
 
@@ -19,9 +25,11 @@ function renderGuards(initialEntry: string | { pathname: string; state: unknown 
         <Routes>
           <Route element={<GuestRoute />}>
             <Route path="/login" element={<p>Tela de login</p>} />
+            <Route path="/registro" element={<p>Tela de registro</p>} />
           </Route>
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<p>Conteúdo protegido</p>} />
+            <Route path="/confirmar-email" element={<p>Confirmar e-mail</p>} />
           </Route>
         </Routes>
       </AuthProvider>
@@ -62,5 +70,19 @@ describe("GuestRoute", () => {
     renderGuards("/login");
     expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
     expect(screen.queryByText("Tela de login")).not.toBeInTheDocument();
+  });
+
+  it("com e-mail pendente o registro redireciona para a confirmação", () => {
+    seedSession(false);
+    renderGuards("/registro");
+    expect(screen.getByText("Confirmar e-mail")).toBeInTheDocument();
+    expect(screen.queryByText("Tela de registro")).not.toBeInTheDocument();
+  });
+
+  it("com e-mail pendente o login continua indo para a home", () => {
+    seedSession(false);
+    renderGuards("/login");
+    expect(screen.getByText("Conteúdo protegido")).toBeInTheDocument();
+    expect(screen.queryByText("Confirmar e-mail")).not.toBeInTheDocument();
   });
 });

@@ -44,10 +44,15 @@ export async function updateParticipantStatus(
   eventId: string,
   userId: string,
   status: DecidableStatus,
+  comment?: string,
 ): Promise<EventUser> {
-  const { data } = await api.put<EventUser>(`/event/${eventId}/participants/${userId}/status`, {
-    status,
-  });
+  const trimmed = (comment ?? "").trim();
+  const body: { status: DecidableStatus; comment?: string } = { status };
+  // REJECTED exige comment no backend; CONFIRMED só envia quando há texto.
+  if (status === "REJECTED" || trimmed) {
+    body.comment = trimmed;
+  }
+  const { data } = await api.put<EventUser>(`/event/${eventId}/participants/${userId}/status`, body);
   return data;
 }
 

@@ -42,10 +42,10 @@ const COMMUNITY: Community = {
   owner: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
 };
 
-function seedSession(id = "u1", role: "USER" | "MODERATOR" | "ADMIN" = "USER") {
+function seedSession(id = "u1", role: "USER" | "MODERATOR" | "ADMIN" = "USER", emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role }),
+    JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role, emailVerified }),
   );
 }
 
@@ -133,6 +133,37 @@ describe("CommunityDetailPage", () => {
     expect(await screen.findByRole("button", { name: "Sair" })).toBeInTheDocument();
     expect(screen.getByText("Você é membro")).toBeInTheDocument();
     expect(mockedJoin).toHaveBeenCalledWith("c1");
+  });
+
+  it("e-mail não verificado troca Entrar pelo aviso e não chama a API", async () => {
+    seedSession("u1", "USER", false);
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    expect(await screen.findByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entrar" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Confirme seu e-mail para continuar/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Confirmar e-mail" })).toHaveAttribute(
+      "href",
+      "/confirmar-email",
+    );
+
+    await user.click(screen.getByRole("link", { name: "Confirmar e-mail" }));
+    expect(mockedJoin).not.toHaveBeenCalled();
+  });
+
+  it("membro com e-mail pendente ainda pode sair da comunidade", async () => {
+    seedSession("u1", "USER", false);
+    localStorage.setItem("ajudadev.memberships.u1", JSON.stringify(["c1"]));
+    mockedLeave.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    renderDetail({ community: COMMUNITY });
+
+    await user.click(await screen.findByRole("button", { name: "Sair" }));
+
+    expect(mockedLeave).toHaveBeenCalledWith("c1");
+    expect(screen.getByRole("link", { name: "Confirmar e-mail" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Entrar" })).not.toBeInTheDocument();
   });
 
   it("membro com cache persistido vê Sair e o leave desmarca", async () => {

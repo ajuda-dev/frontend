@@ -18,6 +18,7 @@ vi.mock("../services/auth", () => ({
     name: "Lucas Rocha",
     email: "lucas@ajudadev.dev",
     role: "USER",
+    emailVerified: true,
   }),
   logout: vi.fn(),
 }));

@@ -10,6 +10,8 @@ export interface AuthContextValue {
   login: (email: string, password: string) => Promise<AuthUser>;
   register: (name: string, email: string, password: string) => Promise<AuthUser>;
   updateProfile: (name: string) => Promise<AuthUser>;
+  verifyEmail: (code: string) => Promise<AuthUser>;
+  resendVerification: () => Promise<void>;
   logout: () => void;
 }
 
@@ -22,7 +24,8 @@ export function readStoredUser(): AuthUser | null {
     if (!rawUser) return null;
     const user = JSON.parse(rawUser) as AuthUser;
     if (!user?.id || !user?.email || !user?.role) return null;
-    return user;
+    // Cache anterior ao campo: assume verificado até o /me corrigir (OAuth e contas antigas).
+    return { ...user, emailVerified: user.emailVerified !== false };
   } catch {
     return null;
   }

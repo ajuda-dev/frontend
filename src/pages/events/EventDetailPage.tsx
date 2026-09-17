@@ -9,22 +9,37 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { ConfirmModal } from "../../components/ui/Modal";
+import { Input } from "../../components/ui/Input";
+import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
+import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useParticipants } from "../../hooks/useParticipants";
-import { deleteEvent, findEventById } from "../../services/event";
+import { deleteEvent, findEventById, rescheduleEvent } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
-import { canManageEvent, isEventApproved } from "../../utils/events";
+import { canManageEvent, canRescheduleEvent, isEventApproved } from "../../utils/events";
 import { formatAddress, formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
 import { canAtLeast } from "../../utils/roles";
 
 interface DetailLocationState {
   event?: EventItem;
+}
+
+const COMMENT_MAX = 500;
+
+// `datetime-local` trabalha em hora local do navegador; o backend compara instantes,
+// então o valor vai como ISO (UTC) e o `min` do input já bloqueia o passado.
+function toLocalInputValue(value: Date): string {
+  const offsetMs = value.getTimezoneOffset() * 60_000;
+  return new Date(value.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function nowLocalInputValue(): string {
+  return toLocalInputValue(new Date());
 }
 
 export function EventDetailPage() {
@@ -41,8 +56,16 @@ export function EventDetailPage() {
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteComment, setDeleteComment] = useState("");
+  const [deleteLocalError, setDeleteLocalError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [confirmingReschedule, setConfirmingReschedule] = useState(false);
+  const [rescheduleStartAt, setRescheduleStartAt] = useState("");
+  const [rescheduleComment, setRescheduleComment] = useState("");
+  const [rescheduleLocalError, setRescheduleLocalError] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState(false);
+  const [rescheduleError, setRescheduleError] = useState<string | null>(null);
 
   useEffect(() => {
     // Evento vindo da navegação (state da lista) já está carregado.
@@ -79,12 +102,93 @@ export function EventDetailPage() {
   }, [id]);
 
   const participation = useParticipants(event?.id ?? "", user?.id, refreshEvent);
+  const refetchParticipants = participation.refetch;
+
+  const openDeleteModal = useCallback(() => {
+    setConfirmingDelete(true);
+    setDeleteComment("");
+    setDeleteLocalError(null);
+    setDeleteError(null);
+  }, []);
+
+  const closeDeleteModal = useCallback(() => {
+    if (deleting) return;
+    setConfirmingDelete(false);
+    setDeleteComment("");
+    setDeleteLocalError(null);
+  }, [deleting]);
+
+  const openRescheduleModal = useCallback(() => {
+    if (!event) return;
+    const parsed = new Date(event.start_at);
+    setConfirmingReschedule(true);
+    setRescheduleStartAt(
+      Number.isNaN(parsed.getTime()) ? nowLocalInputValue() : toLocalInputValue(parsed),
+    );
+    setRescheduleComment("");
+    setRescheduleLocalError(null);
+    setRescheduleError(null);
+  }, [event]);
+
+  const closeRescheduleModal = useCallback(() => {
+    if (rescheduling) return;
+    setConfirmingReschedule(false);
+    setRescheduleComment("");
+    setRescheduleLocalError(null);
+  }, [rescheduling]);
+
+  const handleReschedule = useCallback(async () => {
+    if (!rescheduleStartAt) {
+      setRescheduleLocalError("Informe a data e a hora do evento");
+      return;
+    }
+    if (new Date(rescheduleStartAt).getTime() <= Date.now()) {
+      setRescheduleLocalError("A data do evento precisa ser no futuro");
+      return;
+    }
+    const trimmed = rescheduleComment.trim();
+    if (!trimmed) {
+      setRescheduleLocalError("Informe o motivo do reagendamento");
+      return;
+    }
+    if (trimmed.length > COMMENT_MAX) {
+      setRescheduleLocalError(`O comentário deve ter no máximo ${COMMENT_MAX} caracteres`);
+      return;
+    }
+    setRescheduling(true);
+    setRescheduleError(null);
+    setRescheduleLocalError(null);
+    try {
+      const updated = await rescheduleEvent(id, {
+        startAt: new Date(rescheduleStartAt).toISOString(),
+        comment: trimmed,
+      });
+      setEvent(updated);
+      refetchParticipants();
+      setConfirmingReschedule(false);
+      setRescheduleComment("");
+    } catch (caught) {
+      setRescheduleError(apiErrorMessage(caught));
+    } finally {
+      setRescheduling(false);
+    }
+  }, [id, refetchParticipants, rescheduleComment, rescheduleStartAt]);
 
   const handleDelete = useCallback(async () => {
+    const trimmed = deleteComment.trim();
+    if (!trimmed) {
+      setDeleteLocalError("Informe o motivo do cancelamento");
+      return;
+    }
+    if (trimmed.length > COMMENT_MAX) {
+      setDeleteLocalError(`O comentário deve ter no máximo ${COMMENT_MAX} caracteres`);
+      return;
+    }
     setDeleting(true);
     setDeleteError(null);
+    setDeleteLocalError(null);
     try {
-      await deleteEvent(id);
+      await deleteEvent(id, trimmed);
       navigate("/eventos", { replace: true });
     } catch (caught) {
       setConfirmingDelete(false);
@@ -97,7 +201,7 @@ export function EventDetailPage() {
     } finally {
       setDeleting(false);
     }
-  }, [id, navigate]);
+  }, [deleteComment, id, navigate]);
 
   if (loading) return <PageSpinner />;
 
@@ -145,9 +249,14 @@ export function EventDetailPage() {
   // Espelha canManageEvent do backend: criador, dono da comunidade ou ≥ MODERATOR.
   const canManage = canManageEvent(event, user);
   const canDelete = canManage;
-  // O criador de um 1:1 não pode sair do próprio evento (400 no backend): a zona
-  // de participação não aparece para ele. Nas demais categorias ele pode se inscrever.
-  const showZone = !(isOwner && event.category === "MENTORING");
+  const canReschedule = canRescheduleEvent(event, user, participation.myRow);
+  // O criador de um 1:1 não pode sair do próprio evento (400 no backend). A zona
+  // só aparece para ele quando a linha dele volta a REQUESTED (reagendamento da
+  // outra pessoa) — aí precisa de Aceitar/Recusar. Enquanto myRow não carregou,
+  // a zona fica oculta para não mostrar "Participar".
+  const isMentoringCreator = Boolean(isOwner && event.category === "MENTORING");
+  const creatorNeedsToAccept = participation.myRow?.status === "REQUESTED";
+  const showZone = !isMentoringCreator || creatorNeedsToAccept;
   // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
   // do evento não aprova, nem quando é membro da comunidade.
   const isCommunityOwner = Boolean(
@@ -208,6 +317,13 @@ export function EventDetailPage() {
           ) : null}
         </dl>
 
+        {event.comment ? (
+          <div>
+            <p className="text-ink-muted text-xs">Observação</p>
+            <p className="text-ink text-sm whitespace-pre-line">{event.comment}</p>
+          </div>
+        ) : null}
+
         {isOnline ? (
           event.meeting_link ? (
             <a
@@ -262,27 +378,122 @@ export function EventDetailPage() {
 
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
 
-      {canDelete ? (
+      {canReschedule || canDelete ? (
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="danger" onClick={() => setConfirmingDelete(true)}>
-            Excluir evento
-          </Button>
+          {canReschedule ? (
+            <Button variant="secondary" onClick={openRescheduleModal}>
+              Reagendar
+            </Button>
+          ) : null}
+          {canDelete ? (
+            <Button variant="danger" onClick={openDeleteModal}>
+              Excluir evento
+            </Button>
+          ) : null}
         </div>
       ) : null}
 
-      <ConfirmModal
+      <Modal
+        open={confirmingReschedule}
+        title="Reagendar evento"
+        onClose={closeRescheduleModal}
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeRescheduleModal} disabled={rescheduling}>
+              Cancelar
+            </Button>
+            <Button onClick={() => void handleReschedule()} loading={rescheduling}>
+              Confirmar reagendamento
+            </Button>
+          </>
+        }
+      >
+        <div className="flex flex-col gap-3">
+          {event.category === "MENTORING" ? (
+            <p>Ao reagendar, você confirma o novo horário. A outra pessoa precisa aceitar de novo.</p>
+          ) : null}
+          <label htmlFor="reschedule-start-at" className="text-ink text-sm font-medium">
+            Nova data e hora
+          </label>
+          <Input
+            id="reschedule-start-at"
+            type="datetime-local"
+            min={nowLocalInputValue()}
+            value={rescheduleStartAt}
+            onChange={(change) => {
+              setRescheduleStartAt(change.target.value);
+              setRescheduleLocalError(null);
+            }}
+            invalid={Boolean(rescheduleLocalError)}
+            disabled={rescheduling}
+          />
+          <label htmlFor="reschedule-event-comment" className="text-ink text-sm font-medium">
+            Motivo do reagendamento
+          </label>
+          <Textarea
+            id="reschedule-event-comment"
+            value={rescheduleComment}
+            onChange={(change) => {
+              setRescheduleComment(change.target.value);
+              setRescheduleLocalError(null);
+            }}
+            maxLength={COMMENT_MAX}
+            rows={3}
+            placeholder="Explique brevemente o motivo"
+            invalid={Boolean(rescheduleLocalError)}
+            disabled={rescheduling}
+          />
+          <p className="text-ink-muted text-xs">
+            {rescheduleComment.trim().length}/{COMMENT_MAX}
+          </p>
+          {rescheduleLocalError ? <Alert variant="error">{rescheduleLocalError}</Alert> : null}
+          {rescheduleError ? <Alert variant="error">{rescheduleError}</Alert> : null}
+        </div>
+      </Modal>
+
+      <Modal
         open={confirmingDelete}
         title="Excluir evento"
-        description={
-          isOwner
-            ? "Excluir evento? Esta ação não pode ser desfeita."
-            : "Você está excluindo um evento que não é seu (você gerencia a comunidade ou a moderação). Esta ação não pode ser desfeita."
+        onClose={closeDeleteModal}
+        footer={
+          <>
+            <Button variant="ghost" onClick={closeDeleteModal} disabled={deleting}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={() => void handleDelete()} loading={deleting}>
+              Excluir
+            </Button>
+          </>
         }
-        confirmLabel="Excluir"
-        loading={deleting}
-        onConfirm={() => void handleDelete()}
-        onClose={() => setConfirmingDelete(false)}
-      />
+      >
+        <div className="flex flex-col gap-3">
+          <p>
+            {isOwner
+              ? "Excluir evento? Esta ação não pode ser desfeita."
+              : "Você está excluindo um evento que não é seu (você gerencia a comunidade ou a moderação). Esta ação não pode ser desfeita."}
+          </p>
+          <label htmlFor="delete-event-comment" className="text-ink text-sm font-medium">
+            Motivo do cancelamento
+          </label>
+          <Textarea
+            id="delete-event-comment"
+            value={deleteComment}
+            onChange={(change) => {
+              setDeleteComment(change.target.value);
+              setDeleteLocalError(null);
+            }}
+            maxLength={COMMENT_MAX}
+            rows={3}
+            placeholder="Explique brevemente o motivo"
+            invalid={Boolean(deleteLocalError)}
+            disabled={deleting}
+          />
+          <p className="text-ink-muted text-xs">
+            {deleteComment.trim().length}/{COMMENT_MAX}
+          </p>
+          {deleteLocalError ? <Alert variant="error">{deleteLocalError}</Alert> : null}
+        </div>
+      </Modal>
 
       <Link to="/eventos" className="text-brand text-sm hover:underline">
         Voltar para a lista

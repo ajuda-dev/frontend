@@ -142,4 +142,23 @@ describe("useMemberships", () => {
     act(() => result.current.dismissNotice());
     expect(result.current.notice).toBeNull();
   });
+
+  it("join 403 de e-mail não verificado mostra a mensagem traduzida e não marca membro", async () => {
+    mockedJoin.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 403",
+      response: { status: 403, data: { message: "email is not verified", code: 403 } },
+    });
+    const { result } = renderHook(() => useMemberships("u1"));
+
+    await act(async () => {
+      await result.current.join("c1");
+    });
+
+    expect(result.current.isMember("c1")).toBe(false);
+    expect(result.current.notice).toEqual({
+      tone: "error",
+      message: "Confirme seu e-mail para continuar",
+    });
+  });
 });

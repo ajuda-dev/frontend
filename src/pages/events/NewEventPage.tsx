@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { AddressPicker } from "../../components/address/AddressPicker";
+import { EmailVerificationGate } from "../../components/auth/EmailVerificationGate";
 import { CommunityPicker } from "../../components/community/CommunityPicker";
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
@@ -235,6 +236,8 @@ export function NewEventPage() {
         description="Descreva o encontro, escolha o formato e publique no catálogo."
       />
 
+      <EmailVerificationGate>
+        <div className="flex flex-col gap-6">
       <Card>
         <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
           <h2 className="text-ink text-base font-semibold">Dados do evento</h2>
@@ -432,17 +435,19 @@ export function NewEventPage() {
         ) : null}
 
         {community && canJoinCommunity ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              loading={memberships.pendingId === community.id}
-              onClick={() => void memberships.join(community.id)}
-            >
-              Entrar na comunidade
-            </Button>
-            <p className="text-ink-muted text-xs">
-              É preciso ser membro para criar um evento nesta comunidade.
-            </p>
-          </div>
+          <EmailVerificationGate>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                loading={memberships.pendingId === community.id}
+                onClick={() => void memberships.join(community.id)}
+              >
+                Entrar na comunidade
+              </Button>
+              <p className="text-ink-muted text-xs">
+                É preciso ser membro para criar um evento nesta comunidade.
+              </p>
+            </div>
+          </EmailVerificationGate>
         ) : null}
 
         {memberships.notice ? (
@@ -482,6 +487,8 @@ export function NewEventPage() {
           ) : null}
         </Card>
       ) : null}
+        </div>
+      </EmailVerificationGate>
     </div>
   );
 }

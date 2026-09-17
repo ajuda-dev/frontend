@@ -41,10 +41,16 @@ const COMMUNITY: Community = {
   owner: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
 };
 
-function seedSession() {
+function seedSession(emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
+    JSON.stringify({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role: "USER",
+      emailVerified,
+    }),
   );
 }
 
@@ -197,5 +203,21 @@ describe("NewCommunityPage", () => {
     expect((await screen.findAllByText(/São Paulo\/SP/)).length).toBeGreaterThan(0);
     expect(screen.getByText("Lucas Rocha")).toBeInTheDocument();
     expect(mockedFind).not.toHaveBeenCalled();
+  });
+
+  it("e-mail não verificado troca o formulário pelo aviso e não chama a API", async () => {
+    seedSession(false);
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.queryByRole("button", { name: "Criar comunidade" })).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Confirme seu e-mail para continuar");
+    expect(screen.getByRole("link", { name: "Confirmar e-mail" })).toHaveAttribute(
+      "href",
+      "/confirmar-email",
+    );
+
+    await user.click(screen.getByRole("link", { name: "Confirmar e-mail" }));
+    expect(mockedCreateCommunity).not.toHaveBeenCalled();
   });
 });

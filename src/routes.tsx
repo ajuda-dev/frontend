@@ -4,8 +4,11 @@ import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { AppLayout } from "./components/layout/AppLayout";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { AuthCallbackPage } from "./pages/auth/AuthCallbackPage";
+import { ForgotPasswordPage } from "./pages/auth/ForgotPasswordPage";
 import { LoginPage } from "./pages/auth/LoginPage";
 import { RegisterPage } from "./pages/auth/RegisterPage";
+import { ResetPasswordPage } from "./pages/auth/ResetPasswordPage";
+import { VerifyEmailPage } from "./pages/auth/VerifyEmailPage";
 import { CommunityDetailPage } from "./pages/communities/CommunityDetailPage";
 import { EditCommunityPage } from "./pages/communities/EditCommunityPage";
 import { ExploreCommunitiesPage } from "./pages/communities/ExploreCommunitiesPage";
@@ -23,6 +26,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/esqueci-senha" element={<ForgotPasswordPage />} />
+      <Route path="/redefinir-senha" element={<ResetPasswordPage />} />
 
       <Route element={<GuestRoute />}>
         <Route path="/login" element={<LoginPage />} />
@@ -30,6 +35,7 @@ export function AppRoutes() {
       </Route>
 
       <Route element={<ProtectedRoute />}>
+        <Route path="/confirmar-email" element={<VerifyEmailPage />} />
         <Route element={<AppLayout />}>
           <Route path="/" element={<Navigate to="/comunidades" replace />} />
           <Route path="/comunidades" element={<ExploreCommunitiesPage />} />

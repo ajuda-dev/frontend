@@ -71,6 +71,48 @@ describe("AppRoutes", () => {
     expect(screen.getByRole("heading", { name: "Comunidades" })).toBeInTheDocument();
   });
 
+  it("recuperação de senha é acessível sem sessão", () => {
+    renderAt("/esqueci-senha");
+    expect(screen.getByRole("heading", { name: "Esqueci a senha" })).toBeInTheDocument();
+  });
+
+  it("redefinir senha é acessível sem sessão", () => {
+    renderAt("/redefinir-senha");
+    expect(screen.getByRole("heading", { name: "Redefinir senha" })).toBeInTheDocument();
+  });
+
+  it("com sessão a recuperação de senha continua acessível", () => {
+    seedSession();
+    renderAt("/esqueci-senha");
+    expect(screen.getByRole("heading", { name: "Esqueci a senha" })).toBeInTheDocument();
+  });
+
+  it("sem sessão confirmar e-mail redireciona para o login", () => {
+    renderAt("/confirmar-email");
+    expect(screen.getByRole("heading", { name: "Entrar" })).toBeInTheDocument();
+  });
+
+  it("com e-mail pendente a rota de confirmação renderiza a página", () => {
+    localStorage.setItem(
+      "ajudadev.user",
+      JSON.stringify({
+        id: "u1",
+        name: "Lucas Rocha",
+        email: "lucas@ajudadev.dev",
+        role: "USER",
+        emailVerified: false,
+      }),
+    );
+    renderAt("/confirmar-email");
+    expect(screen.getByRole("heading", { name: "Confirmar e-mail" })).toBeInTheDocument();
+  });
+
+  it("com e-mail verificado a confirmação redireciona para as comunidades", () => {
+    seedSession();
+    renderAt("/confirmar-email");
+    expect(screen.getByRole("heading", { name: "Comunidades" })).toBeInTheDocument();
+  });
+
   it("a rota /eventos renderiza a página de eventos", () => {
     seedSession();
     renderAt("/eventos");

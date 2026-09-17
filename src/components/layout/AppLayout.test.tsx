@@ -15,10 +15,16 @@ vi.mock("../../services/notificationStream", () => ({
   openNotificationStream: vi.fn(() => vi.fn()),
 }));
 
-function seedSession(role: "USER" | "ADMIN" = "USER") {
+function seedSession(role: "USER" | "ADMIN" = "USER", emailVerified = true) {
   localStorage.setItem(
     "ajudadev.user",
-    JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role }),
+    JSON.stringify({
+      id: "u1",
+      name: "Lucas Rocha",
+      email: "lucas@ajudadev.dev",
+      role,
+      emailVerified,
+    }),
   );
 }
 
@@ -31,6 +37,7 @@ function renderLayout() {
             <Route path="/" element={<p>Conteúdo</p>} />
           </Route>
           <Route path="/login" element={<p>Tela de login</p>} />
+          <Route path="/confirmar-email" element={<p>Confirmar e-mail</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -91,5 +98,18 @@ describe("AppLayout", () => {
     for (const item of NAV_ITEMS.filter((navItem) => !navItem.enabled)) {
       expect(screen.queryByRole("link", { name: item.label })).not.toBeInTheDocument();
     }
+  });
+
+  it("mostra o banner quando o e-mail não está verificado", () => {
+    seedSession("USER", false);
+    renderLayout();
+    expect(screen.getByRole("link", { name: "Confirmar e-mail" })).toBeInTheDocument();
+    expect(screen.getByText(/Confirme seu e-mail/)).toBeInTheDocument();
+  });
+
+  it("não mostra o banner quando o e-mail já está verificado", () => {
+    seedSession("USER", true);
+    renderLayout();
+    expect(screen.queryByRole("link", { name: "Confirmar e-mail" })).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventItem, Pageable } from "../types/api";
 import { api } from "./api";
-import { createEvent, deleteEvent, findEventById, listEvents, approveEvent } from "./event";
+import { createEvent, deleteEvent, findEventById, listEvents, approveEvent, rescheduleEvent } from "./event";
 
 // `isApiError` precisa ser o real (a implementação de findEventById depende dele
 // para mapear 404 → null); só a instância `api` é dublada.
@@ -347,12 +347,14 @@ describe("deleteEvent", () => {
     vi.clearAllMocks();
   });
 
-  it("faz DELETE no path do evento", async () => {
+  it("faz DELETE no path do evento com comment no body", async () => {
     mockedDelete.mockResolvedValue({ data: undefined });
 
-    await deleteEvent("e1");
+    await deleteEvent("e1", "  Evento cancelado pelo organizador  ");
 
-    expect(mockedDelete).toHaveBeenCalledWith("/event/e1");
+    expect(mockedDelete).toHaveBeenCalledWith("/event/e1", {
+      data: { comment: "Evento cancelado pelo organizador" },
+    });
   });
 });
 
@@ -377,5 +379,27 @@ describe("approveEvent", () => {
     await approveEvent("e1", "REJECTED");
 
     expect(mockedPut).toHaveBeenCalledWith("/event/e1/approval", { status: "REJECTED" });
+  });
+});
+
+describe("rescheduleEvent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT em /event/:id/reschedule com start_at e comment trimado", async () => {
+    const updated = { ...event("e1"), start_at: "2026-11-02T23:00:00.000Z", comment: "Novo horário" };
+    mockedPut.mockResolvedValue({ data: updated });
+
+    const result = await rescheduleEvent("e1", {
+      startAt: "2026-11-02T23:00:00.000Z",
+      comment: "  Novo horário  ",
+    });
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/reschedule", {
+      start_at: "2026-11-02T23:00:00.000Z",
+      comment: "Novo horário",
+    });
+    expect(result).toEqual(updated);
   });
 });

@@ -18,7 +18,15 @@ vi.mock("../../services/skill", () => ({
   listSkills: vi.fn(),
   assignSkillToUser: vi.fn(),
 }));
+vi.mock("../../services/auth", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../services/auth")>();
+  return {
+    ...actual,
+    changePassword: vi.fn(),
+  };
+});
 
+import { changePassword } from "../../services/auth";
 import { assignSkillToUser, listSkills } from "../../services/skill";
 import {
   getUserProfile,
@@ -35,6 +43,7 @@ const mockedUpdateName = vi.mocked(updateUserName);
 const mockedUpdateProfile = vi.mocked(updateUserProfile);
 const mockedAssign = vi.mocked(assignSkillToUser);
 const mockedListSkills = vi.mocked(listSkills);
+const mockedChangePassword = vi.mocked(changePassword);
 
 function profile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
@@ -91,6 +100,7 @@ describe("MyProfilePage", () => {
     mockedProfile.mockResolvedValue(profile());
     mockedSkills.mockResolvedValue([]);
     mockedListSkills.mockResolvedValue(page([]));
+    mockedChangePassword.mockResolvedValue(undefined);
   });
 
   it("mostra nome, e-mail, cargo e descrição da sessão e do GET", async () => {
@@ -103,6 +113,11 @@ describe("MyProfilePage", () => {
     expect(screen.getByRole("link", { name: "Ver perfil público" })).toHaveAttribute(
       "href",
       "/pessoas/u1",
+    );
+    expect(screen.getByRole("button", { name: "Alterar senha" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Esqueci a senha" })).toHaveAttribute(
+      "href",
+      "/esqueci-senha",
     );
   });
 
@@ -330,6 +345,24 @@ describe("MyProfilePage", () => {
 
     expect(screen.queryByLabelText("Nome")).not.toBeInTheDocument();
     expect(mockedUpdateName).not.toHaveBeenCalled();
+  });
+
+  it("alterar senha abre o formulário e sucesso fecha com aviso", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("button", { name: "Alterar senha" }));
+    await user.type(screen.getByLabelText("Senha atual"), "antiga123");
+    await user.type(screen.getByLabelText("Nova senha"), "nova456");
+    await user.click(screen.getByRole("button", { name: "Salvar senha" }));
+
+    expect(await screen.findByText("Senha atualizada.")).toBeInTheDocument();
+    expect(mockedChangePassword).toHaveBeenCalledWith({
+      currentPassword: "antiga123",
+      newPassword: "nova456",
+    });
+    expect(screen.queryByLabelText("Senha atual")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Alterar senha" })).toBeInTheDocument();
   });
 
   it("card Perfil público mostra os contatos do GET e o badge do que não é compartilhado", async () => {

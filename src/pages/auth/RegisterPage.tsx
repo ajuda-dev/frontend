@@ -56,7 +56,7 @@ export function RegisterPage() {
     setSubmitting(true);
     try {
       await register(name.trim(), email.trim(), password);
-      navigate("/", { replace: true });
+      navigate("/confirmar-email", { replace: true });
     } catch (error) {
       const fields = apiErrorFields(error);
       setErrors({ name: fields.name, email: fields.email, password: fields.password });

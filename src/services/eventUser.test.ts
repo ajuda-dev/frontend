@@ -135,15 +135,42 @@ describe("updateParticipantStatus", () => {
     expect(result.status).toBe("CONFIRMED");
   });
 
-  it("envia REJECTED na recusa do convite", async () => {
-    mockedPut.mockResolvedValue({ data: eventUser({ role: "MENTEE", status: "REJECTED" }) });
+  it("envia comment opcional no aceite quando informado", async () => {
+    mockedPut.mockResolvedValue({
+      data: eventUser({ role: "MENTEE", comment: "Combinado pelo LinkedIn" }),
+    });
 
-    const result = await updateParticipantStatus("e1", "u2", "REJECTED");
+    await updateParticipantStatus("e1", "u2", "CONFIRMED", "  Combinado pelo LinkedIn  ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u2/status", {
+      status: "CONFIRMED",
+      comment: "Combinado pelo LinkedIn",
+    });
+  });
+
+  it("envia REJECTED com comment na recusa do convite", async () => {
+    mockedPut.mockResolvedValue({
+      data: eventUser({ role: "MENTEE", status: "REJECTED", comment: "Agenda conflitou" }),
+    });
+
+    const result = await updateParticipantStatus("e1", "u2", "REJECTED", "Agenda conflitou");
 
     expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u2/status", {
       status: "REJECTED",
+      comment: "Agenda conflitou",
     });
     expect(result.status).toBe("REJECTED");
+  });
+
+  it("envia comment vazio no REJECTED para o backend validar", async () => {
+    mockedPut.mockResolvedValue({ data: eventUser({ role: "MENTEE", status: "REJECTED" }) });
+
+    await updateParticipantStatus("e1", "u2", "REJECTED", "   ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u2/status", {
+      status: "REJECTED",
+      comment: "",
+    });
   });
 });
 

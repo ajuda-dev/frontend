@@ -41,6 +41,7 @@ describe("AuthCallbackPage", () => {
       name: "Lucas Rocha",
       email: "lucas@ajudadev.dev",
       role: "USER",
+      emailVerified: true,
     });
     renderCallback();
 
