@@ -126,6 +126,7 @@ describe("HostPanel", () => {
         role: "MENTEE",
         status: "REJECTED",
         comment: "Agenda conflitou nesta semana",
+        comment_kind: "REJECT",
       }),
     ]);
     renderPanel(event({ category: "MENTORING", max_slots: 2 }));
@@ -134,6 +135,24 @@ describe("HostPanel", () => {
     expect(screen.getByText("Motivo da recusa")).toBeInTheDocument();
     expect(screen.getByText("Agenda conflitou nesta semana").closest("[role=status]")).toHaveClass(
       "border-danger",
+    );
+  });
+
+  it("exibe o comment de reagendamento em amarelo na linha do ator", async () => {
+    mockedGet.mockResolvedValue([
+      row({
+        user_id: "u2",
+        role: "MENTOR",
+        status: "CONFIRMED",
+        comment: "vamos deixar para semana que vem",
+        comment_kind: "RESCHEDULE",
+      }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }));
+
+    expect(await screen.findByText("Mentoria reagendada")).toBeInTheDocument();
+    expect(screen.getByText("vamos deixar para semana que vem").closest("[role=status]")).toHaveClass(
+      "border-warning",
     );
   });
 

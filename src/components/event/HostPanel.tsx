@@ -13,9 +13,9 @@ import {
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
-import { NoticeCard } from "../ui/NoticeCard";
 import { Spinner } from "../ui/Spinner";
 import { AddPersonPicker } from "./AddPersonPicker";
+import { ParticipantComment } from "./ParticipantComment";
 
 interface HostPanelProps {
   event: EventItem;
@@ -212,13 +212,7 @@ export function HostPanel({
                   </Badge>
                 </div>
                 {entry.comment ? (
-                  entry.status === "REJECTED" ? (
-                    <NoticeCard tone="danger" title="Motivo da recusa">
-                      {entry.comment}
-                    </NoticeCard>
-                  ) : (
-                    <p className="text-ink-muted text-xs whitespace-pre-line">{entry.comment}</p>
-                  )
+                  <ParticipantComment entry={entry} category={event.category} />
                 ) : null}
               </div>
 

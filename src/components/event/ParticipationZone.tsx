@@ -7,9 +7,9 @@ import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
-import { NoticeCard } from "../ui/NoticeCard";
 import { Spinner } from "../ui/Spinner";
 import { Textarea } from "../ui/Textarea";
+import { ParticipantComment } from "./ParticipantComment";
 
 interface ParticipationZoneProps {
   event: EventItem;
@@ -216,9 +216,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
               <Badge tone="brand">
                 {myRow?.role === "MENTOR" ? "Você é o mentor" : "Você é o mentorado"}
               </Badge>
-              {myRow?.comment ? (
-                <p className="text-ink-muted text-sm whitespace-pre-line">{myRow.comment}</p>
-              ) : null}
+              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
               <div>
                 <Button
                   size="sm"
@@ -235,11 +233,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
           {status === "REJECTED" ? (
             <div className="flex flex-col gap-2">
               <p className="text-ink-muted text-sm">Você recusou o convite desta mentoria.</p>
-              {myRow?.comment ? (
-                <NoticeCard tone="danger" title="Motivo da recusa">
-                  {myRow.comment}
-                </NoticeCard>
-              ) : null}
+              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
             </div>
           ) : null}
 
@@ -261,11 +255,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                   <p className="text-ink-muted text-sm">
                     Sua inscrição foi recusada — você pode se inscrever de novo.
                   </p>
-                  {myRow?.comment ? (
-                    <NoticeCard tone="danger" title="Motivo da recusa">
-                      {myRow.comment}
-                    </NoticeCard>
-                  ) : null}
+                  {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2">{approved ? joinButton : null}</div>
@@ -280,6 +270,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
           {status === "CONFIRMED" ? (
             <div className="flex flex-col gap-3">
               <Badge tone="brand">Você participa</Badge>
+              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
               <div>
                 <Button
                   size="sm"

@@ -11,7 +11,6 @@ import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
-import { NoticeCard } from "../../components/ui/NoticeCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
@@ -401,15 +400,6 @@ export function EventDetailPage() {
           </Link>
         ) : null}
       </Card>
-
-      {event.comment ? (
-        <NoticeCard
-          tone="warning"
-          title={event.category === "MENTORING" ? "Mentoria reagendada" : "Evento reagendado"}
-        >
-          {event.comment}
-        </NoticeCard>
-      ) : null}
 
       {showApprovalPanel ? (
         <Card className="flex flex-col gap-3">

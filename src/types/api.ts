@@ -68,8 +68,6 @@ export interface EventItem {
   duration_min: number;
   max_slots?: number | null;
   meeting_link?: string;
-  // Motivo de cancelamento ou reagendamento (events.comment); omitido quando vazio.
-  comment?: string;
   // Situação de aprovação do evento (dto.EventDto.status); o backend trata
   // vazio/ausente como aprovado (isEventApproved), por isso o campo é opcional.
   status?: EventApprovalStatus;
@@ -78,14 +76,18 @@ export interface EventItem {
   owner?: UserSummary | null;
 }
 
+export type EventUserCommentKind = "RESCHEDULE" | "REJECT" | "CANCEL" | "NOTE";
+
 export interface EventUser {
   id: string;
   event_id: string;
   user_id: string;
   role: ParticipationRole;
   status: ParticipationStatus;
-  // Motivo do accept/reject (status_comment); omitido quando vazio.
+  // Motivo em event_users.status_comment; omitido quando vazio.
   comment?: string;
+  // Origem do comment (status_comment_kind): RESCHEDULE | REJECT | CANCEL | NOTE.
+  comment_kind?: EventUserCommentKind;
   user?: UserSummary | null;
 }
 

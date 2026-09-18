@@ -93,14 +93,12 @@ describe("EventDetailPage", () => {
   });
 
   it("com state da lista mostra na hora e confirma no GET", async () => {
-    mockedFind.mockResolvedValue({ ...EVENT, comment: "teste" });
-    renderDetail({ event: { ...EVENT, comment: "vamos deixar para semana que vem" } });
+    mockedFind.mockResolvedValue({ ...EVENT, description: "descrição confirmada no GET" });
+    renderDetail({ event: { ...EVENT, description: "descrição vinda do state" } });
 
-    expect(
-      await screen.findByText("vamos deixar para semana que vem"),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("teste")).toBeInTheDocument();
-    expect(screen.queryByText("vamos deixar para semana que vem")).not.toBeInTheDocument();
+    expect(await screen.findByText("descrição vinda do state")).toBeInTheDocument();
+    expect(await screen.findByText("descrição confirmada no GET")).toBeInTheDocument();
+    expect(screen.queryByText("descrição vinda do state")).not.toBeInTheDocument();
     expect(mockedFind).toHaveBeenCalledWith("e1", expect.anything());
   });
 
@@ -618,8 +616,21 @@ describe("EventDetailPage", () => {
     mockedReschedule.mockResolvedValue({
       ...EVENT,
       start_at: "2026-11-02T20:00:00-03:00",
-      comment: "Conflito de agenda",
     });
+    mockedParticipants
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          id: "p-owner",
+          event_id: "e1",
+          user_id: "owner-1",
+          role: "HOST",
+          status: "CONFIRMED",
+          comment: "Conflito de agenda",
+          comment_kind: "RESCHEDULE",
+          user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+        },
+      ]);
     const user = userEvent.setup();
     renderDetail({ event: EVENT });
 
@@ -639,18 +650,39 @@ describe("EventDetailPage", () => {
       comment: "Conflito de agenda",
     });
     expect((await screen.findAllByText("02/11/2026, 20:00")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Evento reagendado")).toBeInTheDocument();
-    expect(screen.getByText("Conflito de agenda").closest("[role=status]")).toHaveClass("border-warning");
+    expect((await screen.findAllByText("Evento reagendado")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Conflito de agenda")[0].closest("[role=status]")).toHaveClass(
+      "border-warning",
+    );
   });
 
-  it("mentoria reagendada mostra o motivo num card amarelo", async () => {
+  it("mentoria reagendada mostra o motivo amarelo na linha de quem reagendou", async () => {
     seedSession("owner-1");
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p1",
+        event_id: "e1",
+        user_id: "owner-1",
+        role: "MENTEE",
+        status: "CONFIRMED",
+        comment: "Sexta 15h encaixa melhor",
+        comment_kind: "RESCHEDULE",
+        user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+      },
+      {
+        id: "p2",
+        event_id: "e1",
+        user_id: "u2",
+        role: "MENTOR",
+        status: "REQUESTED",
+        user: { id: "u2", name: "Lucas", email: "lucas@ajudadev.dev", role: "USER" },
+      },
+    ]);
     renderDetail({
       event: {
         ...EVENT,
         category: "MENTORING",
         max_slots: 2,
-        comment: "Sexta 15h encaixa melhor",
       },
     });
 

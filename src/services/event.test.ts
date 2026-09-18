@@ -388,7 +388,7 @@ describe("rescheduleEvent", () => {
   });
 
   it("faz PUT em /event/:id/reschedule com start_at e comment trimado", async () => {
-    const updated = { ...event("e1"), start_at: "2026-11-02T23:00:00.000Z", comment: "Novo horário" };
+    const updated = { ...event("e1"), start_at: "2026-11-02T23:00:00.000Z" };
     mockedPut.mockResolvedValue({ data: updated });
 
     const result = await rescheduleEvent("e1", {

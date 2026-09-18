@@ -119,9 +119,10 @@ export async function deleteEvent(eventId: string, comment: string): Promise<voi
   await api.delete(`/event/${eventId}`, { data: { comment: comment.trim() } });
 }
 
-// PUT /v1/event/:id/reschedule — troca só start_at + comment. Em MENTORING a API
-// confirma quem reagendou e devolve o outro para REQUESTED; a resposta não traz
-// event_users, então a página precisa refetch dos participantes.
+// PUT /v1/event/:id/reschedule — troca start_at e grava comment no event_users
+// de quem reagenda (comment_kind=RESCHEDULE). Em MENTORING a API confirma quem
+// reagendou e devolve o outro para REQUESTED; a resposta não traz event_users,
+// então a página precisa refetch dos participantes.
 export async function rescheduleEvent(
   eventId: string,
   input: { startAt: string; comment: string },
