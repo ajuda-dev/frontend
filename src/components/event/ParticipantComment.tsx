@@ -27,5 +27,10 @@ export function ParticipantComment({ entry, category }: ParticipantCommentProps)
       </NoticeCard>
     );
   }
-  return <p className="text-ink-muted text-xs whitespace-pre-line">{entry.comment}</p>;
+  return (
+    <div role="status" className="border-line bg-surface rounded-md border px-3 py-2">
+      <p className="text-ink-muted text-xs font-medium">Comentário</p>
+      <p className="text-ink mt-1 text-sm whitespace-pre-line">{entry.comment}</p>
+    </div>
+  );
 }

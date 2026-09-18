@@ -5,6 +5,7 @@ import {
   cancelParticipation,
   getParticipants,
   joinEvent,
+  updateParticipantComment,
   updateParticipantStatus,
 } from "../services/eventUser";
 import type { EventUser } from "../types/api";
@@ -29,6 +30,7 @@ export interface UseParticipantsResult {
   cancel: () => Promise<boolean>;
   accept: (comment?: string) => Promise<boolean>;
   reject: (comment: string) => Promise<boolean>;
+  saveComment: (comment: string) => Promise<boolean>;
   add: (userId: string, role: InvitableRole) => Promise<boolean>;
   remove: (userId: string) => Promise<boolean>;
 }
@@ -150,6 +152,14 @@ export function useParticipants(
     [eventId, runAction, userId],
   );
 
+  const saveComment = useCallback(
+    (comment: string) => {
+      if (!userId) return Promise.resolve(false);
+      return runAction("comment", () => updateParticipantComment(eventId, userId, comment));
+    },
+    [eventId, runAction, userId],
+  );
+
   const add = useCallback(
     (targetUserId: string, role: InvitableRole) =>
       runAction("add", () => addParticipant(eventId, { userId: targetUserId, role })),
@@ -195,6 +205,7 @@ export function useParticipants(
     cancel,
     accept,
     reject,
+    saveComment,
     add,
     remove,
   };

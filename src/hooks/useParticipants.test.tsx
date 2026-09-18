@@ -9,6 +9,7 @@ vi.mock("../services/eventUser", () => ({
   getParticipants: vi.fn(),
   addParticipant: vi.fn(),
   updateParticipantStatus: vi.fn(),
+  updateParticipantComment: vi.fn(),
 }));
 
 import {
@@ -16,6 +17,7 @@ import {
   cancelParticipation,
   getParticipants,
   joinEvent,
+  updateParticipantComment,
   updateParticipantStatus,
 } from "../services/eventUser";
 
@@ -24,6 +26,7 @@ const mockedJoin = vi.mocked(joinEvent);
 const mockedCancel = vi.mocked(cancelParticipation);
 const mockedAdd = vi.mocked(addParticipant);
 const mockedUpdate = vi.mocked(updateParticipantStatus);
+const mockedUpdateComment = vi.mocked(updateParticipantComment);
 
 function apiError(status: number, message: string) {
   return {
@@ -132,6 +135,38 @@ describe("useParticipants", () => {
     expect(result.current.myRow?.comment).toBe("Sem agenda");
   });
 
+  it("saveComment grava só o comment (PUT comment)", async () => {
+    mockedGet
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "MENTEE", status: "CONFIRMED" })])
+      .mockResolvedValueOnce([
+        row({
+          user_id: "u1",
+          role: "MENTEE",
+          status: "CONFIRMED",
+          comment: "Nos falamos",
+          comment_kind: "NOTE",
+        }),
+      ]);
+    mockedUpdateComment.mockResolvedValue(
+      row({
+        user_id: "u1",
+        role: "MENTEE",
+        status: "CONFIRMED",
+        comment: "Nos falamos",
+        comment_kind: "NOTE",
+      }),
+    );
+    const { result } = await renderParticipants();
+
+    await act(async () => {
+      await result.current.saveComment("Nos falamos");
+    });
+
+    expect(mockedUpdateComment).toHaveBeenCalledWith("e1", "u1", "Nos falamos");
+    expect(result.current.myRow?.comment).toBe("Nos falamos");
+    expect(result.current.myRow?.comment_kind).toBe("NOTE");
+  });
+
   it("add envia o papel e reflete o status devolvido pelo backend", async () => {
     mockedGet
       .mockResolvedValueOnce([])
@@ -233,11 +268,13 @@ describe("useParticipants", () => {
       await result.current.cancel();
       await result.current.accept();
       await result.current.reject("motivo");
+      await result.current.saveComment("nota");
     });
 
     expect(mockedJoin).not.toHaveBeenCalled();
     expect(mockedCancel).not.toHaveBeenCalled();
     expect(mockedUpdate).not.toHaveBeenCalled();
+    expect(mockedUpdateComment).not.toHaveBeenCalled();
     expect(result.current.myRow).toBeNull();
   });
 

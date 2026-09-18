@@ -21,10 +21,16 @@ vi.mock("../../services/eventUser", () => ({
   getParticipants: vi.fn(),
   addParticipant: vi.fn(),
   updateParticipantStatus: vi.fn(),
+  updateParticipantComment: vi.fn(),
 }));
 
 import { deleteEvent, findEventById, approveEvent, rescheduleEvent } from "../../services/event";
-import { getParticipants, joinEvent, updateParticipantStatus } from "../../services/eventUser";
+import {
+  getParticipants,
+  joinEvent,
+  updateParticipantComment,
+  updateParticipantStatus,
+} from "../../services/eventUser";
 
 const mockedFind = vi.mocked(findEventById);
 const mockedDelete = vi.mocked(deleteEvent);
@@ -33,6 +39,7 @@ const mockedReschedule = vi.mocked(rescheduleEvent);
 const mockedParticipants = vi.mocked(getParticipants);
 const mockedJoinEvent = vi.mocked(joinEvent);
 const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
+const mockedUpdateComment = vi.mocked(updateParticipantComment);
 
 const EVENT: EventItem = {
   id: "e1",
@@ -762,5 +769,52 @@ describe("EventDetailPage", () => {
 
     expect(await screen.findByText("Informe o motivo do reagendamento")).toBeInTheDocument();
     expect(mockedReschedule).not.toHaveBeenCalled();
+  });
+
+  it("salva só o comentário abaixo da faixa de ações", async () => {
+    seedSession("owner-1");
+    mockedFind.mockResolvedValue(EVENT);
+    mockedParticipants
+      .mockResolvedValueOnce([
+        {
+          id: "p1",
+          event_id: "e1",
+          user_id: "owner-1",
+          role: "HOST",
+          status: "CONFIRMED",
+          user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          id: "p1",
+          event_id: "e1",
+          user_id: "owner-1",
+          role: "HOST",
+          status: "CONFIRMED",
+          comment: "Combinado pelo chat",
+          comment_kind: "NOTE",
+          user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+        },
+      ]);
+    mockedUpdateComment.mockResolvedValue({
+      id: "p1",
+      event_id: "e1",
+      user_id: "owner-1",
+      role: "HOST",
+      status: "CONFIRMED",
+      comment: "Combinado pelo chat",
+      comment_kind: "NOTE",
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByLabelText("Seu comentário")).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Seu comentário"), "Combinado pelo chat");
+    await user.click(screen.getByRole("button", { name: "Salvar comentário" }));
+
+    expect(mockedUpdateComment).toHaveBeenCalledWith("e1", "owner-1", "Combinado pelo chat");
+    expect((await screen.findAllByText("Combinado pelo chat")).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Comentário").length).toBeGreaterThan(0);
   });
 });

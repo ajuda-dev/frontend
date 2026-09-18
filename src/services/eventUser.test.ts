@@ -6,6 +6,7 @@ import {
   cancelParticipation,
   getParticipants,
   joinEvent,
+  updateParticipantComment,
   updateParticipantStatus,
 } from "./eventUser";
 
@@ -169,6 +170,36 @@ describe("updateParticipantStatus", () => {
 
     expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u2/status", {
       status: "REJECTED",
+      comment: "",
+    });
+  });
+});
+
+describe("updateParticipantComment", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT só do comment trimado", async () => {
+    mockedPut.mockResolvedValue({
+      data: eventUser({ comment: "Nos falamos pelo LinkedIn", comment_kind: "NOTE" }),
+    });
+
+    const result = await updateParticipantComment("e1", "u1", "  Nos falamos pelo LinkedIn  ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u1/comment", {
+      comment: "Nos falamos pelo LinkedIn",
+    });
+    expect(result.comment).toBe("Nos falamos pelo LinkedIn");
+    expect(result.comment_kind).toBe("NOTE");
+  });
+
+  it("envia comment vazio para limpar", async () => {
+    mockedPut.mockResolvedValue({ data: eventUser() });
+
+    await updateParticipantComment("e1", "u1", "   ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/participants/u1/comment", {
       comment: "",
     });
   });

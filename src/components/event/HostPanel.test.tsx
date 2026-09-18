@@ -12,6 +12,7 @@ vi.mock("../../services/eventUser", () => ({
   getParticipants: vi.fn(),
   addParticipant: vi.fn(),
   updateParticipantStatus: vi.fn(),
+  updateParticipantComment: vi.fn(),
 }));
 
 vi.mock("../../services/skill", () => ({ listSkills: vi.fn() }));

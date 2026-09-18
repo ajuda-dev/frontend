@@ -157,6 +157,10 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "event is not approved yet": "Este evento ainda não foi aprovado pela comunidade",
   "only the invited user can accept or reject this invitation":
     "Só quem recebeu o convite pode aceitar ou recusá-lo",
+  "only the participant themselves can update this comment":
+    "Só o próprio participante pode atualizar este comentário",
+  "cancelled participants cannot update comment":
+    "Participação cancelada não pode atualizar comentário",
   "the creator cannot leave the event; cancel the event instead":
     "Quem criou o evento não pode sair dele — cancele o evento",
   "only the event owner, the community owner or moderators can manage this event":

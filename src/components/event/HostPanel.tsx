@@ -192,31 +192,30 @@ export function HostPanel({
       {participants.length > 0 ? (
         <ul className="flex flex-col gap-2">
           {participants.map((entry) => (
-            <li
-              key={entry.id}
-              className="bg-surface border-line flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2"
-            >
-              <div className="flex flex-col gap-1">
-                <Link
-                  to={`/pessoas/${entry.user_id}`}
-                  className="text-ink hover:text-brand text-sm font-medium"
-                >
-                  {entry.user?.name ?? "Participante"}
-                </Link>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge tone={PARTICIPATION_ROLE_COLOR[entry.role]}>
-                    {PARTICIPATION_ROLE_LABEL[entry.role]}
-                  </Badge>
-                  <Badge tone={PARTICIPATION_STATUS_COLOR[entry.status]}>
-                    {PARTICIPATION_STATUS_LABEL[entry.status]}
-                  </Badge>
+            <li key={entry.id} className="flex flex-col gap-2">
+              <div className="bg-surface border-line flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2">
+                <div className="flex flex-col gap-1">
+                  <Link
+                    to={`/pessoas/${entry.user_id}`}
+                    className="text-ink hover:text-brand text-sm font-medium"
+                  >
+                    {entry.user?.name ?? "Participante"}
+                  </Link>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge tone={PARTICIPATION_ROLE_COLOR[entry.role]}>
+                      {PARTICIPATION_ROLE_LABEL[entry.role]}
+                    </Badge>
+                    <Badge tone={PARTICIPATION_STATUS_COLOR[entry.status]}>
+                      {PARTICIPATION_STATUS_LABEL[entry.status]}
+                    </Badge>
+                  </div>
                 </div>
-                {entry.comment ? (
-                  <ParticipantComment entry={entry} category={event.category} />
-                ) : null}
-              </div>
 
-              {rowActions(entry)}
+                {rowActions(entry)}
+              </div>
+              {entry.comment ? (
+                <ParticipantComment entry={entry} category={event.category} />
+              ) : null}
             </li>
           ))}
         </ul>

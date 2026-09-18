@@ -70,6 +70,8 @@ export function EventDetailPage() {
   const [rejectingInvite, setRejectingInvite] = useState(false);
   const [rejectComment, setRejectComment] = useState("");
   const [rejectLocalError, setRejectLocalError] = useState<string | null>(null);
+  const [soloCommentState, setSoloCommentState] = useState({ key: "", value: "" });
+  const [soloCommentLocalError, setSoloCommentLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     eventRef.current = event;
@@ -121,8 +123,22 @@ export function EventDetailPage() {
   const refetchParticipants = participation.refetch;
   const acceptInvite = participation.accept;
   const rejectInvite = participation.reject;
+  const saveComment = participation.saveComment;
   const isParticipationPending = participation.isPending;
   const clearParticipationFailure = participation.clearFailure;
+
+  const myRow = participation.myRow;
+  const soloCommentSeed =
+    myRow && myRow.status !== "CANCELLED"
+      ? myRow.comment_kind === "RESCHEDULE" || myRow.comment_kind === "REJECT"
+        ? ""
+        : (myRow.comment ?? "")
+      : "";
+  const soloCommentKey = `${myRow?.id ?? ""}:${myRow?.comment ?? ""}:${myRow?.comment_kind ?? ""}:${myRow?.status ?? ""}`;
+  if (soloCommentState.key !== soloCommentKey) {
+    setSoloCommentState({ key: soloCommentKey, value: soloCommentSeed });
+  }
+  const soloComment = soloCommentState.value;
 
   const openDeleteModal = useCallback(() => {
     setConfirmingDelete(true);
@@ -226,6 +242,23 @@ export function EventDetailPage() {
     }
   }, [rejectComment, rejectInvite]);
 
+  const handleSaveSoloComment = useCallback(async () => {
+    const trimmed = soloComment.trim();
+    if (trimmed.length > COMMENT_MAX) {
+      setSoloCommentLocalError(`O comentário deve ter no máximo ${COMMENT_MAX} caracteres`);
+      return;
+    }
+    setSoloCommentLocalError(null);
+    clearParticipationFailure();
+    await saveComment(trimmed);
+  }, [clearParticipationFailure, saveComment, soloComment]);
+
+  const handleClearSoloComment = useCallback(async () => {
+    setSoloCommentLocalError(null);
+    clearParticipationFailure();
+    await saveComment("");
+  }, [clearParticipationFailure, saveComment]);
+
   const handleDelete = useCallback(async () => {
     const trimmed = deleteComment.trim();
     if (!trimmed) {
@@ -311,8 +344,15 @@ export function EventDetailPage() {
   const showHostPanel = canManage || mentoringListVisible;
   const showZone = isMentoring ? !mentoringListVisible : true;
   const canRespondInvite = showHostPanel && participation.myRow?.status === "REQUESTED";
+  const canEditOwnComment = Boolean(
+    participation.myRow && participation.myRow.status !== "CANCELLED",
+  );
   const inviteFailure =
     participation.failure && ["accept", "reject"].includes(participation.failure.key)
+      ? participation.failure
+      : null;
+  const commentFailure =
+    participation.failure && participation.failure.key === "comment"
       ? participation.failure
       : null;
   // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
@@ -516,6 +556,51 @@ export function EventDetailPage() {
           ) : null}
 
           {inviteFailure ? <Alert variant="error">{inviteFailure.message}</Alert> : null}
+        </div>
+      ) : null}
+
+      {canEditOwnComment ? (
+        <div className="flex max-w-md flex-col gap-2">
+          <label htmlFor="solo-participant-comment" className="text-ink text-sm font-medium">
+            Seu comentário
+          </label>
+          <Textarea
+            id="solo-participant-comment"
+            value={soloComment}
+            onChange={(change) => {
+              setSoloCommentState((current) => ({ ...current, value: change.target.value }));
+              setSoloCommentLocalError(null);
+            }}
+            maxLength={COMMENT_MAX}
+            rows={3}
+            placeholder="Escreva um comentário sobre esta participação"
+            invalid={Boolean(soloCommentLocalError)}
+            disabled={isParticipationPending("comment")}
+          />
+          <p className="text-ink-muted text-xs">
+            {soloComment.trim().length}/{COMMENT_MAX}
+          </p>
+          {soloCommentLocalError ? <Alert variant="error">{soloCommentLocalError}</Alert> : null}
+          {commentFailure ? <Alert variant="error">{commentFailure.message}</Alert> : null}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              loading={isParticipationPending("comment")}
+              onClick={() => void handleSaveSoloComment()}
+            >
+              Salvar comentário
+            </Button>
+            {participation.myRow?.comment ? (
+              <Button
+                size="sm"
+                variant="ghost"
+                loading={isParticipationPending("comment")}
+                onClick={() => void handleClearSoloComment()}
+              >
+                Remover comentário
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

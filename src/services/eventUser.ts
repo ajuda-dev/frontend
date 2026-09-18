@@ -56,6 +56,18 @@ export async function updateParticipantStatus(
   return data;
 }
 
+// PUT /event/:id/participants/:userId/comment — só o próprio usuário; vazio limpa.
+export async function updateParticipantComment(
+  eventId: string,
+  userId: string,
+  comment: string,
+): Promise<EventUser> {
+  const { data } = await api.put<EventUser>(`/event/${eventId}/participants/${userId}/comment`, {
+    comment: comment.trim(),
+  });
+  return data;
+}
+
 // O DELETE responde 200 com o EventUserDto (não 204). O body é tratado como
 // opcional para tolerar uma eventual simplificação do backend.
 export async function cancelParticipation(
