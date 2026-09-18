@@ -128,15 +128,9 @@ export function EventDetailPage() {
   const clearParticipationFailure = participation.clearFailure;
 
   const myRow = participation.myRow;
-  const soloCommentSeed =
-    myRow && myRow.status !== "CANCELLED"
-      ? myRow.comment_kind === "RESCHEDULE" || myRow.comment_kind === "REJECT"
-        ? ""
-        : (myRow.comment ?? "")
-      : "";
-  const soloCommentKey = `${myRow?.id ?? ""}:${myRow?.comment ?? ""}:${myRow?.comment_kind ?? ""}:${myRow?.status ?? ""}`;
+  const soloCommentKey = `${myRow?.id ?? ""}:${myRow?.status ?? ""}`;
   if (soloCommentState.key !== soloCommentKey) {
-    setSoloCommentState({ key: soloCommentKey, value: soloCommentSeed });
+    setSoloCommentState({ key: soloCommentKey, value: "" });
   }
   const soloComment = soloCommentState.value;
 
@@ -250,13 +244,19 @@ export function EventDetailPage() {
     }
     setSoloCommentLocalError(null);
     clearParticipationFailure();
-    await saveComment(trimmed);
+    const ok = await saveComment(trimmed);
+    if (ok) {
+      setSoloCommentState((current) => ({ ...current, value: "" }));
+    }
   }, [clearParticipationFailure, saveComment, soloComment]);
 
   const handleClearSoloComment = useCallback(async () => {
     setSoloCommentLocalError(null);
     clearParticipationFailure();
-    await saveComment("");
+    const ok = await saveComment("");
+    if (ok) {
+      setSoloCommentState((current) => ({ ...current, value: "" }));
+    }
   }, [clearParticipationFailure, saveComment]);
 
   const handleDelete = useCallback(async () => {

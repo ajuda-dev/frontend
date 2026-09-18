@@ -816,5 +816,6 @@ describe("EventDetailPage", () => {
     expect(mockedUpdateComment).toHaveBeenCalledWith("e1", "owner-1", "Combinado pelo chat");
     expect((await screen.findAllByText("Combinado pelo chat")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Comentário").length).toBeGreaterThan(0);
+    expect(screen.getByLabelText("Seu comentário")).toHaveValue("");
   });
 });
