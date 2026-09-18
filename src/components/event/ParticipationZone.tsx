@@ -7,6 +7,7 @@ import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
+import { NoticeCard } from "../ui/NoticeCard";
 import { Spinner } from "../ui/Spinner";
 import { Textarea } from "../ui/Textarea";
 
@@ -235,7 +236,9 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
             <div className="flex flex-col gap-2">
               <p className="text-ink-muted text-sm">Você recusou o convite desta mentoria.</p>
               {myRow?.comment ? (
-                <p className="text-ink text-sm whitespace-pre-line">{myRow.comment}</p>
+                <NoticeCard tone="danger" title="Motivo da recusa">
+                  {myRow.comment}
+                </NoticeCard>
               ) : null}
             </div>
           ) : null}
@@ -259,7 +262,9 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                     Sua inscrição foi recusada — você pode se inscrever de novo.
                   </p>
                   {myRow?.comment ? (
-                    <p className="text-ink text-sm whitespace-pre-line">{myRow.comment}</p>
+                    <NoticeCard tone="danger" title="Motivo da recusa">
+                      {myRow.comment}
+                    </NoticeCard>
                   ) : null}
                 </div>
               ) : null}

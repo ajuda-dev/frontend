@@ -167,7 +167,8 @@ describe("ParticipationZone", () => {
 
     expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED", "Agenda conflitou");
     expect(await screen.findByText("Você recusou o convite desta mentoria.")).toBeInTheDocument();
-    expect(screen.getByText("Agenda conflitou")).toBeInTheDocument();
+    expect(screen.getByText("Motivo da recusa")).toBeInTheDocument();
+    expect(screen.getByText("Agenda conflitou").closest("[role=status]")).toHaveClass("border-danger");
   });
 
   it("erro de ação aparece na zona com a mensagem traduzida", async () => {

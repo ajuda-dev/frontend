@@ -92,12 +92,16 @@ describe("EventDetailPage", () => {
     seedSession();
   });
 
-  it("com state da lista não chama a API", async () => {
-    renderDetail({ event: EVENT });
+  it("com state da lista mostra na hora e confirma no GET", async () => {
+    mockedFind.mockResolvedValue({ ...EVENT, comment: "teste" });
+    renderDetail({ event: { ...EVENT, comment: "vamos deixar para semana que vem" } });
 
-    expect(await screen.findByRole("heading", { name: "Meetup Dev SP" })).toBeInTheDocument();
-    expect(mockedFind).not.toHaveBeenCalled();
-    expect(screen.getByText("Encontro mensal da comunidade")).toBeInTheDocument();
+    expect(
+      await screen.findByText("vamos deixar para semana que vem"),
+    ).toBeInTheDocument();
+    expect(await screen.findByText("teste")).toBeInTheDocument();
+    expect(screen.queryByText("vamos deixar para semana que vem")).not.toBeInTheDocument();
+    expect(mockedFind).toHaveBeenCalledWith("e1", expect.anything());
   });
 
   it("sem state busca pelo id (acesso direto/refresh)", async () => {
@@ -324,8 +328,8 @@ describe("EventDetailPage", () => {
 
     expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
     expect(screen.getByText("Participantes")).toBeInTheDocument();
-    expect(screen.getByText("Ana")).toBeInTheDocument();
     expect(screen.getByText("Lucas Rocha")).toBeInTheDocument();
+    expect(screen.getByText("Mentor")).toBeInTheDocument();
     expect(screen.getByText("Mentorado")).toBeInTheDocument();
     expect(screen.getByText("Pendente")).toBeInTheDocument();
     expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
@@ -627,7 +631,26 @@ describe("EventDetailPage", () => {
       comment: "Conflito de agenda",
     });
     expect((await screen.findAllByText("02/11/2026, 20:00")).length).toBeGreaterThan(0);
-    expect(screen.getByText("Conflito de agenda")).toBeInTheDocument();
+    expect(screen.getByText("Evento reagendado")).toBeInTheDocument();
+    expect(screen.getByText("Conflito de agenda").closest("[role=status]")).toHaveClass("border-warning");
+  });
+
+  it("mentoria reagendada mostra o motivo num card amarelo", async () => {
+    seedSession("owner-1");
+    renderDetail({
+      event: {
+        ...EVENT,
+        category: "MENTORING",
+        max_slots: 2,
+        comment: "Sexta 15h encaixa melhor",
+      },
+    });
+
+    expect(await screen.findByText("Mentoria reagendada")).toBeInTheDocument();
+    expect(screen.getByText("Sexta 15h encaixa melhor").closest("[role=status]")).toHaveClass(
+      "border-warning",
+    );
+    expect(screen.queryByText("Observação")).not.toBeInTheDocument();
   });
 
   it("criador de 1:1 com convite pendente vê Aceitar e Recusar", async () => {

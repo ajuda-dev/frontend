@@ -13,6 +13,7 @@ import {
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { NoticeCard } from "../ui/NoticeCard";
 import { Spinner } from "../ui/Spinner";
 import { Textarea } from "../ui/Textarea";
 import { AddPersonPicker } from "./AddPersonPicker";
@@ -302,7 +303,13 @@ export function HostPanel({
                   </Badge>
                 </div>
                 {entry.comment ? (
-                  <p className="text-ink-muted text-xs whitespace-pre-line">{entry.comment}</p>
+                  entry.status === "REJECTED" ? (
+                    <NoticeCard tone="danger" title="Motivo da recusa">
+                      {entry.comment}
+                    </NoticeCard>
+                  ) : (
+                    <p className="text-ink-muted text-xs whitespace-pre-line">{entry.comment}</p>
+                  )
                 ) : null}
               </div>
 

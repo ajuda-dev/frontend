@@ -132,6 +132,10 @@ describe("HostPanel", () => {
     renderPanel(event({ category: "MENTORING", max_slots: 2 }));
 
     expect(await screen.findByText("Agenda conflitou nesta semana")).toBeInTheDocument();
+    expect(screen.getByText("Motivo da recusa")).toBeInTheDocument();
+    expect(screen.getByText("Agenda conflitou nesta semana").closest("[role=status]")).toHaveClass(
+      "border-danger",
+    );
   });
 
   it("cancelar convite pendente chama DELETE e atualiza a lista", async () => {

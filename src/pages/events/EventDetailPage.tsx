@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router";
 import { HostPanel } from "../../components/event/HostPanel";
 import { EventApprovalBadge } from "../../components/event/EventApprovalBadge";
@@ -11,6 +11,7 @@ import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
+import { NoticeCard } from "../../components/ui/NoticeCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
@@ -53,6 +54,7 @@ export function EventDetailPage() {
     fromList && fromList.id === id ? fromList : null,
   );
   const [loading, setLoading] = useState(!event);
+  const eventRef = useRef<EventItem | null>(fromList && fromList.id === id ? fromList : null);
   const [error, setError] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -68,26 +70,38 @@ export function EventDetailPage() {
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Evento vindo da navegação (state da lista) já está carregado.
-    if (event) return;
+    eventRef.current = event;
+  }, [event]);
+
+  useEffect(() => {
+    // O state da lista é só um snapshot: start_at e comment mudam no reagendamento
+    // e a outra pessoa ainda veria o texto velho se o GET fosse pulado.
     const controller = new AbortController();
     const run = async () => {
-      setLoading(true);
-      setError(null);
+      const hasSnapshot = eventRef.current != null;
+      if (!hasSnapshot) {
+        setLoading(true);
+        setError(null);
+      }
       try {
         const found = await findEventById(id, controller.signal);
         if (controller.signal.aborted) return;
-        setEvent(found);
+        if (found) {
+          setEvent(found);
+          setError(null);
+        } else if (found === null) {
+          setEvent(null);
+        }
       } catch (caught) {
         if (controller.signal.aborted) return;
-        setError(caught);
+        if (!eventRef.current) setError(caught);
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     };
     void run();
     return () => controller.abort();
-  }, [id, attempt, event]);
+  }, [id, attempt]);
 
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
@@ -318,13 +332,6 @@ export function EventDetailPage() {
           ) : null}
         </dl>
 
-        {event.comment ? (
-          <div>
-            <p className="text-ink-muted text-xs">Observação</p>
-            <p className="text-ink text-sm whitespace-pre-line">{event.comment}</p>
-          </div>
-        ) : null}
-
         {isOnline ? (
           event.meeting_link ? (
             <a
@@ -350,6 +357,15 @@ export function EventDetailPage() {
           </Link>
         ) : null}
       </Card>
+
+      {event.comment ? (
+        <NoticeCard
+          tone="warning"
+          title={event.category === "MENTORING" ? "Mentoria reagendada" : "Evento reagendado"}
+        >
+          {event.comment}
+        </NoticeCard>
+      ) : null}
 
       {showApprovalPanel ? (
         <Card className="flex flex-col gap-3">

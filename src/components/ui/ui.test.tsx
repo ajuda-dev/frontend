@@ -6,6 +6,7 @@ import { Button } from "./Button";
 import { Field } from "./Field";
 import { Input } from "./Input";
 import { Modal } from "./Modal";
+import { NoticeCard } from "./NoticeCard";
 
 describe("Button", () => {
   it("aplica a classe da variante escolhida", () => {
@@ -47,6 +48,25 @@ describe("Field", () => {
       </Field>,
     );
     expect(screen.getByText("Somente números")).toBeInTheDocument();
+  });
+});
+
+describe("NoticeCard", () => {
+  it("pinta reagendamento de amarelo e recusa de vermelho", () => {
+    const { rerender } = render(
+      <NoticeCard tone="warning" title="Mentoria reagendada">
+        Conflito de agenda
+      </NoticeCard>,
+    );
+    expect(screen.getByRole("status")).toHaveClass("border-warning", "text-warning");
+    expect(screen.getByText("Mentoria reagendada")).toBeInTheDocument();
+
+    rerender(
+      <NoticeCard tone="danger" title="Motivo da recusa">
+        Sem horário
+      </NoticeCard>,
+    );
+    expect(screen.getByRole("status")).toHaveClass("border-danger", "text-danger");
   });
 });
 
