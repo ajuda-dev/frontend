@@ -572,7 +572,15 @@ describe("EventDetailPage", () => {
     const user = userEvent.setup();
     renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
 
-    await user.click(await screen.findByRole("button", { name: "Reagendar" }));
+    expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
+    const actionButtons = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent)
+      .filter((label) => ["Aceitar convite", "Recusar", "Reagendar"].includes(label ?? ""));
+    expect(actionButtons).toEqual(["Aceitar convite", "Recusar", "Reagendar"]);
+
+    await user.click(screen.getByRole("button", { name: "Reagendar" }));
     expect(
       screen.getByText("Ao reagendar, você confirma o novo horário. A outra pessoa precisa aceitar de novo."),
     ).toBeInTheDocument();
@@ -671,6 +679,45 @@ describe("EventDetailPage", () => {
     expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
     expect(screen.getByText("Painel do anfitrião")).toBeInTheDocument();
     expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+
+    const actionButtons = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent)
+      .filter((label) =>
+        ["Aceitar convite", "Recusar", "Reagendar", "Excluir evento"].includes(label ?? ""),
+      );
+    expect(actionButtons).toEqual(["Aceitar convite", "Recusar", "Reagendar", "Excluir evento"]);
+  });
+
+  it("recusar convite pede motivo e chama o service", async () => {
+    const requestedRow = {
+      id: "p2",
+      event_id: "e1",
+      user_id: "u1",
+      role: "MENTEE" as const,
+      status: "REQUESTED" as const,
+      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" as const },
+    };
+    mockedParticipants
+      .mockResolvedValueOnce([requestedRow])
+      .mockResolvedValueOnce([{ ...requestedRow, status: "REJECTED" as const, comment: "Agenda conflitou" }]);
+    mockedUpdateStatus.mockResolvedValue({
+      ...requestedRow,
+      status: "REJECTED",
+      comment: "Agenda conflitou",
+    });
+    mockedFind.mockResolvedValue({ ...EVENT, category: "MENTORING", max_slots: 2 });
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
+
+    await user.click(await screen.findByRole("button", { name: "Recusar" }));
+    expect(screen.getByRole("button", { name: "Reagendar" })).toBeInTheDocument();
+    await user.type(screen.getByLabelText("Motivo da recusa"), "Agenda conflitou");
+    await user.click(screen.getByRole("button", { name: "Confirmar recusa" }));
+
+    expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "REJECTED", "Agenda conflitou");
+    expect(await screen.findByText("Recusado")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
   });
 
   it("comentário vazio no reagendamento é barrado localmente", async () => {

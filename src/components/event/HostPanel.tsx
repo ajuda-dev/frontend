@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import type { UseParticipantsResult } from "../../hooks/useParticipants";
 import type { EventItem, EventUser } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
-import { complementaryRole, isEventApproved } from "../../utils/events";
+import { complementaryRole } from "../../utils/events";
 import {
   PARTICIPATION_ROLE_COLOR,
   PARTICIPATION_ROLE_LABEL,
@@ -15,7 +15,6 @@ import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { NoticeCard } from "../ui/NoticeCard";
 import { Spinner } from "../ui/Spinner";
-import { Textarea } from "../ui/Textarea";
 import { AddPersonPicker } from "./AddPersonPicker";
 
 interface HostPanelProps {
@@ -25,10 +24,9 @@ interface HostPanelProps {
   canManage?: boolean;
 }
 
-const COMMENT_MAX = 500;
-
 // Lista de participantes do evento. Quem gerencia (canManageEvent) vê convite/remoção;
-// no 1:1 o convidado vê a mesma lista (papel + status) e aceita/recusa na própria linha.
+// no 1:1 o convidado vê a mesma lista (papel + status). Aceitar/recusar fica na
+// barra de ações da página, à esquerda de Reagendar.
 export function HostPanel({
   event,
   participation,
@@ -36,9 +34,6 @@ export function HostPanel({
   canManage = true,
 }: HostPanelProps) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectComment, setRejectComment] = useState("");
-  const [rejectLocalError, setRejectLocalError] = useState<string | null>(null);
   const {
     participants,
     confirmedCount,
@@ -47,8 +42,6 @@ export function HostPanel({
     failure,
     isPending,
     remove,
-    accept,
-    reject,
     cancel,
     refetch,
     clearFailure,
@@ -57,7 +50,6 @@ export function HostPanel({
   const isMentoring = event.category === "MENTORING";
   const isCreator = currentUserId !== null && event.owner?.id === currentUserId;
   const maxSlots = event.max_slots ?? null;
-  const approved = isEventApproved(event);
   // Quem criou a mentoria pode ser mentor ou mentorado; o convite vai sempre para
   // o papel complementar (o backend recusa o mesmo papel).
   const myRow = participants.find((entry) => entry.user_id === currentUserId) ?? null;
@@ -71,9 +63,7 @@ export function HostPanel({
   );
   const inviteBlocked = canManage && isMentoring && counterpartConfirmed;
   const actionFailure =
-    failure && (failure.key.startsWith("remove:") || ["accept", "reject", "cancel"].includes(failure.key))
-      ? failure
-      : null;
+    failure && (failure.key.startsWith("remove:") || failure.key === "cancel") ? failure : null;
   const detail = apiErrorDetail(error);
   const occupancy = maxSlots !== null ? ` ${confirmedCount} de ${maxSlots} vagas ocupadas.` : "";
 
@@ -87,90 +77,9 @@ export function HostPanel({
     clearFailure();
   }
 
-  function openRejectForm() {
-    setRejecting(true);
-    setRejectComment("");
-    setRejectLocalError(null);
-  }
-
-  function closeRejectForm() {
-    setRejecting(false);
-    setRejectComment("");
-    setRejectLocalError(null);
-  }
-
-  async function confirmReject() {
-    const trimmed = rejectComment.trim();
-    if (!trimmed) {
-      setRejectLocalError("Informe o motivo da recusa");
-      return;
-    }
-    if (trimmed.length > COMMENT_MAX) {
-      setRejectLocalError(`O comentário deve ter no máximo ${COMMENT_MAX} caracteres`);
-      return;
-    }
-    setRejectLocalError(null);
-    const ok = await reject(trimmed);
-    if (ok) closeRejectForm();
-  }
-
   function rowActions(entry: EventUser) {
     const self = entry.user_id === currentUserId;
     const removing = isPending(`remove:${entry.user_id}`);
-
-    if (self && entry.status === "REQUESTED") {
-      if (rejecting) {
-        return (
-          <div className="flex w-full flex-col gap-2 sm:w-72">
-            <label htmlFor="reject-comment" className="text-ink text-sm font-medium">
-              Motivo da recusa
-            </label>
-            <Textarea
-              id="reject-comment"
-              value={rejectComment}
-              onChange={(event) => {
-                setRejectComment(event.target.value);
-                setRejectLocalError(null);
-              }}
-              maxLength={COMMENT_MAX}
-              rows={3}
-              placeholder="Explique brevemente por que não pode participar"
-              invalid={Boolean(rejectLocalError)}
-              disabled={isPending("reject")}
-            />
-            <p className="text-ink-muted text-xs">
-              {rejectComment.trim().length}/{COMMENT_MAX}
-            </p>
-            {rejectLocalError ? <Alert variant="error">{rejectLocalError}</Alert> : null}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="danger"
-                loading={isPending("reject")}
-                onClick={() => void confirmReject()}
-              >
-                Confirmar recusa
-              </Button>
-              <Button size="sm" variant="ghost" disabled={isPending("reject")} onClick={closeRejectForm}>
-                Voltar
-              </Button>
-            </div>
-          </div>
-        );
-      }
-
-      return (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge tone="ink-muted">Você</Badge>
-          <Button size="sm" disabled={!approved} loading={isPending("accept")} onClick={() => void accept()}>
-            Aceitar convite
-          </Button>
-          <Button size="sm" variant="ghost" loading={isPending("reject")} onClick={openRejectForm}>
-            Recusar
-          </Button>
-        </div>
-      );
-    }
 
     if (self) {
       return (
@@ -317,12 +226,6 @@ export function HostPanel({
             </li>
           ))}
         </ul>
-      ) : null}
-
-      {!approved && myRow?.status === "REQUESTED" ? (
-        <p className="text-ink-muted text-sm">
-          As inscrições abrem quando o evento for aprovado pela comunidade.
-        </p>
       ) : null}
 
       {actionFailure ? <Alert variant="error">{actionFailure.message}</Alert> : null}

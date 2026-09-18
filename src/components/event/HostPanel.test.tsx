@@ -17,14 +17,13 @@ vi.mock("../../services/eventUser", () => ({
 vi.mock("../../services/skill", () => ({ listSkills: vi.fn() }));
 vi.mock("../../services/user", () => ({ listUsers: vi.fn() }));
 
-import { addParticipant, cancelParticipation, getParticipants, updateParticipantStatus } from "../../services/eventUser";
+import { addParticipant, cancelParticipation, getParticipants } from "../../services/eventUser";
 import { listSkills } from "../../services/skill";
 import { listUsers } from "../../services/user";
 
 const mockedGet = vi.mocked(getParticipants);
 const mockedCancel = vi.mocked(cancelParticipation);
 const mockedAdd = vi.mocked(addParticipant);
-const mockedUpdate = vi.mocked(updateParticipantStatus);
 const mockedSkills = vi.mocked(listSkills);
 const mockedUsers = vi.mocked(listUsers);
 
@@ -335,31 +334,23 @@ describe("HostPanel", () => {
     expect(screen.getByText("Mentorado")).toBeInTheDocument();
     expect(screen.getByText("Pendente")).toBeInTheDocument();
     expect(screen.getByText("Criador do 1:1")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
+    expect(screen.getByText("Você")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recusar" })).not.toBeInTheDocument();
     expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Convidar mentorado" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Cancelar convite" })).not.toBeInTheDocument();
   });
 
-  it("convidado pendente aceita o convite na própria linha", async () => {
-    mockedGet
-      .mockResolvedValueOnce([
-        row({ user_id: "owner-1", role: "MENTOR" }),
-        row({ user_id: "u2", role: "MENTEE", status: "REQUESTED" }),
-      ])
-      .mockResolvedValueOnce([
-        row({ user_id: "owner-1", role: "MENTOR" }),
-        row({ user_id: "u2", role: "MENTEE", status: "CONFIRMED" }),
-      ]);
-    mockedUpdate.mockResolvedValue(row({ user_id: "u2", role: "MENTEE", status: "CONFIRMED" }));
-    const user = userEvent.setup();
+  it("convidado pendente não vê Aceitar/Recusar na lista — só o badge Você", async () => {
+    mockedGet.mockResolvedValue([
+      row({ user_id: "owner-1", role: "MENTOR" }),
+      row({ user_id: "u2", role: "MENTEE", status: "REQUESTED" }),
+    ]);
     renderPanel(event({ category: "MENTORING", max_slots: 2 }), "u2", false);
 
-    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
-
-    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u2", "CONFIRMED");
-    expect(await screen.findByRole("button", { name: "Cancelar inscrição" })).toBeInTheDocument();
+    expect(await screen.findByText("Você")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recusar" })).not.toBeInTheDocument();
   });
 });

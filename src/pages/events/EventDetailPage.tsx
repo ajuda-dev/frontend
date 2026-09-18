@@ -68,6 +68,9 @@ export function EventDetailPage() {
   const [rescheduleLocalError, setRescheduleLocalError] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [rejectingInvite, setRejectingInvite] = useState(false);
+  const [rejectComment, setRejectComment] = useState("");
+  const [rejectLocalError, setRejectLocalError] = useState<string | null>(null);
 
   useEffect(() => {
     eventRef.current = event;
@@ -117,6 +120,10 @@ export function EventDetailPage() {
 
   const participation = useParticipants(event?.id ?? "", user?.id, refreshEvent);
   const refetchParticipants = participation.refetch;
+  const acceptInvite = participation.accept;
+  const rejectInvite = participation.reject;
+  const isParticipationPending = participation.isPending;
+  const clearParticipationFailure = participation.clearFailure;
 
   const openDeleteModal = useCallback(() => {
     setConfirmingDelete(true);
@@ -187,6 +194,38 @@ export function EventDetailPage() {
       setRescheduling(false);
     }
   }, [id, refetchParticipants, rescheduleComment, rescheduleStartAt]);
+
+  const openRejectForm = useCallback(() => {
+    clearParticipationFailure();
+    setRejectingInvite(true);
+    setRejectComment("");
+    setRejectLocalError(null);
+  }, [clearParticipationFailure]);
+
+  const closeRejectForm = useCallback(() => {
+    if (isParticipationPending("reject")) return;
+    setRejectingInvite(false);
+    setRejectComment("");
+    setRejectLocalError(null);
+  }, [isParticipationPending]);
+
+  const handleRejectInvite = useCallback(async () => {
+    const trimmed = rejectComment.trim();
+    if (!trimmed) {
+      setRejectLocalError("Informe o motivo da recusa");
+      return;
+    }
+    if (trimmed.length > COMMENT_MAX) {
+      setRejectLocalError(`O comentário deve ter no máximo ${COMMENT_MAX} caracteres`);
+      return;
+    }
+    setRejectLocalError(null);
+    const ok = await rejectInvite(trimmed);
+    if (ok) {
+      setRejectingInvite(false);
+      setRejectComment("");
+    }
+  }, [rejectComment, rejectInvite]);
 
   const handleDelete = useCallback(async () => {
     const trimmed = deleteComment.trim();
@@ -266,12 +305,17 @@ export function EventDetailPage() {
   const canReschedule = canRescheduleEvent(event, user, participation.myRow);
   const isMentoring = event.category === "MENTORING";
   // No 1:1 os dois lados veem a mesma lista (papel + status). Aceitar/recusar
-  // fica na linha do convidado; a zona de participação só cobre comunidade e
-  // quem abriu um 1:1 sem convite.
+  // fica na barra de ações, à esquerda de Reagendar; a zona de participação só
+  // cobre comunidade e quem abriu um 1:1 sem convite.
   const mentoringListVisible =
     isMentoring && (canManage || participation.loading || Boolean(participation.myRow));
   const showHostPanel = canManage || mentoringListVisible;
   const showZone = isMentoring ? !mentoringListVisible : true;
+  const canRespondInvite = showHostPanel && participation.myRow?.status === "REQUESTED";
+  const inviteFailure =
+    participation.failure && ["accept", "reject"].includes(participation.failure.key)
+      ? participation.failure
+      : null;
   // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
   // do evento não aprova, nem quando é membro da comunidade.
   const isCommunityOwner = Boolean(
@@ -400,18 +444,88 @@ export function EventDetailPage() {
 
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
 
-      {canReschedule || canDelete ? (
-        <div className="flex flex-wrap items-center gap-3">
-          {canReschedule ? (
-            <Button variant="secondary" onClick={openRescheduleModal}>
-              Reagendar
-            </Button>
+      {canRespondInvite || canReschedule || canDelete ? (
+        <div className="flex flex-col gap-3">
+          {canRespondInvite && rejectingInvite ? (
+            <div className="flex max-w-md flex-col gap-2">
+              <label htmlFor="invite-reject-comment" className="text-ink text-sm font-medium">
+                Motivo da recusa
+              </label>
+              <Textarea
+                id="invite-reject-comment"
+                value={rejectComment}
+                onChange={(change) => {
+                  setRejectComment(change.target.value);
+                  setRejectLocalError(null);
+                }}
+                maxLength={COMMENT_MAX}
+                rows={3}
+                placeholder="Explique brevemente por que não pode participar"
+                invalid={Boolean(rejectLocalError)}
+                disabled={isParticipationPending("reject")}
+              />
+              <p className="text-ink-muted text-xs">
+                {rejectComment.trim().length}/{COMMENT_MAX}
+              </p>
+              {rejectLocalError ? <Alert variant="error">{rejectLocalError}</Alert> : null}
+            </div>
           ) : null}
-          {canDelete ? (
-            <Button variant="danger" onClick={openDeleteModal}>
-              Excluir evento
-            </Button>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {canRespondInvite && rejectingInvite ? (
+              <>
+                <Button
+                  variant="danger"
+                  loading={isParticipationPending("reject")}
+                  onClick={() => void handleRejectInvite()}
+                >
+                  Confirmar recusa
+                </Button>
+                <Button
+                  variant="ghost"
+                  disabled={isParticipationPending("reject")}
+                  onClick={closeRejectForm}
+                >
+                  Voltar
+                </Button>
+              </>
+            ) : canRespondInvite ? (
+              <>
+                <Button
+                  disabled={!approved}
+                  loading={isParticipationPending("accept")}
+                  onClick={() => void acceptInvite()}
+                >
+                  Aceitar convite
+                </Button>
+                <Button
+                  variant="ghost"
+                  loading={isParticipationPending("reject")}
+                  onClick={openRejectForm}
+                >
+                  Recusar
+                </Button>
+              </>
+            ) : null}
+            {canReschedule ? (
+              <Button variant="secondary" onClick={openRescheduleModal}>
+                Reagendar
+              </Button>
+            ) : null}
+            {canDelete ? (
+              <Button variant="danger" onClick={openDeleteModal}>
+                Excluir evento
+              </Button>
+            ) : null}
+          </div>
+
+          {canRespondInvite && !approved ? (
+            <p className="text-ink-muted text-sm">
+              As inscrições abrem quando o evento for aprovado pela comunidade.
+            </p>
           ) : null}
+
+          {inviteFailure ? <Alert variant="error">{inviteFailure.message}</Alert> : null}
         </div>
       ) : null}
 
