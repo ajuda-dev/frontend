@@ -296,7 +296,7 @@ describe("EventDetailPage", () => {
     expect(screen.getByText("Sua participação")).toBeInTheDocument();
   });
 
-  it("mentorado aceita o convite pela zona de participação", async () => {
+  it("mentorado aceita o convite na lista de participantes", async () => {
     const requestedRow = {
       id: "p2",
       event_id: "e1",
@@ -305,19 +305,40 @@ describe("EventDetailPage", () => {
       status: "REQUESTED" as const,
       user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" as const },
     };
+    const ownerRow = {
+      id: "p1",
+      event_id: "e1",
+      user_id: "owner-1",
+      role: "MENTOR" as const,
+      status: "CONFIRMED" as const,
+      user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" as const },
+    };
     mockedParticipants
-      .mockResolvedValueOnce([requestedRow])
-      .mockResolvedValueOnce([{ ...requestedRow, status: "CONFIRMED" }]);
+      .mockResolvedValueOnce([ownerRow, requestedRow])
+      .mockResolvedValueOnce([ownerRow, { ...requestedRow, status: "CONFIRMED" }]);
     mockedUpdateStatus.mockResolvedValue({ ...requestedRow, status: "CONFIRMED" });
     // O aceite dispara o refresh silencioso do evento (vagas).
     mockedFind.mockResolvedValue({ ...EVENT, category: "MENTORING", max_slots: 2 });
     const user = userEvent.setup();
     renderDetail({ event: { ...EVENT, category: "MENTORING", max_slots: 2 } });
 
-    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+    expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
+    expect(screen.getByText("Participantes")).toBeInTheDocument();
+    expect(screen.getByText("Ana")).toBeInTheDocument();
+    expect(screen.getByText("Lucas Rocha")).toBeInTheDocument();
+    expect(screen.getByText("Mentorado")).toBeInTheDocument();
+    expect(screen.getByText("Pendente")).toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+    expect(screen.queryByText("Convite de mentoria recebido")).not.toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Convidar mentorado" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Aceitar convite" }));
 
     expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
-    expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
+    expect(await screen.findByText("Você")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Pendente")).not.toBeInTheDocument();
   });
 
   it("dono da comunidade vê o painel de aprovação e aprova atualizando o badge", async () => {
@@ -529,7 +550,8 @@ describe("EventDetailPage", () => {
     await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
 
     expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
-    expect(await screen.findByText("Você é o mentorado")).toBeInTheDocument();
+    expect(await screen.findByText("Confirmado")).toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
   });
 
   it("convidado de mentoria vê Reagendar e não vê Excluir", async () => {
@@ -625,6 +647,7 @@ describe("EventDetailPage", () => {
     expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
     expect(screen.getByText("Painel do anfitrião")).toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
   });
 
   it("comentário vazio no reagendamento é barrado localmente", async () => {

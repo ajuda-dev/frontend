@@ -34,6 +34,11 @@ export function notificationTitle(notification: Notification): string {
     if (title) return `O convite de mentoria ${title} foi recusado`;
     return "Um convite de mentoria 1:1 foi recusado";
   }
+  if (notification.type === "MENTORING_INVITE_RESCHEDULED") {
+    const title = eventTitle(notification);
+    if (title) return `A mentoria ${title} foi reagendada`;
+    return "Uma mentoria 1:1 foi reagendada";
+  }
   return "Aviso";
 }
 

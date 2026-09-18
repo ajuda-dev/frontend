@@ -17,13 +17,14 @@ vi.mock("../../services/eventUser", () => ({
 vi.mock("../../services/skill", () => ({ listSkills: vi.fn() }));
 vi.mock("../../services/user", () => ({ listUsers: vi.fn() }));
 
-import { addParticipant, cancelParticipation, getParticipants } from "../../services/eventUser";
+import { addParticipant, cancelParticipation, getParticipants, updateParticipantStatus } from "../../services/eventUser";
 import { listSkills } from "../../services/skill";
 import { listUsers } from "../../services/user";
 
 const mockedGet = vi.mocked(getParticipants);
 const mockedCancel = vi.mocked(cancelParticipation);
 const mockedAdd = vi.mocked(addParticipant);
+const mockedUpdate = vi.mocked(updateParticipantStatus);
 const mockedSkills = vi.mocked(listSkills);
 const mockedUsers = vi.mocked(listUsers);
 
@@ -67,15 +68,30 @@ function row(overrides: Partial<EventUser> = {}): EventUser {
   };
 }
 
-function Harness({ eventItem, viewerId = "owner-1" }: { eventItem: EventItem; viewerId?: string }) {
+function Harness({
+  eventItem,
+  viewerId = "owner-1",
+  canManage = true,
+}: {
+  eventItem: EventItem;
+  viewerId?: string;
+  canManage?: boolean;
+}) {
   const participation = useParticipants(eventItem.id, viewerId);
-  return <HostPanel event={eventItem} participation={participation} currentUserId={viewerId} />;
+  return (
+    <HostPanel
+      event={eventItem}
+      participation={participation}
+      currentUserId={viewerId}
+      canManage={canManage}
+    />
+  );
 }
 
-function renderPanel(eventItem: EventItem, viewerId = "owner-1") {
+function renderPanel(eventItem: EventItem, viewerId = "owner-1", canManage = true) {
   return render(
     <MemoryRouter>
-      <Harness eventItem={eventItem} viewerId={viewerId} />
+      <Harness eventItem={eventItem} viewerId={viewerId} canManage={canManage} />
     </MemoryRouter>,
   );
 }
@@ -294,5 +310,52 @@ describe("HostPanel", () => {
 
     expect(mockedCancel).toHaveBeenCalledWith("e1", "owner-1");
     expect(await screen.findByText("Cancelado")).toBeInTheDocument();
+  });
+
+  it("convidado do 1:1 vê a mesma lista sem ações de gestão", async () => {
+    mockedGet.mockResolvedValue([
+      row({ user_id: "owner-1", role: "MENTOR", user: { id: "owner-1", name: "João Silva", email: "joao@ajudadev.dev", role: "USER" } }),
+      row({
+        user_id: "u2",
+        role: "MENTEE",
+        status: "REQUESTED",
+        user: { id: "u2", name: "Lucas Freitas da Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }), "u2", false);
+
+    expect(await screen.findByText("João Silva")).toBeInTheDocument();
+    expect(screen.getByText("Participantes")).toBeInTheDocument();
+    expect(screen.getByText("Lucas Freitas da Rocha")).toBeInTheDocument();
+    expect(screen.getByText("Mentor")).toBeInTheDocument();
+    expect(screen.getByText("Mentorado")).toBeInTheDocument();
+    expect(screen.getByText("Pendente")).toBeInTheDocument();
+    expect(screen.getByText("Criador do 1:1")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
+    expect(screen.queryByText("Painel do anfitrião")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Convidar mentorado" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Cancelar convite" })).not.toBeInTheDocument();
+  });
+
+  it("convidado pendente aceita o convite na própria linha", async () => {
+    mockedGet
+      .mockResolvedValueOnce([
+        row({ user_id: "owner-1", role: "MENTOR" }),
+        row({ user_id: "u2", role: "MENTEE", status: "REQUESTED" }),
+      ])
+      .mockResolvedValueOnce([
+        row({ user_id: "owner-1", role: "MENTOR" }),
+        row({ user_id: "u2", role: "MENTEE", status: "CONFIRMED" }),
+      ]);
+    mockedUpdate.mockResolvedValue(row({ user_id: "u2", role: "MENTEE", status: "CONFIRMED" }));
+    const user = userEvent.setup();
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }), "u2", false);
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u2", "CONFIRMED");
+    expect(await screen.findByRole("button", { name: "Cancelar inscrição" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
   });
 });

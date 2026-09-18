@@ -63,6 +63,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   MENTORING_INVITE_PENDING: "Convite de mentoria",
   MENTORING_INVITE_ACCEPTED: "Convite aceito",
   MENTORING_INVITE_REJECTED: "Convite recusado",
+  MENTORING_INVITE_RESCHEDULED: "Mentoria reagendada",
 };
 
 export function isInAppNotificationType(type: string): type is NotificationType {
@@ -113,6 +114,28 @@ export const EVENT_APPROVAL_STATUS_COLOR: Record<EventApprovalStatus, BadgeTone>
   REJECTED: "danger",
 };
 
+export const NOTIFICATION_TYPE_COLOR: Record<NotificationType, BadgeTone> = {
+  COMMUNITY_EVENT_PENDING_APPROVAL: "brand",
+  COMMUNITY_EVENT_APPROVED: "brand",
+  COMMUNITY_EVENT_REJECTED: "danger",
+  MENTORING_INVITE_PENDING: "brand",
+  MENTORING_INVITE_ACCEPTED: "brand",
+  MENTORING_INVITE_REJECTED: "danger",
+  MENTORING_INVITE_RESCHEDULED: "warning",
+};
+
+export function notificationTypeTone(type: string): BadgeTone {
+  if (isNotificationType(type)) return NOTIFICATION_TYPE_COLOR[type];
+  return "ink-muted";
+}
+
+export function notificationAccentClass(type: string): string {
+  const tone = notificationTypeTone(type);
+  if (tone === "warning") return "border-l-2 border-warning";
+  if (tone === "danger") return "border-l-2 border-danger";
+  return "";
+}
+
 export const LABEL_COLORS = {
   category: EVENT_CATEGORY_COLOR,
   status: PARTICIPATION_STATUS_COLOR,
@@ -120,4 +143,5 @@ export const LABEL_COLORS = {
   level: SKILL_LEVEL_COLOR,
   userRole: USER_ROLE_COLOR,
   approvalStatus: EVENT_APPROVAL_STATUS_COLOR,
+  notification: NOTIFICATION_TYPE_COLOR,
 } as const;

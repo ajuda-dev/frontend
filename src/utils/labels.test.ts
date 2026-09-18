@@ -16,7 +16,10 @@ import {
   EVENT_TYPE_LABEL,
   isInAppNotificationType,
   LABEL_COLORS,
+  notificationAccentClass,
+  NOTIFICATION_TYPE_COLOR,
   notificationTypeLabel,
+  notificationTypeTone,
   PARTICIPATION_ROLE_LABEL,
   PARTICIPATION_STATUS_COLOR,
   PARTICIPATION_STATUS_LABEL,
@@ -73,6 +76,7 @@ describe("labels pt-BR", () => {
   it("LABEL_COLORS expõe a aprovação sem trocar a chave status (participação)", () => {
     expect(LABEL_COLORS.approvalStatus).toBe(EVENT_APPROVAL_STATUS_COLOR);
     expect(LABEL_COLORS.status).toBe(PARTICIPATION_STATUS_COLOR);
+    expect(LABEL_COLORS.notification).toBe(NOTIFICATION_TYPE_COLOR);
   });
 
   it("cobre os types in-app da inbox e cai em Aviso quando desconhecido", () => {
@@ -82,11 +86,23 @@ describe("labels pt-BR", () => {
     expect(notificationTypeLabel("MENTORING_INVITE_PENDING")).toBe("Convite de mentoria");
     expect(notificationTypeLabel("MENTORING_INVITE_ACCEPTED")).toBe("Convite aceito");
     expect(notificationTypeLabel("MENTORING_INVITE_REJECTED")).toBe("Convite recusado");
+    expect(notificationTypeLabel("MENTORING_INVITE_RESCHEDULED")).toBe("Mentoria reagendada");
     expect(notificationTypeLabel("SOMETHING_NEW")).toBe("Aviso");
     for (const type of NOTIFICATION_TYPES) {
       expect(isInAppNotificationType(type)).toBe(true);
       expect(notificationTypeLabel(type)).toBeTruthy();
+      expect(NOTIFICATION_TYPE_COLOR[type]).toBeTruthy();
     }
     expect(isInAppNotificationType("SOMETHING_NEW")).toBe(false);
+  });
+
+  it("pinta reagendamento de 1:1 de amarelo e recusa de vermelho", () => {
+    expect(notificationTypeTone("MENTORING_INVITE_RESCHEDULED")).toBe("warning");
+    expect(notificationAccentClass("MENTORING_INVITE_RESCHEDULED")).toContain("border-warning");
+    expect(notificationTypeTone("MENTORING_INVITE_REJECTED")).toBe("danger");
+    expect(notificationAccentClass("MENTORING_INVITE_REJECTED")).toContain("border-danger");
+    expect(notificationTypeTone("MENTORING_INVITE_PENDING")).toBe("brand");
+    expect(notificationAccentClass("MENTORING_INVITE_PENDING")).toBe("");
+    expect(notificationTypeTone("SOMETHING_NEW")).toBe("ink-muted");
   });
 });

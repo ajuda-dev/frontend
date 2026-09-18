@@ -68,6 +68,17 @@ describe("notificationTitle", () => {
         item(9, { type: "MENTORING_INVITE_REJECTED", payload: { title: "Mentoria Go", category: "MENTORING" } }),
       ),
     ).toBe("O convite de mentoria Mentoria Go foi recusado");
+    expect(
+      notificationTitle(
+        item(10, {
+          type: "MENTORING_INVITE_RESCHEDULED",
+          payload: { title: "Mentoria Go", category: "MENTORING" },
+        }),
+      ),
+    ).toBe("A mentoria Mentoria Go foi reagendada");
+    expect(notificationTitle(item(11, { type: "MENTORING_INVITE_RESCHEDULED", payload: {} }))).toBe(
+      "Uma mentoria 1:1 foi reagendada",
+    );
   });
 });
 

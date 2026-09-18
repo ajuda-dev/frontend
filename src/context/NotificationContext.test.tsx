@@ -152,6 +152,21 @@ describe("NotificationContext", () => {
     expect(await screen.findByRole("button", { name: "8:Meetup" })).toBeInTheDocument();
   });
 
+  it("inclui reagendamento de mentoria vindo do stream", async () => {
+    renderProvider();
+    await waitFor(() => expect(mockedOpen).toHaveBeenCalled());
+
+    act(() => {
+      handlers?.onNotification({
+        id: 12,
+        type: "MENTORING_INVITE_RESCHEDULED",
+        payload: { event_id: "e12", title: "Mentoria Go", category: "MENTORING" },
+      });
+    });
+
+    expect(await screen.findByRole("button", { name: "12:Mentoria Go" })).toBeInTheDocument();
+  });
+
   it("marca lida de forma otimista, chama PUT e navega", async () => {
     const user = userEvent.setup();
     mockedList.mockResolvedValue({ data: [item(42)], has_next: false });

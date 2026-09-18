@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { useNotifications } from "../../context/useNotifications";
 import { apiErrorMessage } from "../../utils/apiError";
 import { formatDateTime } from "../../utils/format";
-import { notificationTypeLabel } from "../../utils/labels";
+import { notificationAccentClass, notificationTypeLabel, notificationTypeTone } from "../../utils/labels";
 import { notificationTitle } from "../../utils/notifications";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
@@ -152,9 +152,11 @@ export function NotificationBell({ open, onOpenChange }: NotificationBellProps) 
                       onOpenChange(false);
                       markReadAndOpen(notification);
                     }}
-                    className="hover:bg-surface-2 flex w-full flex-col items-start gap-1 rounded-md px-2 py-2 text-left"
+                    className={`hover:bg-surface-2 flex w-full flex-col items-start gap-1 rounded-md px-2 py-2 text-left ${notificationAccentClass(notification.type)}`}
                   >
-                    <Badge tone="brand">{notificationTypeLabel(notification.type)}</Badge>
+                    <Badge tone={notificationTypeTone(notification.type)}>
+                      {notificationTypeLabel(notification.type)}
+                    </Badge>
                     <span className="text-ink text-sm">{notificationTitle(notification)}</span>
                     <span className="text-ink-muted text-xs">{formatDateTime(notification.created_at)}</span>
                   </button>

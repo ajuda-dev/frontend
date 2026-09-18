@@ -27,13 +27,14 @@ vi.mock("../../context/useNotifications", () => ({
   useNotifications: () => notificationsState,
 }));
 
-function item(id: number): Notification {
+function item(id: number, overrides: Partial<Notification> = {}): Notification {
   return {
     id,
     type: "COMMUNITY_EVENT_PENDING_APPROVAL",
     payload: { event_id: `e${id}`, title: `Evento ${id}` },
     created_at: "2026-09-14T12:00:00.000Z",
     read_at: null,
+    ...overrides,
   };
 }
 
@@ -108,5 +109,28 @@ describe("NotificationBell", () => {
     await user.keyboard("{Escape}");
 
     expect(screen.queryByRole("dialog", { name: "Notificações" })).not.toBeInTheDocument();
+  });
+
+  it("pinta reagendamento de 1:1 de amarelo e recusa de vermelho", () => {
+    notificationsState.items = [
+      item(1, {
+        type: "MENTORING_INVITE_RESCHEDULED",
+        payload: { event_id: "e1", title: "Mentoria Go", category: "MENTORING" },
+      }),
+      item(2, {
+        type: "MENTORING_INVITE_REJECTED",
+        payload: { event_id: "e2", title: "Mentoria Go", category: "MENTORING" },
+      }),
+    ];
+    renderBell(true);
+
+    expect(screen.getByText("Mentoria reagendada")).toHaveClass("text-warning");
+    expect(screen.getByRole("button", { name: /A mentoria Mentoria Go foi reagendada/ })).toHaveClass(
+      "border-warning",
+    );
+    expect(screen.getByText("Convite recusado")).toHaveClass("text-danger");
+    expect(screen.getByRole("button", { name: /O convite de mentoria Mentoria Go foi recusado/ })).toHaveClass(
+      "border-danger",
+    );
   });
 });

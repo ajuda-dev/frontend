@@ -250,13 +250,14 @@ export function EventDetailPage() {
   const canManage = canManageEvent(event, user);
   const canDelete = canManage;
   const canReschedule = canRescheduleEvent(event, user, participation.myRow);
-  // O criador de um 1:1 não pode sair do próprio evento (400 no backend). A zona
-  // só aparece para ele quando a linha dele volta a REQUESTED (reagendamento da
-  // outra pessoa) — aí precisa de Aceitar/Recusar. Enquanto myRow não carregou,
-  // a zona fica oculta para não mostrar "Participar".
-  const isMentoringCreator = Boolean(isOwner && event.category === "MENTORING");
-  const creatorNeedsToAccept = participation.myRow?.status === "REQUESTED";
-  const showZone = !isMentoringCreator || creatorNeedsToAccept;
+  const isMentoring = event.category === "MENTORING";
+  // No 1:1 os dois lados veem a mesma lista (papel + status). Aceitar/recusar
+  // fica na linha do convidado; a zona de participação só cobre comunidade e
+  // quem abriu um 1:1 sem convite.
+  const mentoringListVisible =
+    isMentoring && (canManage || participation.loading || Boolean(participation.myRow));
+  const showHostPanel = canManage || mentoringListVisible;
+  const showZone = isMentoring ? !mentoringListVisible : true;
   // Espelha canApproveEvent do backend: dono da comunidade ou ≥ MODERATOR — o criador
   // do evento não aprova, nem quando é membro da comunidade.
   const isCommunityOwner = Boolean(
@@ -370,8 +371,13 @@ export function EventDetailPage() {
         </Alert>
       ) : null}
 
-      {canManage ? (
-        <HostPanel event={event} participation={participation} currentUserId={user?.id ?? null} />
+      {showHostPanel ? (
+        <HostPanel
+          event={event}
+          participation={participation}
+          currentUserId={user?.id ?? null}
+          canManage={canManage}
+        />
       ) : null}
 
       {showZone ? <ParticipationZone event={event} participation={participation} /> : null}
