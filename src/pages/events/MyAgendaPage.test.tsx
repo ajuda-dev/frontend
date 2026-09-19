@@ -83,7 +83,7 @@ describe("MyAgendaPage", () => {
     renderAgenda();
 
     expect(await screen.findByText("Nenhum evento confirmado.")).toBeInTheDocument();
-    expect(screen.getByText("Nenhum convite de mentoria pendente.")).toBeInTheDocument();
+    expect(screen.getByText("Nenhum convite pendente.")).toBeInTheDocument();
     expect(screen.getByText("Nenhuma inscrição cancelada.")).toBeInTheDocument();
   });
 

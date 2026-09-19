@@ -87,6 +87,10 @@ describe("labels pt-BR", () => {
     expect(notificationTypeLabel("MENTORING_INVITE_ACCEPTED")).toBe("Convite aceito");
     expect(notificationTypeLabel("MENTORING_INVITE_REJECTED")).toBe("Convite recusado");
     expect(notificationTypeLabel("MENTORING_INVITE_RESCHEDULED")).toBe("Mentoria reagendada");
+    expect(notificationTypeLabel("SPEAKER_INVITE_PENDING")).toBe("Convite para palestrar");
+    expect(notificationTypeLabel("SPEAKER_INVITE_ACCEPTED")).toBe("Palestrante aceitou");
+    expect(notificationTypeLabel("SPEAKER_INVITE_REJECTED")).toBe("Palestrante recusou");
+    expect(notificationTypeLabel("SPEAKER_INVITE_RESCHEDULED")).toBe("Evento reagendado");
     expect(notificationTypeLabel("SOMETHING_NEW")).toBe("Aviso");
     for (const type of NOTIFICATION_TYPES) {
       expect(isInAppNotificationType(type)).toBe(true);

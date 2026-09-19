@@ -243,4 +243,20 @@ describe("ParticipationZone", () => {
 
     expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
   });
+
+  it("convite de palestrante pendente pode ser aceito", async () => {
+    mockedGet
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "SPEAKER", status: "REQUESTED" })])
+      .mockResolvedValueOnce([row({ user_id: "u1", role: "SPEAKER" })]);
+    mockedUpdate.mockResolvedValue(row({ user_id: "u1", role: "SPEAKER" }));
+    const user = userEvent.setup();
+    render(<Harness eventItem={event()} />);
+
+    expect(await screen.findByText(/convidado para palestrar neste evento/)).toBeInTheDocument();
+
+    await user.click(await screen.findByRole("button", { name: "Aceitar convite" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+    expect(await screen.findByText("Você é o palestrante")).toBeInTheDocument();
+  });
 });

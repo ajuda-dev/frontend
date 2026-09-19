@@ -97,22 +97,22 @@ export function MyAgendaPage() {
     <div className="flex flex-col gap-8">
       <PageHeader
         title="Agenda"
-        description="Seus eventos confirmados, convites de mentoria e inscrições canceladas."
+        description="Seus eventos confirmados, convites pendentes e inscrições canceladas."
       />
 
       <AgendaSection
         title="Confirmados"
-        description="Eventos que você participa ou mentora."
+        description="Eventos que você participa, palestra ou mentora."
         emptyTitle="Nenhum evento confirmado."
-        emptyDescription="Inscreva-se em um evento ou aceite um convite de mentoria para vê-los aqui."
+        emptyDescription="Inscreva-se em um evento ou aceite um convite para vê-los aqui."
         fetchPage={confirmed}
       />
 
       <AgendaSection
-        title="Convites de mentoria"
-        description="Convites que aguardam o seu aceite — como mentor ou como mentorado."
-        emptyTitle="Nenhum convite de mentoria pendente."
-        emptyDescription="Quando alguém convidar você para uma mentoria, o convite aparece aqui."
+        title="Convites"
+        description="Convites de mentoria e para palestrar que aguardam o seu aceite."
+        emptyTitle="Nenhum convite pendente."
+        emptyDescription="Quando alguém convidar você para uma mentoria ou para palestrar, o convite aparece aqui."
         fetchPage={invites}
       />
 

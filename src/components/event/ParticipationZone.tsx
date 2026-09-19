@@ -253,7 +253,9 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
               {status === "REJECTED" ? (
                 <div className="flex flex-col gap-1">
                   <p className="text-ink-muted text-sm">
-                    Sua inscrição foi recusada — você pode se inscrever de novo.
+                    {myRow?.role === "SPEAKER"
+                      ? "Você recusou o convite para palestrar — ainda pode se inscrever como participante."
+                      : "Sua inscrição foi recusada — você pode se inscrever de novo."}
                   </p>
                   {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
                 </div>
@@ -264,12 +266,86 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
           ) : null}
 
           {status === "REQUESTED" ? (
-            <p className="text-ink-muted text-sm">Sua inscrição está pendente de confirmação.</p>
+            myRow?.role === "SPEAKER" ? (
+              <div className="flex flex-col gap-3">
+                <Badge tone="warning">Convite para palestrar recebido</Badge>
+                <p className="text-ink-muted text-sm">
+                  Você foi convidado para palestrar neste evento. Aceite para confirmar, recuse ou
+                  peça outro horário no detalhe.
+                </p>
+                {rejecting ? (
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="reject-speaker-comment" className="text-ink text-sm font-medium">
+                      Motivo da recusa
+                    </label>
+                    <Textarea
+                      id="reject-speaker-comment"
+                      value={rejectComment}
+                      onChange={(event) => {
+                        setRejectComment(event.target.value);
+                        setRejectLocalError(null);
+                      }}
+                      maxLength={COMMENT_MAX}
+                      rows={3}
+                      placeholder="Explique brevemente por que não pode palestrar"
+                      invalid={Boolean(rejectLocalError)}
+                      disabled={isPending("reject")}
+                    />
+                    <p className="text-ink-muted text-xs">
+                      {rejectComment.trim().length}/{COMMENT_MAX}
+                    </p>
+                    {rejectLocalError ? <Alert variant="error">{rejectLocalError}</Alert> : null}
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        loading={isPending("reject")}
+                        onClick={() => void confirmReject()}
+                      >
+                        Confirmar recusa
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={isPending("reject")}
+                        onClick={closeRejectForm}
+                      >
+                        Voltar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      disabled={!approved}
+                      loading={isPending("accept")}
+                      onClick={() => void accept()}
+                    >
+                      Aceitar convite
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      loading={isPending("reject")}
+                      onClick={openRejectForm}
+                    >
+                      Recusar
+                    </Button>
+                  </div>
+                )}
+                {!approved ? approvalNote : null}
+              </div>
+            ) : (
+              <p className="text-ink-muted text-sm">Sua inscrição está pendente de confirmação.</p>
+            )
           ) : null}
 
           {status === "CONFIRMED" ? (
             <div className="flex flex-col gap-3">
-              <Badge tone="brand">Você participa</Badge>
+              <Badge tone="brand">
+                {myRow?.role === "SPEAKER" ? "Você é o palestrante" : "Você participa"}
+              </Badge>
               {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
               <div>
                 <Button

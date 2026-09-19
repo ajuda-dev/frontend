@@ -592,6 +592,38 @@ describe("EventDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
   });
 
+  it("palestrante convidado vê Aceitar, Recusar e Reagendar", async () => {
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p3",
+        event_id: "e1",
+        user_id: "u1",
+        role: "SPEAKER",
+        status: "REQUESTED",
+        user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    expect(await screen.findByRole("button", { name: "Aceitar convite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recusar" })).toBeInTheDocument();
+    const actionButtons = screen
+      .getAllByRole("button")
+      .map((button) => button.textContent)
+      .filter((label) => ["Aceitar convite", "Recusar", "Reagendar"].includes(label ?? ""));
+    expect(actionButtons).toEqual(["Aceitar convite", "Recusar", "Reagendar"]);
+
+    await user.click(screen.getByRole("button", { name: "Reagendar" }));
+    expect(
+      screen.getByText(
+        "Ao reagendar, os palestrantes confirmados precisam aceitar o novo horário. Quem só se inscreveu continua confirmado.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Sua participação")).not.toBeInTheDocument();
+  });
+
   it("inscrito de evento de comunidade não vê Reagendar", async () => {
     mockedParticipants.mockResolvedValue([
       {

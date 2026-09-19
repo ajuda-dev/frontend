@@ -39,6 +39,26 @@ export function notificationTitle(notification: Notification): string {
     if (title) return `A mentoria ${title} foi reagendada`;
     return "Uma mentoria 1:1 foi reagendada";
   }
+  if (notification.type === "SPEAKER_INVITE_PENDING") {
+    const title = eventTitle(notification);
+    if (title) return `Você foi convidado para palestrar em ${title}`;
+    return "Você foi convidado para palestrar";
+  }
+  if (notification.type === "SPEAKER_INVITE_ACCEPTED") {
+    const title = eventTitle(notification);
+    if (title) return `O convite para palestrar em ${title} foi aceito`;
+    return "Um convite para palestrar foi aceito";
+  }
+  if (notification.type === "SPEAKER_INVITE_REJECTED") {
+    const title = eventTitle(notification);
+    if (title) return `O convite para palestrar em ${title} foi recusado`;
+    return "Um convite para palestrar foi recusado";
+  }
+  if (notification.type === "SPEAKER_INVITE_RESCHEDULED") {
+    const title = eventTitle(notification);
+    if (title) return `O evento ${title} foi reagendado`;
+    return "Um evento foi reagendado";
+  }
   return "Aviso";
 }
 

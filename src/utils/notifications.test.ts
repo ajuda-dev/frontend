@@ -80,6 +80,35 @@ describe("notificationTitle", () => {
       "Uma mentoria 1:1 foi reagendada",
     );
   });
+
+  it("descreve convite para palestrar", () => {
+    expect(
+      notificationTitle(
+        item(12, {
+          type: "SPEAKER_INVITE_PENDING",
+          payload: { title: "Meetup Dev", category: "COMMUNITY_EVENT" },
+        }),
+      ),
+    ).toBe("Você foi convidado para palestrar em Meetup Dev");
+    expect(notificationTitle(item(13, { type: "SPEAKER_INVITE_PENDING", payload: {} }))).toBe(
+      "Você foi convidado para palestrar",
+    );
+    expect(
+      notificationTitle(
+        item(14, { type: "SPEAKER_INVITE_ACCEPTED", payload: { title: "Meetup Dev" } }),
+      ),
+    ).toBe("O convite para palestrar em Meetup Dev foi aceito");
+    expect(
+      notificationTitle(
+        item(15, { type: "SPEAKER_INVITE_REJECTED", payload: { title: "Meetup Dev" } }),
+      ),
+    ).toBe("O convite para palestrar em Meetup Dev foi recusado");
+    expect(
+      notificationTitle(
+        item(16, { type: "SPEAKER_INVITE_RESCHEDULED", payload: { title: "Meetup Dev" } }),
+      ),
+    ).toBe("O evento Meetup Dev foi reagendado");
+  });
 });
 
 describe("notificationHref", () => {

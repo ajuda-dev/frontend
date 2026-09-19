@@ -64,6 +64,10 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
   MENTORING_INVITE_ACCEPTED: "Convite aceito",
   MENTORING_INVITE_REJECTED: "Convite recusado",
   MENTORING_INVITE_RESCHEDULED: "Mentoria reagendada",
+  SPEAKER_INVITE_PENDING: "Convite para palestrar",
+  SPEAKER_INVITE_ACCEPTED: "Palestrante aceitou",
+  SPEAKER_INVITE_REJECTED: "Palestrante recusou",
+  SPEAKER_INVITE_RESCHEDULED: "Evento reagendado",
 };
 
 export function isInAppNotificationType(type: string): type is NotificationType {
@@ -122,6 +126,10 @@ export const NOTIFICATION_TYPE_COLOR: Record<NotificationType, BadgeTone> = {
   MENTORING_INVITE_ACCEPTED: "brand",
   MENTORING_INVITE_REJECTED: "danger",
   MENTORING_INVITE_RESCHEDULED: "warning",
+  SPEAKER_INVITE_PENDING: "brand",
+  SPEAKER_INVITE_ACCEPTED: "brand",
+  SPEAKER_INVITE_REJECTED: "danger",
+  SPEAKER_INVITE_RESCHEDULED: "warning",
 };
 
 export function notificationTypeTone(type: string): BadgeTone {

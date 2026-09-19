@@ -123,8 +123,24 @@ describe("canRescheduleEvent", () => {
       canRescheduleEvent(
         eventForReschedule({ category: "COMMUNITY_EVENT" }),
         guest,
-        { status: "CONFIRMED" },
+        { status: "CONFIRMED", role: "ATTENDEE" },
       ),
     ).toBe(false);
+  });
+
+  it("libera o palestrante convidado em REQUESTED, CONFIRMED e REJECTED", () => {
+    const communityEvent = eventForReschedule({ category: "COMMUNITY_EVENT" });
+    expect(canRescheduleEvent(communityEvent, guest, { status: "REQUESTED", role: "SPEAKER" })).toBe(
+      true,
+    );
+    expect(canRescheduleEvent(communityEvent, guest, { status: "CONFIRMED", role: "SPEAKER" })).toBe(
+      true,
+    );
+    expect(canRescheduleEvent(communityEvent, guest, { status: "REJECTED", role: "SPEAKER" })).toBe(
+      true,
+    );
+    expect(canRescheduleEvent(communityEvent, guest, { status: "CANCELLED", role: "SPEAKER" })).toBe(
+      false,
+    );
   });
 });

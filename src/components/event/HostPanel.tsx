@@ -57,7 +57,7 @@ export function HostPanel({
   const inviteRole = isMentoring ? complementaryRole(myRole ?? "MENTOR") : "SPEAKER";
   const inviteLabel = isMentoring
     ? `Convidar ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()}`
-    : "Adicionar palestrante";
+    : "Convidar palestrante";
   const counterpartConfirmed = participants.some(
     (entry) => entry.role === inviteRole && entry.status === "CONFIRMED",
   );
@@ -142,7 +142,7 @@ export function HostPanel({
                 ? "Você gerencia este evento como responsável pela comunidade ou pela moderação."
                 : isMentoring
                   ? `Você é o ${PARTICIPATION_ROLE_LABEL[myRole ?? "MENTOR"].toLowerCase()} desta mentoria. Convide ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} para completar as vagas.`
-                  : "Adicione palestrantes e acompanhe as inscrições do evento."}
+                  : "Convide palestrantes e acompanhe as inscrições do evento."}
               {occupancy}
             </p>
           ) : occupancy ? (

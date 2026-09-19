@@ -195,13 +195,13 @@ describe("HostPanel", () => {
     const user = userEvent.setup();
     renderPanel(event());
 
-    await user.click(await screen.findByRole("button", { name: "Adicionar palestrante" }));
+    await user.click(await screen.findByRole("button", { name: "Convidar palestrante" }));
     await user.click(await screen.findByRole("radio", { name: "Caio" }));
-    await user.click(screen.getByRole("button", { name: "Adicionar" }));
+    await user.click(screen.getByRole("button", { name: /^Convidar$/ }));
 
     expect(mockedAdd).toHaveBeenCalledWith("e1", { userId: "u5", role: "SPEAKER" });
     await waitFor(() =>
-      expect(screen.queryByRole("button", { name: "Adicionar" })).not.toBeInTheDocument(),
+      expect(screen.queryByRole("button", { name: /^Convidar$/ })).not.toBeInTheDocument(),
     );
   });
 
@@ -277,14 +277,12 @@ describe("HostPanel", () => {
     const user = userEvent.setup();
     renderPanel(event());
 
-    await user.click(await screen.findByRole("button", { name: "Adicionar palestrante" }));
+    await user.click(await screen.findByRole("button", { name: "Convidar palestrante" }));
     await user.click(await screen.findByRole("radio", { name: "Caio" }));
-    await user.click(screen.getByRole("button", { name: "Adicionar" }));
+    await user.click(screen.getByRole("button", { name: /^Convidar$/ }));
 
-    expect(
-      await screen.findByText("Este usuário já tem convite pendente neste evento"),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Adicionar" })).toBeInTheDocument();
+    expect(await screen.findByText("Este usuário já tem convite pendente neste evento")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Convidar$/ })).toBeInTheDocument();
   });
 
   it("sem participantes mostra estado vazio e a contagem de vagas", async () => {

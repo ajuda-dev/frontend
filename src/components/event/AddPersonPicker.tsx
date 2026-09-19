@@ -66,7 +66,7 @@ export function AddPersonPicker({ participation, inviteRole, onClose }: AddPerso
   return (
     <Modal
       open
-      title={inviteRole === "SPEAKER" ? "Adicionar palestrante" : "Convidar para a mentoria"}
+      title={inviteRole === "SPEAKER" ? "Convidar palestrante" : "Convidar para a mentoria"}
       onClose={onClose}
       footer={
         <>
@@ -74,7 +74,7 @@ export function AddPersonPicker({ participation, inviteRole, onClose }: AddPerso
             Cancelar
           </Button>
           <Button loading={adding} disabled={!selectedId} onClick={() => void handleSubmit()}>
-            {inviteRole === "SPEAKER" ? "Adicionar" : "Convidar"}
+            Convidar
           </Button>
         </>
       }
@@ -82,7 +82,7 @@ export function AddPersonPicker({ participation, inviteRole, onClose }: AddPerso
       <div className="flex flex-col gap-4">
         <p>
           {inviteRole === "SPEAKER"
-            ? "Escolha quem vai palestrar neste evento. O palestrante entra já confirmado."
+            ? "Escolha quem vai palestrar neste evento. O convite fica pendente até a pessoa aceitar, recusar ou pedir outro horário."
             : `Escolha quem você quer convidar como ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()}. O convite fica pendente até a pessoa aceitar.`}
         </p>
 

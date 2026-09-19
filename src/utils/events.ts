@@ -1,4 +1,4 @@
-import type { CreatorRole, EventItem, ParticipationStatus, UserRole } from "../types/api";
+import type { CreatorRole, EventItem, ParticipationRole, ParticipationStatus, UserRole } from "../types/api";
 import { canAtLeast } from "./roles";
 
 // Espelha isEventApproved do backend (event_authorization.go): status vazio ou ausente
@@ -28,15 +28,16 @@ export function canManageEvent(
   );
 }
 
-// Espelha canRescheduleEvent do backend: quem gerencia sempre pode; em MENTORING
-// o convidado com linha não CANCELLED também (REQUESTED/CONFIRMED/REJECTED — a
-// API aceita contra-proposta de quem recusou).
+// Espelha canRescheduleEvent do backend: quem gerencia sempre pode; o convidado
+// com linha não CANCELLED também — em MENTORING qualquer papel, nos demais só SPEAKER
+// (REQUESTED/CONFIRMED/REJECTED; a API aceita contra-proposta de quem recusou).
 export function canRescheduleEvent(
   event: Pick<EventItem, "owner" | "community" | "category">,
   user: { id: string; role: UserRole } | null | undefined,
-  myRow: { status: ParticipationStatus } | null | undefined,
+  myRow: { status: ParticipationStatus; role?: ParticipationRole } | null | undefined,
 ): boolean {
   if (canManageEvent(event, user)) return true;
-  if (event.category !== "MENTORING" || !myRow) return false;
-  return myRow.status !== "CANCELLED";
+  if (!myRow || myRow.status === "CANCELLED") return false;
+  if (event.category === "MENTORING") return true;
+  return myRow.role === "SPEAKER";
 }

@@ -336,14 +336,18 @@ export function EventDetailPage() {
   const canDelete = canManage;
   const canReschedule = canRescheduleEvent(event, user, participation.myRow);
   const isMentoring = event.category === "MENTORING";
+  const speakerInvitePending =
+    participation.myRow?.role === "SPEAKER" && participation.myRow?.status === "REQUESTED";
   // No 1:1 os dois lados veem a mesma lista (papel + status). Aceitar/recusar
   // fica na barra de ações, à esquerda de Reagendar; a zona de participação só
-  // cobre comunidade e quem abriu um 1:1 sem convite.
+  // cobre comunidade e quem abriu um 1:1 sem convite. Convite de palestrante
+  // pendente usa a mesma barra (Aceitar / Recusar / Reagendar).
   const mentoringListVisible =
     isMentoring && (canManage || participation.loading || Boolean(participation.myRow));
   const showHostPanel = canManage || mentoringListVisible;
-  const showZone = isMentoring ? !mentoringListVisible : true;
-  const canRespondInvite = showHostPanel && participation.myRow?.status === "REQUESTED";
+  const showZone = isMentoring ? !mentoringListVisible : !speakerInvitePending;
+  const canRespondInvite =
+    (showHostPanel && participation.myRow?.status === "REQUESTED") || speakerInvitePending;
   const canEditOwnComment = Boolean(
     participation.myRow && participation.myRow.status !== "CANCELLED",
   );
@@ -622,7 +626,12 @@ export function EventDetailPage() {
         <div className="flex flex-col gap-3">
           {event.category === "MENTORING" ? (
             <p>Ao reagendar, você confirma o novo horário. A outra pessoa precisa aceitar de novo.</p>
-          ) : null}
+          ) : (
+            <p>
+              Ao reagendar, os palestrantes confirmados precisam aceitar o novo horário. Quem só se
+              inscreveu continua confirmado.
+            </p>
+          )}
           <label htmlFor="reschedule-start-at" className="text-ink text-sm font-medium">
             Nova data e hora
           </label>
