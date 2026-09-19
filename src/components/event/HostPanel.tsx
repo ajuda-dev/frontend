@@ -11,11 +11,12 @@ import {
   PARTICIPATION_STATUS_LABEL,
 } from "../../utils/labels";
 import { Alert } from "../ui/Alert";
+import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
 import { Spinner } from "../ui/Spinner";
 import { AddPersonPicker } from "./AddPersonPicker";
-import { ParticipantComment } from "./ParticipantComment";
+import { commentBorderClass, commentChipTone, commentKindChip } from "./commentMeta";
 
 interface HostPanelProps {
   event: EventItem;
@@ -196,33 +197,45 @@ export function HostPanel({
 
       {participants.length > 0 ? (
         <ul className="flex flex-col gap-2">
-          {participants.map((entry) => (
-            <li key={entry.id} className="flex flex-col gap-2">
-              <div className="bg-surface border-line flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2">
-                <div className="flex flex-col gap-1">
-                  <Link
-                    to={`/pessoas/${entry.user_id}`}
-                    className="text-ink hover:text-brand text-sm font-medium"
-                  >
-                    {entry.user?.name ?? "Participante"}
-                  </Link>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone={PARTICIPATION_ROLE_COLOR[entry.role]}>
-                      {PARTICIPATION_ROLE_LABEL[entry.role]}
-                    </Badge>
-                    <Badge tone={PARTICIPATION_STATUS_COLOR[entry.status]}>
-                      {PARTICIPATION_STATUS_LABEL[entry.status]}
-                    </Badge>
+          {participants.map((entry) => {
+            const name = entry.user?.name ?? "Participante";
+            const chip = commentKindChip(entry);
+            return (
+              <li key={entry.id}>
+                <div
+                  role={entry.comment ? "status" : undefined}
+                  className={`bg-surface flex gap-3 rounded-md border px-3 py-2 ${commentBorderClass(entry)}`}
+                >
+                  <Avatar name={name} src={entry.user?.photo} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Link
+                            to={`/pessoas/${entry.user_id}`}
+                            className="text-ink hover:text-brand text-sm font-medium"
+                          >
+                            {name}
+                          </Link>
+                          <Badge tone={PARTICIPATION_ROLE_COLOR[entry.role]}>
+                            {PARTICIPATION_ROLE_LABEL[entry.role]}
+                          </Badge>
+                          {chip ? <Badge tone={commentChipTone(entry)}>{chip}</Badge> : null}
+                        </div>
+                        <Badge tone={PARTICIPATION_STATUS_COLOR[entry.status]}>
+                          {PARTICIPATION_STATUS_LABEL[entry.status]}
+                        </Badge>
+                      </div>
+                      {rowActions(entry)}
+                    </div>
+                    {entry.comment ? (
+                      <p className="text-ink mt-1 text-sm whitespace-pre-line">{entry.comment}</p>
+                    ) : null}
                   </div>
                 </div>
-
-                {rowActions(entry)}
-              </div>
-              {entry.comment ? (
-                <ParticipantComment entry={entry} category={event.category} />
-              ) : null}
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       ) : null}
 

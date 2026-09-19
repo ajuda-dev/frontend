@@ -691,7 +691,7 @@ describe("EventDetailPage", () => {
       comment: "Conflito de agenda",
     });
     expect((await screen.findAllByText("02/11/2026, 20:00")).length).toBeGreaterThan(0);
-    expect((await screen.findAllByText("Evento reagendado")).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText("Reagendamento")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Conflito de agenda")[0].closest("[role=status]")).toHaveClass(
       "border-warning",
     );
@@ -727,7 +727,7 @@ describe("EventDetailPage", () => {
       },
     });
 
-    expect(await screen.findByText("Mentoria reagendada")).toBeInTheDocument();
+    expect(await screen.findByText("Reagendamento")).toBeInTheDocument();
     expect(screen.getByText("Sexta 15h encaixa melhor").closest("[role=status]")).toHaveClass(
       "border-warning",
     );
@@ -849,7 +849,7 @@ describe("EventDetailPage", () => {
 
     expect(mockedUpdateComment).toHaveBeenCalledWith("e1", "owner-1", "Combinado pelo chat");
     expect((await screen.findAllByText("Combinado pelo chat")).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Comentário").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ana").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Seu comentário")).toHaveValue("");
   });
 

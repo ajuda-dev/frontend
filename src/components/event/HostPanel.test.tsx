@@ -133,7 +133,7 @@ describe("HostPanel", () => {
     renderPanel(event({ category: "MENTORING", max_slots: 2 }));
 
     expect(await screen.findByText("Agenda conflitou nesta semana")).toBeInTheDocument();
-    expect(screen.getByText("Motivo da recusa")).toBeInTheDocument();
+    expect(screen.getByText("Recusa")).toBeInTheDocument();
     expect(screen.getByText("Agenda conflitou nesta semana").closest("[role=status]")).toHaveClass(
       "border-danger",
     );
@@ -151,10 +151,33 @@ describe("HostPanel", () => {
     ]);
     renderPanel(event({ category: "MENTORING", max_slots: 2 }));
 
-    expect(await screen.findByText("Mentoria reagendada")).toBeInTheDocument();
+    expect(await screen.findByText("Reagendamento")).toBeInTheDocument();
     expect(screen.getByText("vamos deixar para semana que vem").closest("[role=status]")).toHaveClass(
       "border-warning",
     );
+  });
+
+  it("comentário fica no mesmo card da linha do participante", async () => {
+    mockedGet.mockResolvedValue([
+      row({
+        user_id: "u2",
+        role: "MENTOR",
+        status: "CONFIRMED",
+        comment: "pode ser as 20?",
+        comment_kind: "RESCHEDULE",
+      }),
+    ]);
+    renderPanel(event({ category: "MENTORING", max_slots: 2 }));
+
+    expect(await screen.findByRole("link", { name: "Pessoa u2" })).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "Pessoa u2" })).toHaveLength(1);
+    const card = screen.getByText("pode ser as 20?").closest("[role=status]");
+    expect(card).not.toBeNull();
+    expect(card).toHaveClass("border-warning");
+    expect(card).toHaveTextContent("Mentor");
+    expect(card).toHaveTextContent("Confirmado");
+    expect(card).toHaveTextContent("Reagendamento");
+    expect(card).toHaveTextContent("pode ser as 20?");
   });
 
   it("cancelar convite pendente chama DELETE e atualiza a lista", async () => {

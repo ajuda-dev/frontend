@@ -220,7 +220,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
               <Badge tone="brand">
                 {myRow?.role === "MENTOR" ? "Você é o mentor" : "Você é o mentorado"}
               </Badge>
-              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
+              {myRow ? <ParticipantComment entry={myRow} /> : null}
               <div>
                 <Button
                   size="sm"
@@ -237,7 +237,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
           {status === "REJECTED" ? (
             <div className="flex flex-col gap-2">
               <p className="text-ink-muted text-sm">Você recusou o convite desta mentoria.</p>
-              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
+              {myRow ? <ParticipantComment entry={myRow} /> : null}
             </div>
           ) : null}
 
@@ -261,7 +261,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                       ? "Você recusou o convite para palestrar — ainda pode se inscrever como participante."
                       : "Sua inscrição foi recusada — você pode se inscrever de novo."}
                   </p>
-                  {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
+                  {myRow ? <ParticipantComment entry={myRow} /> : null}
                 </div>
               ) : null}
               <div className="flex flex-wrap gap-2">{joinable ? joinButton : null}</div>
@@ -348,7 +348,7 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
               <Badge tone="brand">
                 {myRow?.role === "SPEAKER" ? "Você é o palestrante" : "Você participa"}
               </Badge>
-              {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
+              {myRow ? <ParticipantComment entry={myRow} /> : null}
               <div>
                 <Button
                   size="sm"

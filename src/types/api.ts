@@ -24,6 +24,7 @@ export interface UserSummary {
   role: UserRole;
   description?: string;
   configVisibility?: ConfigVisibility;
+  photo?: string;
 }
 
 export interface UserProfile {

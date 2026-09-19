@@ -5,6 +5,7 @@ import { EventApprovalBadge } from "../../components/event/EventApprovalBadge";
 import { EventApprovalControls } from "../../components/event/EventApprovalControls";
 import { ParticipationZone } from "../../components/event/ParticipationZone";
 import { Alert } from "../../components/ui/Alert";
+import { Avatar } from "../../components/ui/Avatar";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -606,46 +607,53 @@ export function EventDetailPage() {
       ) : null}
 
       {canEditOwnComment ? (
-        <div className="flex max-w-md flex-col gap-2">
-          <label htmlFor="solo-participant-comment" className="text-ink text-sm font-medium">
-            Seu comentário
-          </label>
-          <Textarea
-            id="solo-participant-comment"
-            value={soloComment}
-            onChange={(change) => {
-              setSoloCommentState((current) => ({ ...current, value: change.target.value }));
-              setSoloCommentLocalError(null);
-            }}
-            maxLength={COMMENT_MAX}
-            rows={3}
-            placeholder="Escreva um comentário sobre esta participação"
-            invalid={Boolean(soloCommentLocalError)}
-            disabled={isParticipationPending("comment")}
+        <div className="flex max-w-md gap-3">
+          <Avatar
+            name={myRow?.user?.name ?? user?.name ?? "Você"}
+            src={myRow?.user?.photo}
+            size="sm"
           />
-          <p className="text-ink-muted text-xs">
-            {soloComment.trim().length}/{COMMENT_MAX}
-          </p>
-          {soloCommentLocalError ? <Alert variant="error">{soloCommentLocalError}</Alert> : null}
-          {commentFailure ? <Alert variant="error">{commentFailure.message}</Alert> : null}
-          <div className="flex flex-wrap gap-2">
-            <Button
-              size="sm"
-              loading={isParticipationPending("comment")}
-              onClick={() => void handleSaveSoloComment()}
-            >
-              Salvar comentário
-            </Button>
-            {participation.myRow?.comment ? (
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <label htmlFor="solo-participant-comment" className="text-ink text-sm font-medium">
+              Seu comentário
+            </label>
+            <Textarea
+              id="solo-participant-comment"
+              value={soloComment}
+              onChange={(change) => {
+                setSoloCommentState((current) => ({ ...current, value: change.target.value }));
+                setSoloCommentLocalError(null);
+              }}
+              maxLength={COMMENT_MAX}
+              rows={3}
+              placeholder="Escreva um comentário sobre esta participação"
+              invalid={Boolean(soloCommentLocalError)}
+              disabled={isParticipationPending("comment")}
+            />
+            <p className="text-ink-muted text-xs">
+              {soloComment.trim().length}/{COMMENT_MAX}
+            </p>
+            {soloCommentLocalError ? <Alert variant="error">{soloCommentLocalError}</Alert> : null}
+            {commentFailure ? <Alert variant="error">{commentFailure.message}</Alert> : null}
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
-                variant="ghost"
                 loading={isParticipationPending("comment")}
-                onClick={() => void handleClearSoloComment()}
+                onClick={() => void handleSaveSoloComment()}
               >
-                Remover comentário
+                Salvar comentário
               </Button>
-            ) : null}
+              {participation.myRow?.comment ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  loading={isParticipationPending("comment")}
+                  onClick={() => void handleClearSoloComment()}
+                >
+                  Remover comentário
+                </Button>
+              ) : null}
+            </div>
           </div>
         </div>
       ) : null}

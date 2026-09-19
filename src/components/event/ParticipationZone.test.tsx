@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useParticipants } from "../../hooks/useParticipants";
 import type { EventItem, EventUser } from "../../types/api";
@@ -48,19 +49,30 @@ function event(overrides: Partial<EventItem> = {}): EventItem {
 }
 
 function row(overrides: Partial<EventUser> = {}): EventUser {
+  const userId = overrides.user_id ?? "u1";
   return {
     id: "p1",
     event_id: "e1",
-    user_id: "u1",
+    user_id: userId,
     role: "ATTENDEE",
     status: "CONFIRMED",
+    user: {
+      id: userId,
+      name: `Pessoa ${userId}`,
+      email: `${userId}@ajudadev.dev`,
+      role: "USER",
+    },
     ...overrides,
   };
 }
 
 function Harness({ eventItem, userId = "u1" }: { eventItem: EventItem; userId?: string }) {
   const participation = useParticipants(eventItem.id, userId);
-  return <ParticipationZone event={eventItem} participation={participation} />;
+  return (
+    <MemoryRouter>
+      <ParticipationZone event={eventItem} participation={participation} />
+    </MemoryRouter>
+  );
 }
 
 describe("ParticipationZone", () => {
@@ -168,7 +180,7 @@ describe("ParticipationZone", () => {
 
     expect(mockedUpdate).toHaveBeenCalledWith("e1", "u1", "REJECTED", "Agenda conflitou");
     expect(await screen.findByText("Você recusou o convite desta mentoria.")).toBeInTheDocument();
-    expect(screen.getByText("Motivo da recusa")).toBeInTheDocument();
+    expect(screen.getByText("Recusa")).toBeInTheDocument();
     expect(screen.getByText("Agenda conflitou").closest("[role=status]")).toHaveClass("border-danger");
   });
 
