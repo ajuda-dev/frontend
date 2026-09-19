@@ -10,6 +10,7 @@ import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { Field } from "../../components/ui/Field";
 import { Input } from "../../components/ui/Input";
 import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -416,9 +417,11 @@ export function EventDetailPage() {
       </div>
 
       <Card className="flex flex-col gap-4">
-        <p className="text-ink text-sm whitespace-pre-line">{event.description}</p>
-
         <dl className="text-ink-muted grid gap-2 text-sm sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <dt className="text-xs">Descrição</dt>
+            <dd className="text-ink whitespace-pre-line">{event.description}</dd>
+          </div>
           <div>
             <dt className="text-xs">Data e hora</dt>
             <dd className="text-ink">{formatDateTime(event.start_at)}</dd>
@@ -742,26 +745,26 @@ export function EventDetailPage() {
               ? "Excluir evento? Esta ação não pode ser desfeita."
               : "Você está excluindo um evento que não é seu (você gerencia a comunidade ou a moderação). Esta ação não pode ser desfeita."}
           </p>
-          <label htmlFor="delete-event-comment" className="text-ink text-sm font-medium">
-            Motivo do cancelamento
-          </label>
-          <Textarea
-            id="delete-event-comment"
-            value={deleteComment}
-            onChange={(change) => {
-              setDeleteComment(change.target.value);
-              setDeleteLocalError(null);
-            }}
-            maxLength={COMMENT_MAX}
-            rows={3}
-            placeholder="Explique brevemente o motivo"
-            invalid={Boolean(deleteLocalError)}
-            disabled={deleting}
-          />
-          <p className="text-ink-muted text-xs">
-            {deleteComment.trim().length}/{COMMENT_MAX}
-          </p>
-          {deleteLocalError ? <Alert variant="error">{deleteLocalError}</Alert> : null}
+          <Field
+            label="Motivo do cancelamento"
+            htmlFor="delete-event-comment"
+            error={deleteLocalError ?? undefined}
+            hint={`${deleteComment.trim().length}/${COMMENT_MAX} caracteres`}
+          >
+            <Textarea
+              id="delete-event-comment"
+              value={deleteComment}
+              onChange={(change) => {
+                setDeleteComment(change.target.value);
+                setDeleteLocalError(null);
+              }}
+              maxLength={COMMENT_MAX}
+              rows={3}
+              placeholder="Explique brevemente o motivo"
+              invalid={Boolean(deleteLocalError)}
+              disabled={deleting}
+            />
+          </Field>
         </div>
       </Modal>
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -92,6 +92,19 @@ describe("NewCommunityPage", () => {
 
     expect(await screen.findByText("Informe o nome da comunidade")).toBeInTheDocument();
     expect(screen.getByText("Informe a descrição da comunidade")).toBeInTheDocument();
+    expect(mockedCreateCommunity).not.toHaveBeenCalled();
+  });
+
+  it("descrição acima de 500 caracteres é barrada localmente", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillAddress(user);
+    await user.type(screen.getByLabelText("Nome"), "Dev SP");
+    fireEvent.change(screen.getByLabelText("Descrição"), { target: { value: "a".repeat(501) } });
+    await user.click(screen.getByRole("button", { name: "Criar comunidade" }));
+
+    expect(await screen.findByText("A descrição deve ter no máximo 500 caracteres")).toBeInTheDocument();
     expect(mockedCreateCommunity).not.toHaveBeenCalled();
   });
 

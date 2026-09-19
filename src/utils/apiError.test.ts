@@ -195,7 +195,7 @@ describe("translateApiMessage", () => {
 
   it("traduz as mensagens de perfil e visibilidade de contatos (plano 16)", () => {
     expect(translateApiMessage("description must have at most 500 characters")).toBe(
-      "O resumo deve ter no máximo 500 caracteres",
+      "A descrição deve ter no máximo 500 caracteres",
     );
     expect(translateApiMessage("value must be a valid http or https url")).toBe(
       "Informe um link http(s) válido (ex.: https://exemplo.com)",

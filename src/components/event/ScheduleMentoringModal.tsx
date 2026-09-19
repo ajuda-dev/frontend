@@ -22,11 +22,14 @@ interface ScheduleMentoringModalProps {
 
 interface FieldErrors {
   title?: string;
+  description?: string;
   start_at?: string;
   duration_min?: string;
   meeting_link?: string;
   creator_role?: string;
 }
+
+const DESCRIPTION_MAX_LENGTH = 500;
 
 // `datetime-local` trabalha em hora local do navegador; o backend compara instantes,
 // então o valor vai como ISO (UTC) e o `min` do input já bloqueia o passado.
@@ -65,6 +68,9 @@ export function ScheduleMentoringModal({ person, onClose, onScheduled }: Schedul
 
     const localErrors: FieldErrors = {};
     if (!title.trim()) localErrors.title = "Informe o título do 1:1";
+    if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
+      localErrors.description = "A descrição deve ter no máximo 500 caracteres";
+    }
 
     if (!startAt) {
       localErrors.start_at = "Informe a data e a hora do 1:1";
@@ -106,6 +112,7 @@ export function ScheduleMentoringModal({ person, onClose, onScheduled }: Schedul
         const fields = apiErrorFields(error);
         const mapped: FieldErrors = {
           title: fields.title,
+          description: fields.description,
           start_at: fields.start_at,
           duration_min: fields.duration_min,
           meeting_link: fields.meeting_link,
@@ -198,13 +205,16 @@ export function ScheduleMentoringModal({ person, onClose, onScheduled }: Schedul
           <Field
             label="Mensagem"
             htmlFor="mentoring-description"
-            hint="Opcional — vai na descrição do 1:1."
+            error={errors.description}
+            hint={`Opcional — vai na descrição do 1:1. ${description.trim().length}/${DESCRIPTION_MAX_LENGTH} caracteres`}
           >
             <Textarea
               id="mentoring-description"
               name="description"
               rows={3}
+              maxLength={DESCRIPTION_MAX_LENGTH}
               value={description}
+              invalid={Boolean(errors.description)}
               onChange={(event) => setDescription(event.target.value)}
             />
           </Field>

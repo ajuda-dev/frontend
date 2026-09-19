@@ -75,6 +75,7 @@ describe("CommunityDetailPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Dev SP" })).toBeInTheDocument();
     expect(mockedFind).not.toHaveBeenCalled();
+    expect(screen.getByText("Descrição")).toBeInTheDocument();
     expect(screen.getByText("Encontros de dev em São Paulo")).toBeInTheDocument();
   });
 

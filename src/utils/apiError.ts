@@ -122,7 +122,7 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "only the user themselves or an admin can manage this user's skills":
     "Apenas o próprio usuário ou um administrador podem gerenciar as habilidades deste usuário",
   "provide at least one field to update": "Informe ao menos um campo para alterar",
-  "description must have at most 500 characters": "O resumo deve ter no máximo 500 caracteres",
+  "description must have at most 500 characters": "A descrição deve ter no máximo 500 caracteres",
   "comment is required when rejecting": "Informe o motivo da recusa",
   "comment is required when cancelling": "Informe o motivo do cancelamento",
   "comment is required when rescheduling": "Informe o motivo do reagendamento",

@@ -116,6 +116,8 @@ describe("EventDetailPage", () => {
     renderDetail();
 
     expect(await screen.findByRole("heading", { name: "Meetup Dev SP" })).toBeInTheDocument();
+    expect(screen.getByText("Descrição")).toBeInTheDocument();
+    expect(screen.getByText("Encontro mensal da comunidade")).toBeInTheDocument();
     expect(mockedFind).toHaveBeenCalledWith("e1", expect.anything());
   });
 
@@ -212,6 +214,7 @@ describe("EventDetailPage", () => {
 
     await user.click(screen.getByRole("button", { name: "Excluir" }));
     expect(await screen.findByText("Informe o motivo do cancelamento")).toBeInTheDocument();
+    expect(screen.getAllByRole("textbox")).toHaveLength(1);
     expect(mockedDelete).not.toHaveBeenCalled();
 
     await user.type(screen.getByLabelText("Motivo do cancelamento"), "Mudança de data");

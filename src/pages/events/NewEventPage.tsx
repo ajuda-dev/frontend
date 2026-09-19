@@ -38,6 +38,8 @@ import {
   PARTICIPATION_ROLE_LABEL,
 } from "../../utils/labels";
 
+const DESCRIPTION_MAX_LENGTH = 500;
+
 interface FieldErrors {
   title?: string;
   description?: string;
@@ -188,6 +190,9 @@ export function NewEventPage() {
     const next: FieldErrors = {};
     if (!title.trim()) next.title = "Informe o título do evento";
     if (!description.trim()) next.description = "Informe a descrição do evento";
+    else if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
+      next.description = "A descrição deve ter no máximo 500 caracteres";
+    }
 
     if (!startAt) {
       next.start_at = "Informe a data e a hora do evento";
@@ -297,11 +302,17 @@ export function NewEventPage() {
             />
           </Field>
 
-          <Field label="Descrição" htmlFor="description" error={errors.description}>
+          <Field
+            label="Descrição"
+            htmlFor="description"
+            error={errors.description}
+            hint={`${description.trim().length}/${DESCRIPTION_MAX_LENGTH} caracteres`}
+          >
             <Textarea
               id="description"
               name="description"
               rows={4}
+              maxLength={DESCRIPTION_MAX_LENGTH}
               value={description}
               invalid={Boolean(errors.description)}
               onChange={(event) => setDescription(event.target.value)}

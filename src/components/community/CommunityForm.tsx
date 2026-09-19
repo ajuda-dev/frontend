@@ -23,6 +23,8 @@ import {
 } from "../../utils/contacts";
 import { formatAddress, formatCep } from "../../utils/format";
 
+const DESCRIPTION_MAX_LENGTH = 500;
+
 export interface CommunityFormValues {
   name: string;
   description: string;
@@ -80,6 +82,9 @@ export function CommunityForm({
     const next: FieldErrors = {};
     if (!name.trim()) next.name = "Informe o nome da comunidade";
     if (!description.trim()) next.description = "Informe a descrição da comunidade";
+    else if (description.trim().length > DESCRIPTION_MAX_LENGTH) {
+      next.description = "A descrição deve ter no máximo 500 caracteres";
+    }
     if (!address) next.address_id = "Busque ou selecione um endereço";
     const linkValues: Record<CommunityLinkKey, string> = { github, linkedin, otherlink, photo };
     for (const key of COMMUNITY_LINK_KEYS) {
@@ -173,12 +178,13 @@ export function CommunityForm({
             label="Descrição"
             htmlFor="description"
             error={errors.description}
-            hint="A descrição não pode ficar em branco."
+            hint={`${description.trim().length}/${DESCRIPTION_MAX_LENGTH} caracteres`}
           >
             <Textarea
               id="description"
               name="description"
               rows={4}
+              maxLength={DESCRIPTION_MAX_LENGTH}
               value={description}
               invalid={Boolean(errors.description)}
               onChange={(event) => setDescription(event.target.value)}

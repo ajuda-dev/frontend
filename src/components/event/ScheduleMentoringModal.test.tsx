@@ -78,6 +78,7 @@ describe("ScheduleMentoringModal", () => {
 
     expect(screen.getByLabelText("Título")).toHaveValue("Mentoria 1:1 com Ana Souza");
     expect(screen.getByText(/convida Ana Souza como mentorado/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Mensagem")).toHaveAttribute("maxLength", "500");
 
     await user.type(screen.getByLabelText("Mensagem"), "Vamos falar sobre Go");
     await fillAndSubmit(user);
@@ -125,6 +126,17 @@ describe("ScheduleMentoringModal", () => {
     expect(await screen.findByText("Informe a data e a hora do 1:1")).toBeInTheDocument();
     expect(mockedCreateEvent).not.toHaveBeenCalled();
     expect(mockedAdd).not.toHaveBeenCalled();
+  });
+
+  it("descrição acima de 500 caracteres é barrada localmente", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText("Mensagem"), { target: { value: "a".repeat(501) } });
+    await fillAndSubmit(user);
+
+    expect(await screen.findByText("A descrição deve ter no máximo 500 caracteres")).toBeInTheDocument();
+    expect(mockedCreateEvent).not.toHaveBeenCalled();
   });
 
   it("data no passado é barrada localmente", async () => {

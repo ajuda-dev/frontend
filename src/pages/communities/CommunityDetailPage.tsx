@@ -315,9 +315,11 @@ export function CommunityDetailPage() {
       </div>
 
       <Card className="flex flex-col gap-4">
-        <p className="text-ink text-sm whitespace-pre-line">{community.description}</p>
-
         <dl className="text-ink-muted grid gap-2 text-sm sm:grid-cols-2">
+          <div className="sm:col-span-2">
+            <dt className="text-xs">Descrição</dt>
+            <dd className="text-ink whitespace-pre-line">{community.description}</dd>
+          </div>
           <div>
             <dt className="text-xs">Cidade/UF</dt>
             <dd className="text-ink">
