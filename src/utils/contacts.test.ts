@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import type { ConfigVisibility } from "../types/api";
 import {
+  COMMUNITY_LINK_KEYS,
   CONTACT_KEYS,
+  communityLinkEntriesWithoutPhoto,
   contactEntries,
   contactEntriesWithoutPhoto,
   contactFieldKey,
@@ -9,6 +11,7 @@ import {
   hiddenContactKeys,
   isContactLink,
   photoUrl,
+  toCommunityLinks,
   validateContactValue,
 } from "./contacts";
 
@@ -19,6 +22,12 @@ function config(entries: ConfigVisibility): ConfigVisibility {
 describe("CONTACT_KEYS", () => {
   it("mantém a ordem canônica de exibição", () => {
     expect(CONTACT_KEYS).toEqual(["github", "linkedin", "otherlink", "photo", "phone"]);
+  });
+});
+
+describe("COMMUNITY_LINK_KEYS", () => {
+  it("são os links públicos da comunidade, sem telefone", () => {
+    expect(COMMUNITY_LINK_KEYS).toEqual(["github", "linkedin", "otherlink", "photo"]);
   });
 });
 
@@ -169,5 +178,48 @@ describe("validateContactValue", () => {
     expect(validateContactValue("phone", "(11) 99999-9999 ramal 12")).toBe(
       "O telefone deve ter no máximo 20 caracteres",
     );
+  });
+});
+
+describe("communityLinkEntriesWithoutPhoto", () => {
+  it("lista só os links da comunidade, sem foto", () => {
+    expect(
+      communityLinkEntriesWithoutPhoto({
+        github: { value: "https://github.com/org" },
+        photo: { value: "https://exemplo.com/foto.png" },
+        phone: { value: "11999999999" },
+      }),
+    ).toEqual([["github", "https://github.com/org"]]);
+  });
+});
+
+describe("toCommunityLinks", () => {
+  it("omite chaves vazias no cadastro", () => {
+    expect(
+      toCommunityLinks({
+        github: "https://github.com/org",
+        linkedin: "  ",
+        otherlink: "",
+        photo: "",
+      }),
+    ).toEqual({ github: { value: "https://github.com/org" } });
+  });
+
+  it("devolve undefined quando nada foi preenchido", () => {
+    expect(toCommunityLinks({ github: "", linkedin: "", otherlink: "", photo: "" })).toBeUndefined();
+  });
+
+  it("na edição inclui vazios para limpar o valor no servidor", () => {
+    expect(
+      toCommunityLinks(
+        { github: "", linkedin: "https://linkedin.com/company/org", otherlink: "", photo: "" },
+        { includeEmpty: true },
+      ),
+    ).toEqual({
+      github: { value: "" },
+      linkedin: { value: "https://linkedin.com/company/org" },
+      otherlink: { value: "" },
+      photo: { value: "" },
+    });
   });
 });

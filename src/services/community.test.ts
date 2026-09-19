@@ -260,6 +260,18 @@ describe("updateCommunity", () => {
 
     expect(mockedPut).toHaveBeenCalledWith("/community/c1", { name: "Dev SP" });
   });
+
+  it("repassa configVisibility sem reescrever as chaves", async () => {
+    mockedPut.mockResolvedValue({ data: community("c1") });
+
+    await updateCommunity("c1", {
+      configVisibility: { github: { value: "https://github.com/devsp" } },
+    });
+
+    expect(mockedPut).toHaveBeenCalledWith("/community/c1", {
+      configVisibility: { github: { value: "https://github.com/devsp" } },
+    });
+  });
 });
 
 describe("deleteCommunity", () => {

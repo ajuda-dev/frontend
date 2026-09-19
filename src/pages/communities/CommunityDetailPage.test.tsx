@@ -482,4 +482,25 @@ describe("CommunityDetailPage", () => {
     expect(mockedApprove).toHaveBeenCalledWith("e1", "APPROVED");
     expect(mockedListEvents).toHaveBeenCalledTimes(3);
   });
+
+  it("mostra os links públicos e a foto para qualquer autenticado", async () => {
+    renderDetail({
+      community: {
+        ...COMMUNITY,
+        configVisibility: {
+          github: { value: "https://github.com/devsp" },
+          photo: { value: "https://exemplo.com/devsp.png" },
+        },
+      },
+    });
+
+    expect(await screen.findByRole("link", { name: "https://github.com/devsp" })).toHaveAttribute(
+      "href",
+      "https://github.com/devsp",
+    );
+    expect(screen.getByRole("img", { name: "Foto de Dev SP" })).toHaveAttribute(
+      "src",
+      "https://exemplo.com/devsp.png",
+    );
+  });
 });

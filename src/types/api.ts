@@ -17,6 +17,14 @@ export interface ConfigVisibility {
   [key: string]: VisibilityConfig;
 }
 
+export interface CommunityLink {
+  value: string;
+}
+
+export interface CommunityLinks {
+  [key: string]: CommunityLink;
+}
+
 export interface UserSummary {
   id: string;
   name: string;
@@ -41,6 +49,7 @@ export interface Community {
   description: string;
   address?: Address | null;
   owner?: UserSummary | null;
+  configVisibility?: CommunityLinks;
 }
 
 export interface CommunityUser {
@@ -169,12 +178,14 @@ export interface RegisterCommunityInput {
   description: string;
   owner_id?: string;
   address_id?: string;
+  configVisibility?: CommunityLinks;
 }
 
 export interface UpdateCommunityInput {
   name?: string;
   description?: string;
   address_id?: string;
+  configVisibility?: CommunityLinks;
 }
 
 export interface RegisterEventInput {

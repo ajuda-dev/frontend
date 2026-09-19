@@ -10,20 +10,32 @@ import { Input } from "../ui/Input";
 import { Textarea } from "../ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useAddresses } from "../../hooks/useAddresses";
-import type { Address } from "../../types/api";
+import type { Address, CommunityLinks } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import {
+  COMMUNITY_LINK_KEYS,
+  CONTACT_VALUE_MAX_LENGTH,
+  contactFieldKey,
+  contactLabel,
+  toCommunityLinks,
+  validateContactValue,
+  type CommunityLinkKey,
+} from "../../utils/contacts";
 import { formatAddress, formatCep } from "../../utils/format";
 
 export interface CommunityFormValues {
   name: string;
   description: string;
   address_id: string;
+  configVisibility?: CommunityLinks;
 }
 
 interface CommunityFormProps {
   initialName?: string;
   initialDescription?: string;
   initialAddress?: Address | null;
+  initialLinks?: CommunityLinks;
+  includeEmptyLinks?: boolean;
   submitLabel: string;
   cancelTo: string;
   onSubmit: (values: CommunityFormValues) => Promise<void>;
@@ -33,12 +45,18 @@ interface FieldErrors {
   name?: string;
   description?: string;
   address_id?: string;
+  github?: string;
+  linkedin?: string;
+  otherlink?: string;
+  photo?: string;
 }
 
 export function CommunityForm({
   initialName = "",
   initialDescription = "",
   initialAddress = null,
+  initialLinks = {},
+  includeEmptyLinks = false,
   submitLabel,
   cancelTo,
   onSubmit,
@@ -49,6 +67,10 @@ export function CommunityForm({
   const [address, setAddress] = useState<Address | null>(initialAddress);
   const [name, setName] = useState(initialName);
   const [description, setDescription] = useState(initialDescription);
+  const [github, setGithub] = useState(initialLinks.github?.value ?? "");
+  const [linkedin, setLinkedin] = useState(initialLinks.linkedin?.value ?? "");
+  const [otherlink, setOtherlink] = useState(initialLinks.otherlink?.value ?? "");
+  const [photo, setPhoto] = useState(initialLinks.photo?.value ?? "");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
@@ -59,6 +81,11 @@ export function CommunityForm({
     if (!name.trim()) next.name = "Informe o nome da comunidade";
     if (!description.trim()) next.description = "Informe a descrição da comunidade";
     if (!address) next.address_id = "Busque ou selecione um endereço";
+    const linkValues: Record<CommunityLinkKey, string> = { github, linkedin, otherlink, photo };
+    for (const key of COMMUNITY_LINK_KEYS) {
+      const message = validateContactValue(key, linkValues[key]);
+      if (message) next[key] = message;
+    }
     return next;
   }
 
@@ -73,18 +100,30 @@ export function CommunityForm({
 
     setSubmitting(true);
     try {
+      const configVisibility = toCommunityLinks(
+        { github, linkedin, otherlink, photo },
+        { includeEmpty: includeEmptyLinks },
+      );
       await onSubmit({
         name: name.trim(),
         description: description.trim(),
         address_id: address?.id ?? "",
+        ...(configVisibility ? { configVisibility } : {}),
       });
     } catch (error) {
       const fields = apiErrorFields(error);
-      setErrors({
+      const next: FieldErrors = {
         name: fields.name,
         description: fields.description,
         address_id: fields.address_id,
-      });
+      };
+      for (const [field, message] of Object.entries(fields)) {
+        const key = contactFieldKey(field);
+        if (key && (COMMUNITY_LINK_KEYS as readonly string[]).includes(key)) {
+          next[key as CommunityLinkKey] = message;
+        }
+      }
+      setErrors(next);
       if (Object.keys(fields).length === 0) {
         setFormError(apiErrorMessage(error));
         setDetail(apiErrorDetail(error));
@@ -145,6 +184,35 @@ export function CommunityForm({
               onChange={(event) => setDescription(event.target.value)}
             />
           </Field>
+
+          <div className="flex flex-col gap-3">
+            <h3 className="text-ink text-sm font-semibold">Links públicos</h3>
+            <p className="text-ink-muted text-xs">
+              GitHub, LinkedIn, outro site e a foto ficam visíveis para qualquer pessoa autenticada.
+            </p>
+            {COMMUNITY_LINK_KEYS.map((key) => {
+              const value = { github, linkedin, otherlink, photo }[key];
+              const setValue = {
+                github: setGithub,
+                linkedin: setLinkedin,
+                otherlink: setOtherlink,
+                photo: setPhoto,
+              }[key];
+              return (
+                <Field key={key} label={contactLabel(key)} htmlFor={key} error={errors[key]}>
+                  <Input
+                    id={key}
+                    name={key}
+                    type="text"
+                    maxLength={CONTACT_VALUE_MAX_LENGTH}
+                    value={value}
+                    invalid={Boolean(errors[key])}
+                    onChange={(event) => setValue(event.target.value)}
+                  />
+                </Field>
+              );
+            })}
+          </div>
 
           {formError ? (
             <Alert variant="error">

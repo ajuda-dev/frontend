@@ -1,6 +1,8 @@
 import { Link } from "react-router";
 import type { Community } from "../../types/api";
+import { photoUrl } from "../../utils/contacts";
 import { formatAddress, formatCep } from "../../utils/format";
+import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import { Card } from "../ui/Card";
 
@@ -14,15 +16,19 @@ export function CommunityCard({ community, isMember = false }: CommunityCardProp
   const location = address
     ? `${address.city}/${address.state} · CEP ${formatCep(address.zip_code)}`
     : "Endereço não informado";
+  const photo = photoUrl(community.configVisibility ?? {});
 
   return (
     <Card className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
-        <h2 className="text-ink text-base font-semibold">
-          <Link to={`/comunidades/${community.id}`} state={{ community }} className="hover:text-brand">
-            {community.name}
-          </Link>
-        </h2>
+        <div className="flex min-w-0 items-start gap-3">
+          <Avatar name={community.name} src={photo} size="sm" />
+          <h2 className="text-ink text-base font-semibold">
+            <Link to={`/comunidades/${community.id}`} state={{ community }} className="hover:text-brand">
+              {community.name}
+            </Link>
+          </h2>
+        </div>
         {isMember ? <Badge tone="brand">Você é membro</Badge> : null}
       </div>
 

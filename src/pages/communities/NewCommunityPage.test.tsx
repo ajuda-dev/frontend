@@ -268,4 +268,23 @@ describe("NewCommunityPage", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("Detalhe da comunidade")).not.toBeInTheDocument();
   });
+
+  it("GitHub preenchido entra no body do register", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillAddress(user);
+    await user.type(screen.getByLabelText("Nome"), "Dev SP");
+    await user.type(screen.getByLabelText("Descrição"), "Encontros de dev");
+    await user.type(screen.getByLabelText("GitHub"), "https://github.com/devsp");
+    await user.click(screen.getByRole("button", { name: "Criar comunidade" }));
+
+    expect(await screen.findByText("Detalhe da comunidade")).toBeInTheDocument();
+    expect(mockedCreateCommunity).toHaveBeenCalledWith({
+      name: "Dev SP",
+      description: "Encontros de dev",
+      address_id: "a1",
+      configVisibility: { github: { value: "https://github.com/devsp" } },
+    });
+  });
 });

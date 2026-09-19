@@ -4,6 +4,7 @@ import { EmailVerificationGate } from "../../components/auth/EmailVerificationGa
 import { EventApprovalControls } from "../../components/event/EventApprovalControls";
 import { EventCard } from "../../components/event/EventCard";
 import { Alert } from "../../components/ui/Alert";
+import { Avatar } from "../../components/ui/Avatar";
 import { Badge } from "../../components/ui/Badge";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -19,6 +20,12 @@ import { deleteCommunity, findCommunityById } from "../../services/community";
 import { listEvents } from "../../services/event";
 import type { Community, EventApprovalStatus } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import {
+  communityLinkEntriesWithoutPhoto,
+  contactLabel,
+  isContactLink,
+  photoUrl,
+} from "../../utils/contacts";
 import { formatAddress, formatCep } from "../../utils/format";
 import { canAtLeast } from "../../utils/roles";
 
@@ -286,19 +293,26 @@ export function CommunityDetailPage() {
   const canManage = isOwner || canAtLeast(user?.role, "MODERATOR");
   const member = memberships.isMember(community.id);
   const pending = memberships.pendingId === community.id;
+  const photo = photoUrl(community.configVisibility ?? {});
+  const links = communityLinkEntriesWithoutPhoto(community.configVisibility ?? {});
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader
-        title={community.name}
-        description={community.address ? formatAddress(community.address) : "Endereço não informado"}
-        actions={
-          <>
-            {isOwner ? <Badge tone="brand">Você é o criador</Badge> : null}
-            {!isOwner && member ? <Badge tone="info">Você é membro</Badge> : null}
-          </>
-        }
-      />
+      <div className="flex items-start gap-4">
+        <Avatar name={community.name} src={photo} size="lg" />
+        <div className="min-w-0 flex-1">
+          <PageHeader
+            title={community.name}
+            description={community.address ? formatAddress(community.address) : "Endereço não informado"}
+            actions={
+              <>
+                {isOwner ? <Badge tone="brand">Você é o criador</Badge> : null}
+                {!isOwner && member ? <Badge tone="info">Você é membro</Badge> : null}
+              </>
+            }
+          />
+        </div>
+      </div>
 
       <Card className="flex flex-col gap-4">
         <p className="text-ink text-sm whitespace-pre-line">{community.description}</p>
@@ -324,6 +338,25 @@ export function CommunityDetailPage() {
             <dt className="text-xs">Contato do responsável</dt>
             <dd className="text-ink">{community.owner?.email ?? "—"}</dd>
           </div>
+          {links.map(([key, value]) => (
+            <div key={key}>
+              <dt className="text-xs">{contactLabel(key)}</dt>
+              <dd className="text-ink break-all">
+                {isContactLink(key, value) ? (
+                  <a
+                    href={value}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-brand hover:underline"
+                  >
+                    {value}
+                  </a>
+                ) : (
+                  value
+                )}
+              </dd>
+            </div>
+          ))}
         </dl>
       </Card>
 

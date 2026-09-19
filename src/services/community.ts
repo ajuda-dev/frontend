@@ -1,4 +1,4 @@
-import type { Community, CommunityUser, Pageable, UpdateCommunityInput } from "../types/api";
+import type { Community, CommunityLinks, CommunityUser, Pageable, UpdateCommunityInput } from "../types/api";
 import { api, isApiError } from "./api";
 
 export interface ListCommunitiesParams {
@@ -63,6 +63,7 @@ export interface CreateCommunityInput {
   name: string;
   description: string;
   address_id: string;
+  configVisibility?: CommunityLinks;
 }
 
 export async function createCommunity(input: CreateCommunityInput): Promise<Community> {

@@ -82,6 +82,22 @@ describe("EditCommunityPage", () => {
     expect(screen.getByLabelText("Descrição")).toHaveValue("Encontros de dev em São Paulo");
     // O endereço atual fica visível mesmo sem cache local, para ser mantido no PUT.
     expect(screen.getByText(/Endereço atual:/)).toHaveTextContent("Avenida Paulista");
+    expect(screen.getByLabelText("GitHub")).toHaveValue("");
+    expect(screen.getByLabelText("LinkedIn")).toHaveValue("");
+  });
+
+  it("pré-preenche os links públicos da comunidade", async () => {
+    mockedFind.mockResolvedValue({
+      ...COMMUNITY,
+      configVisibility: {
+        github: { value: "https://github.com/devsp" },
+        photo: { value: "https://exemplo.com/devsp.png" },
+      },
+    });
+    renderEdit();
+
+    expect(await screen.findByLabelText("GitHub")).toHaveValue("https://github.com/devsp");
+    expect(screen.getByLabelText("Foto")).toHaveValue("https://exemplo.com/devsp.png");
   });
 
   it("salvar envia PUT com os campos e volta ao detalhe com o aviso de sucesso", async () => {
@@ -100,6 +116,12 @@ describe("EditCommunityPage", () => {
       name: "Dev SP Editado",
       description: "Encontros de dev em São Paulo",
       address_id: "a1",
+      configVisibility: {
+        github: { value: "" },
+        linkedin: { value: "" },
+        otherlink: { value: "" },
+        photo: { value: "" },
+      },
     });
     // O 200 devolve a comunidade completa: o detalhe não refaz a busca.
     expect(mockedFind).toHaveBeenCalledTimes(1);
@@ -194,5 +216,70 @@ describe("EditCommunityPage", () => {
     renderEdit();
 
     expect(await screen.findByLabelText("Nome")).toHaveValue("Dev SP");
+  });
+
+  it("salvar GitHub envia configVisibility no PUT", async () => {
+    mockedUpdate.mockResolvedValue({
+      ...COMMUNITY,
+      configVisibility: { github: { value: "https://github.com/devsp" } },
+    });
+    const user = userEvent.setup();
+    renderEdit();
+
+    await user.type(await screen.findByLabelText("GitHub"), "https://github.com/devsp");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(mockedUpdate).toHaveBeenCalledWith("c1", {
+      name: "Dev SP",
+      description: "Encontros de dev em São Paulo",
+      address_id: "a1",
+      configVisibility: {
+        github: { value: "https://github.com/devsp" },
+        linkedin: { value: "" },
+        otherlink: { value: "" },
+        photo: { value: "" },
+      },
+    });
+    expect(await screen.findByRole("link", { name: "https://github.com/devsp" })).toBeInTheDocument();
+  });
+
+  it("URL inválida é barrada localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderEdit();
+
+    await user.type(await screen.findByLabelText("GitHub"), "github.com/devsp");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedUpdate).not.toHaveBeenCalled();
+  });
+
+  it("400 com cause config_visibility.github.value mostra o erro no campo", async () => {
+    mockedUpdate.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: {
+          message: "invalid data",
+          code: 400,
+          causes: [
+            { field: "config_visibility.github.value", message: "value must be a valid http or https url" },
+          ],
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderEdit();
+
+    await user.type(await screen.findByLabelText("GitHub"), "https://github.com/devsp");
+    await user.click(screen.getByRole("button", { name: "Salvar alterações" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Salvar alterações" })).toBeInTheDocument();
   });
 });

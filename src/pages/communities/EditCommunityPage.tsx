@@ -114,13 +114,15 @@ export function EditCommunityPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Editar comunidade"
-        description="Altere o nome, a descrição e o endereço da comunidade."
+        description="Altere o nome, a descrição, o endereço e os links públicos da comunidade."
       />
 
       <CommunityForm
         initialName={community.name}
         initialDescription={community.description}
         initialAddress={community.address}
+        initialLinks={community.configVisibility}
+        includeEmptyLinks
         submitLabel="Salvar alterações"
         cancelTo={`/comunidades/${community.id}`}
         onSubmit={handleUpdate}

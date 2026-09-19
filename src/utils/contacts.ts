@@ -1,7 +1,14 @@
-import type { ConfigVisibility } from "../types/api";
+import type { CommunityLinks, ConfigVisibility } from "../types/api";
 
 export const CONTACT_KEYS = ["github", "linkedin", "otherlink", "photo", "phone"] as const;
 export type ContactKey = (typeof CONTACT_KEYS)[number];
+
+export const COMMUNITY_LINK_KEYS = ["github", "linkedin", "otherlink", "photo"] as const;
+export type CommunityLinkKey = (typeof COMMUNITY_LINK_KEYS)[number];
+
+export type ContactMap = {
+  [key: string]: { value?: string; shareWithCommunity?: boolean } | undefined;
+};
 
 export const CONTACT_LABELS: Record<string, string> = {
   github: "GitHub",
@@ -28,21 +35,24 @@ export function isContactLink(key: string, value: string): boolean {
   return LINK_KEYS.includes(key) || /^https?:\/\//.test(value);
 }
 
-export function contactEntries(config: ConfigVisibility): [string, string][] {
-  return CONTACT_KEYS.filter((key) => (config[key]?.value ?? "").trim() !== "").map((key) => [
-    key,
-    config[key].value,
-  ]);
+export function contactEntries(config: ContactMap, keys: readonly string[] = CONTACT_KEYS): [string, string][] {
+  return keys
+    .filter((key) => (config[key]?.value ?? "").trim() !== "")
+    .map((key) => [key, (config[key]?.value ?? "").trim()]);
 }
 
 // A foto é renderizada como imagem no avatar, não como link na lista de contatos.
-export function photoUrl(config: ConfigVisibility): string | undefined {
+export function photoUrl(config: ContactMap): string | undefined {
   const value = (config.photo?.value ?? "").trim();
   return value === "" ? undefined : value;
 }
 
-export function contactEntriesWithoutPhoto(config: ConfigVisibility): [string, string][] {
+export function contactEntriesWithoutPhoto(config: ContactMap): [string, string][] {
   return contactEntries(config).filter(([key]) => key !== "photo");
+}
+
+export function communityLinkEntriesWithoutPhoto(config: ContactMap): [string, string][] {
+  return contactEntries(config, COMMUNITY_LINK_KEYS).filter(([key]) => key !== "photo");
 }
 
 export function hiddenContactKeys(config: ConfigVisibility): string[] {
@@ -57,6 +67,20 @@ export function contactFieldKey(field: string): string | null {
   if (!field.startsWith(prefix)) return null;
   const key = field.slice(prefix.length).replace(/\.value$/, "");
   return key || null;
+}
+
+export function toCommunityLinks(
+  values: Record<CommunityLinkKey, string>,
+  options?: { includeEmpty?: boolean },
+): CommunityLinks | undefined {
+  const links: CommunityLinks = {};
+  for (const key of COMMUNITY_LINK_KEYS) {
+    const value = values[key].trim();
+    if (value !== "" || options?.includeEmpty) {
+      links[key] = { value };
+    }
+  }
+  return Object.keys(links).length > 0 ? links : undefined;
 }
 
 export function validateContactValue(key: string, value: string): string | null {
