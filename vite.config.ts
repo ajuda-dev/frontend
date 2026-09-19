@@ -2,15 +2,13 @@
 import http from "node:http";
 import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 
-const API_HOST = "127.0.0.1";
-const API_PORT = 8080;
 const STREAM_PATH = "/v1/notifications/stream";
 
 // http-proxy do Vite trata SSE como HTTP curto: no primeiro frame de notificação
 // o socket com o backend cai com ECONNRESET e o overlay do dev server dispara.
-function proxyNotificationStream(): Plugin {
+function proxyNotificationStream(apiHost: string, apiPort: number): Plugin {
   return {
     name: "proxy-notification-stream",
     configureServer(server) {
@@ -21,13 +19,13 @@ function proxyNotificationStream(): Plugin {
           return;
         }
 
-        const headers = { ...req.headers, host: `${API_HOST}:${API_PORT}` };
+        const headers = { ...req.headers, host: `${apiHost}:${apiPort}` };
         delete headers["accept-encoding"];
 
         const proxyReq = http.request(
           {
-            hostname: API_HOST,
-            port: API_PORT,
+            hostname: apiHost,
+            port: apiPort,
             path: url,
             method: req.method,
             headers,
@@ -62,48 +60,54 @@ function proxyNotificationStream(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [proxyNotificationStream(), react(), tailwindcss()],
-  server: {
-    host: "127.0.0.1",
-    proxy: {
-      "/v1": {
-        target: `http://${API_HOST}:${API_PORT}`,
-        changeOrigin: false,
-        timeout: 0,
-        proxyTimeout: 0,
-        agent: new http.Agent({ keepAlive: true, family: 4 }),
-        configure(proxy) {
-          proxy.on("proxyReq", (proxyReq, req, res) => {
-            if (!req.url?.includes("/notifications/stream")) return;
-            res.on("close", () => {
-              if (!res.writableEnded) proxyReq.destroy();
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  const API_HOST = env.API_HOST || "127.0.0.1";
+  const API_PORT = Number(env.API_PORT || 8080);
+
+  return {
+    plugins: [proxyNotificationStream(API_HOST, API_PORT), react(), tailwindcss()],
+    server: {
+      host: "127.0.0.1",
+      proxy: {
+        "/v1": {
+          target: `http://${API_HOST}:${API_PORT}`,
+          changeOrigin: false,
+          timeout: 0,
+          proxyTimeout: 0,
+          agent: new http.Agent({ keepAlive: true, family: 4 }),
+          configure(proxy) {
+            proxy.on("proxyReq", (proxyReq, req, res) => {
+              if (!req.url?.includes("/notifications/stream")) return;
+              res.on("close", () => {
+                if (!res.writableEnded) proxyReq.destroy();
+              });
             });
-          });
-          proxy.on("proxyRes", (proxyRes, req, res) => {
-            if (!req.url?.includes("/notifications/stream")) return;
-            proxyRes.headers["cache-control"] = "no-cache";
-            proxyRes.headers["x-accel-buffering"] = "no";
-            delete proxyRes.headers["content-length"];
-            req.socket.setTimeout(0);
-            res.socket?.setTimeout(0);
-          });
-          proxy.on("error", (err, _req, res) => {
-            const code = (err as NodeJS.ErrnoException).code;
-            if (code === "ECONNRESET" || code === "EPIPE") return;
-            if (res && "writeHead" in res && !res.headersSent) {
-              res.writeHead(502);
-              res.end();
-            }
-          });
+            proxy.on("proxyRes", (proxyRes, req, res) => {
+              if (!req.url?.includes("/notifications/stream")) return;
+              proxyRes.headers["cache-control"] = "no-cache";
+              proxyRes.headers["x-accel-buffering"] = "no";
+              delete proxyRes.headers["content-length"];
+              req.socket.setTimeout(0);
+              res.socket?.setTimeout(0);
+            });
+            proxy.on("error", (err, _req, res) => {
+              const code = (err as NodeJS.ErrnoException).code;
+              if (code === "ECONNRESET" || code === "EPIPE") return;
+              if (res && "writeHead" in res && !res.headersSent) {
+                res.writeHead(502);
+                res.end();
+              }
+            });
+          },
         },
       },
     },
-  },
-  test: {
-    environment: "jsdom",
-    globals: true,
-    setupFiles: "./src/test/setup.ts",
-    css: false,
-  },
+    test: {
+      environment: "jsdom",
+      globals: true,
+      setupFiles: "./src/test/setup.ts",
+      css: false,
+    },
+  };
 });

@@ -17,7 +17,8 @@ Planos de implementação: `C:\Users\Lucas\dev\ajudadev\docs\implementacao\front
 
 ## Como rodar
 
-- Dev: `npm.cmd run dev` (porta 5173; proxy `/v1` → `http://localhost:8080` — backend deve estar rodando: `go run ./cmd/api` em `C:\Users\Lucas\dev\go\backend`).
+- Env: copie `.env.example` para `.env` (gitignored). `API_HOST` / `API_PORT` definem o destino do proxy em `npm run dev` (default `127.0.0.1:8080`). `VITE_API_BASE_URL` é o que o browser chama (default `/v1`); em produção, setar no CI **antes** do `npm run build` se a API estiver em outra origem.
+- Dev: `npm.cmd run dev` (porta 5173; proxy `/v1` → `http://$API_HOST:$API_PORT` — backend deve estar rodando: `go run ./cmd/api` em `C:\Users\Lucas\dev\go\backend`).
 - Build: `npm.cmd run build` (tsc -b + vite build). Testes: `npm.cmd run test`. Lint: `npm.cmd run lint`.
 - No Windows deste projeto use `npm.cmd` (execução de scripts PowerShell está desabilitada).
 
