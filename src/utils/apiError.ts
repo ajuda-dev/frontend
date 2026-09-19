@@ -165,6 +165,8 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "rejected events cannot be published": "Eventos rejeitados não podem ser publicados",
   "only community events can be published": "Só eventos da comunidade podem ser publicados",
   "visibility must be PUBLIC": "A visibilidade precisa ser pública",
+  "meeting_link is only allowed for online and hybrid events":
+    "O link da reunião só vale em eventos online ou híbridos",
   "only the invited user can accept or reject this invitation":
     "Só quem recebeu o convite pode aceitar ou recusá-lo",
   "only the participant themselves can update this comment":

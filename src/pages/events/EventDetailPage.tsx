@@ -18,7 +18,7 @@ import { PageSpinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useParticipants } from "../../hooks/useParticipants";
-import { deleteEvent, findEventById, publishEvent, rescheduleEvent } from "../../services/event";
+import { deleteEvent, findEventById, publishEvent, rescheduleEvent, updateEventMeetingLink } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
@@ -71,6 +71,11 @@ export function EventDetailPage() {
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+  const [editingMeetingLink, setEditingMeetingLink] = useState(false);
+  const [meetingLinkDraft, setMeetingLinkDraft] = useState("");
+  const [meetingLinkLocalError, setMeetingLinkLocalError] = useState<string | null>(null);
+  const [savingMeetingLink, setSavingMeetingLink] = useState(false);
+  const [meetingLinkError, setMeetingLinkError] = useState<string | null>(null);
   const [rejectingInvite, setRejectingInvite] = useState(false);
   const [rejectComment, setRejectComment] = useState("");
   const [rejectLocalError, setRejectLocalError] = useState<string | null>(null);
@@ -222,6 +227,49 @@ export function EventDetailPage() {
     }
   }, [id]);
 
+  const openMeetingLinkForm = useCallback(() => {
+    setEditingMeetingLink(true);
+    setMeetingLinkDraft(event?.meeting_link ?? "");
+    setMeetingLinkLocalError(null);
+    setMeetingLinkError(null);
+  }, [event]);
+
+  const closeMeetingLinkForm = useCallback(() => {
+    if (savingMeetingLink) return;
+    setEditingMeetingLink(false);
+    setMeetingLinkLocalError(null);
+    setMeetingLinkError(null);
+  }, [savingMeetingLink]);
+
+  const handleSaveMeetingLink = useCallback(async () => {
+    const trimmed = meetingLinkDraft.trim();
+    if (trimmed) {
+      try {
+        const parsed = new URL(trimmed);
+        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+          setMeetingLinkLocalError("Informe um link http(s) válido (ex.: https://exemplo.com)");
+          return;
+        }
+      } catch {
+        setMeetingLinkLocalError("Informe um link http(s) válido (ex.: https://exemplo.com)");
+        return;
+      }
+    }
+    setSavingMeetingLink(true);
+    setMeetingLinkError(null);
+    setMeetingLinkLocalError(null);
+    try {
+      const updated = await updateEventMeetingLink(id, trimmed);
+      setEvent(updated);
+      setEditingMeetingLink(false);
+    } catch (caught) {
+      const fields = apiErrorFields(caught);
+      setMeetingLinkError(fields.meeting_link ?? apiErrorMessage(caught));
+    } finally {
+      setSavingMeetingLink(false);
+    }
+  }, [id, meetingLinkDraft]);
+
   const openRejectForm = useCallback(() => {
     clearParticipationFailure();
     setRejectingInvite(true);
@@ -349,6 +397,7 @@ export function EventDetailPage() {
 
   const isOwner = Boolean(user && event.owner && event.owner.id === user.id);
   const isOnline = event.type === "ONLINE";
+  const allowsMeetingLink = event.type === "ONLINE" || event.type === "HYBRID";
   // Espelha canManageEvent do backend: criador, dono da comunidade ou ≥ MODERATOR.
   const canManage = canManageEvent(event, user);
   const canDelete = canManage;
@@ -452,19 +501,59 @@ export function EventDetailPage() {
           ) : null}
         </dl>
 
-        {isOnline ? (
-          event.meeting_link ? (
-            <a
-              href={event.meeting_link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-brand text-sm hover:underline"
-            >
-              Acessar link da reunião
-            </a>
-          ) : (
-            <p className="text-ink-muted text-sm">Evento online — link será divulgado.</p>
-          )
+        {allowsMeetingLink ? (
+          <div className="flex flex-col gap-3">
+            {event.meeting_link ? (
+              <a
+                href={event.meeting_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-brand text-sm hover:underline"
+              >
+                Acessar link da reunião
+              </a>
+            ) : (
+              <p className="text-ink-muted text-sm">Link da reunião será divulgado.</p>
+            )}
+            {canManage ? (
+              editingMeetingLink ? (
+                <div className="flex max-w-md flex-col gap-2">
+                  <Field
+                    label="Link do encontro"
+                    htmlFor="event-meeting-link"
+                    error={meetingLinkLocalError ?? undefined}
+                    hint="https://"
+                  >
+                    <Input
+                      id="event-meeting-link"
+                      type="url"
+                      placeholder="https://"
+                      value={meetingLinkDraft}
+                      onChange={(change) => {
+                        setMeetingLinkDraft(change.target.value);
+                        setMeetingLinkLocalError(null);
+                      }}
+                      invalid={Boolean(meetingLinkLocalError)}
+                      disabled={savingMeetingLink}
+                    />
+                  </Field>
+                  {meetingLinkError ? <Alert variant="error">{meetingLinkError}</Alert> : null}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button loading={savingMeetingLink} onClick={() => void handleSaveMeetingLink()}>
+                      Salvar link
+                    </Button>
+                    <Button variant="ghost" disabled={savingMeetingLink} onClick={closeMeetingLinkForm}>
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button variant="ghost" className="self-start" onClick={openMeetingLinkForm}>
+                  {event.meeting_link ? "Alterar link" : "Incluir link"}
+                </Button>
+              )
+            ) : null}
+          </div>
         ) : null}
 
         {event.community ? (

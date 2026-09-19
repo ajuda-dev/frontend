@@ -14,6 +14,7 @@ vi.mock("../../services/event", () => ({
   approveEvent: vi.fn(),
   rescheduleEvent: vi.fn(),
   publishEvent: vi.fn(),
+  updateEventMeetingLink: vi.fn(),
 }));
 
 vi.mock("../../services/eventUser", () => ({
@@ -25,7 +26,7 @@ vi.mock("../../services/eventUser", () => ({
   updateParticipantComment: vi.fn(),
 }));
 
-import { deleteEvent, findEventById, approveEvent, publishEvent, rescheduleEvent } from "../../services/event";
+import { deleteEvent, findEventById, approveEvent, publishEvent, rescheduleEvent, updateEventMeetingLink } from "../../services/event";
 import {
   getParticipants,
   joinEvent,
@@ -38,6 +39,7 @@ const mockedDelete = vi.mocked(deleteEvent);
 const mockedApprove = vi.mocked(approveEvent);
 const mockedReschedule = vi.mocked(rescheduleEvent);
 const mockedPublish = vi.mocked(publishEvent);
+const mockedUpdateMeetingLink = vi.mocked(updateEventMeetingLink);
 const mockedParticipants = vi.mocked(getParticipants);
 const mockedJoinEvent = vi.mocked(joinEvent);
 const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
@@ -192,8 +194,75 @@ describe("EventDetailPage", () => {
   it("online sem meeting_link avisa que o link será divulgado", async () => {
     renderDetail({ event: { ...EVENT, type: "ONLINE", address: null } });
 
-    expect(await screen.findByText("Evento online — link será divulgado.")).toBeInTheDocument();
+    expect(await screen.findByText("Link da reunião será divulgado.")).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Acessar link da reunião" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Incluir link" })).not.toBeInTheDocument();
+  });
+
+  it("híbrido com meeting_link mostra o link da reunião", async () => {
+    renderDetail({
+      event: {
+        ...EVENT,
+        type: "HYBRID",
+        meeting_link: "https://meet.example.com/hibrido",
+      },
+    });
+
+    const link = await screen.findByRole("link", { name: "Acessar link da reunião" });
+    expect(link).toHaveAttribute("href", "https://meet.example.com/hibrido");
+  });
+
+  it("owner inclui o link depois da criação", async () => {
+    seedSession("owner-1");
+    const online = { ...EVENT, type: "ONLINE" as const, address: null };
+    mockedFind.mockResolvedValue(online);
+    mockedUpdateMeetingLink.mockResolvedValue({
+      ...online,
+      meeting_link: "https://meet.example.com/depois",
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: online });
+
+    await user.click(await screen.findByRole("button", { name: "Incluir link" }));
+    await user.type(screen.getByLabelText("Link do encontro"), "https://meet.example.com/depois");
+    await user.click(screen.getByRole("button", { name: "Salvar link" }));
+
+    expect(mockedUpdateMeetingLink).toHaveBeenCalledWith("e1", "https://meet.example.com/depois");
+    expect(await screen.findByRole("link", { name: "Acessar link da reunião" })).toHaveAttribute(
+      "href",
+      "https://meet.example.com/depois",
+    );
+    expect(screen.getByRole("button", { name: "Alterar link" })).toBeInTheDocument();
+  });
+
+  it("owner altera um link já existente", async () => {
+    seedSession("owner-1");
+    const online = {
+      ...EVENT,
+      type: "ONLINE" as const,
+      address: null,
+      meeting_link: "https://meet.example.com/x",
+    };
+    mockedFind.mockResolvedValue(online);
+    mockedUpdateMeetingLink.mockResolvedValue({
+      ...online,
+      meeting_link: "https://meet.example.com/novo",
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: online });
+
+    await user.click(await screen.findByRole("button", { name: "Alterar link" }));
+    const input = screen.getByLabelText("Link do encontro");
+    expect(input).toHaveValue("https://meet.example.com/x");
+    await user.clear(input);
+    await user.type(input, "https://meet.example.com/novo");
+    await user.click(screen.getByRole("button", { name: "Salvar link" }));
+
+    expect(mockedUpdateMeetingLink).toHaveBeenCalledWith("e1", "https://meet.example.com/novo");
+    expect(await screen.findByRole("link", { name: "Acessar link da reunião" })).toHaveAttribute(
+      "href",
+      "https://meet.example.com/novo",
+    );
   });
 
   it("não-owner sem cargo não vê o botão de excluir", async () => {

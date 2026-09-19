@@ -232,6 +232,10 @@ export interface RescheduleEventInput {
   comment: string;
 }
 
+export interface UpdateEventMeetingLinkInput {
+  meeting_link: string;
+}
+
 export interface AssignSkillInput {
   user_id: string;
   level: SkillLevel;

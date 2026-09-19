@@ -9,6 +9,7 @@ import type {
   ParticipationStatus,
   RegisterEventInput,
   RescheduleEventInput,
+  UpdateEventMeetingLinkInput,
 } from "../types/api";
 import { api, isApiError } from "./api";
 
@@ -150,5 +151,11 @@ export async function approveEvent(
 
 export async function publishEvent(eventId: string): Promise<EventItem> {
   const { data } = await api.put<EventItem>(`/event/${eventId}/visibility`, { visibility: "PUBLIC" });
+  return data;
+}
+
+export async function updateEventMeetingLink(eventId: string, meetingLink: string): Promise<EventItem> {
+  const body: UpdateEventMeetingLinkInput = { meeting_link: meetingLink.trim() };
+  const { data } = await api.put<EventItem>(`/event/${eventId}/meeting-link`, body);
   return data;
 }

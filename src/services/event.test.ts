@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventItem, Pageable } from "../types/api";
 import { api } from "./api";
-import { createEvent, deleteEvent, findEventById, listEvents, approveEvent, publishEvent, rescheduleEvent } from "./event";
+import { createEvent, deleteEvent, findEventById, listEvents, approveEvent, publishEvent, rescheduleEvent, updateEventMeetingLink } from "./event";
 
 // `isApiError` precisa ser o real (a implementação de findEventById depende dele
 // para mapear 404 → null); só a instância `api` é dublada.
@@ -428,5 +428,32 @@ describe("publishEvent", () => {
 
     expect(mockedPut).toHaveBeenCalledWith("/event/e1/visibility", { visibility: "PUBLIC" });
     expect(result).toEqual(published);
+  });
+});
+
+describe("updateEventMeetingLink", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT em /event/:id/meeting-link com o link trimado", async () => {
+    const updated = { ...event("e1"), meeting_link: "https://meet.example.com/x" };
+    mockedPut.mockResolvedValue({ data: updated });
+
+    const result = await updateEventMeetingLink("e1", " https://meet.example.com/x ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/meeting-link", {
+      meeting_link: "https://meet.example.com/x",
+    });
+    expect(result).toEqual(updated);
+  });
+
+  it("envia string vazia para limpar o link", async () => {
+    const updated = { ...event("e1") };
+    mockedPut.mockResolvedValue({ data: updated });
+
+    await updateEventMeetingLink("e1", "   ");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/meeting-link", { meeting_link: "" });
   });
 });

@@ -140,6 +140,9 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage("speaker must confirm the schedule first")).toBe(
       "O palestrante precisa confirmar o horário antes de publicar",
     );
+    expect(translateApiMessage("meeting_link is only allowed for ONLINE and HYBRID events")).toBe(
+      "O link da reunião só vale em eventos online ou híbridos",
+    );
     expect(translateApiMessage("event owner must accept the new time")).toBe(
       "Quem organiza precisa aceitar o novo horário antes de publicar",
     );
