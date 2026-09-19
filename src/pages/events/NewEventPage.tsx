@@ -358,7 +358,11 @@ export function NewEventPage() {
               label="Vagas"
               htmlFor="max_slots"
               error={errors.max_slots}
-              hint="Deixe em branco para não limitar as vagas."
+              hint={
+                category === "COMMUNITY_EVENT"
+                  ? "O palestrante confirmado ocupa uma vaga. Quem organiza não ocupa, a menos que também se inscreva. Ex.: 10 ouvintes + palestrante = 11 vagas. Deixe em branco para não limitar."
+                  : "Deixe em branco para não limitar as vagas."
+              }
             >
               <Input
                 id="max_slots"

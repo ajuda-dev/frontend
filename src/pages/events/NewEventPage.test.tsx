@@ -214,6 +214,17 @@ describe("NewEventPage", () => {
     expect(screen.queryByLabelText("Vagas")).not.toBeInTheDocument();
   });
 
+  it("COMMUNITY_EVENT explica que o palestrante ocupa vaga e quem organiza não", async () => {
+    renderPage();
+
+    expect(screen.getByLabelText("Vagas")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "O palestrante confirmado ocupa uma vaga. Quem organiza não ocupa, a menos que também se inscreva. Ex.: 10 ouvintes + palestrante = 11 vagas. Deixe em branco para não limitar.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("MENTORING deixa escolher o papel de quem cria e envia creator_role", async () => {
     const user = userEvent.setup();
     renderPage();
@@ -619,6 +630,31 @@ describe("NewEventPage", () => {
 
     expect(
       await screen.findByText("A data do evento precisa ser no futuro"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
+  });
+
+  it("conflito de horário da comunidade aparece no campo de data", async () => {
+    mockedCreateEvent.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: {
+          message: "Invalid event data",
+          code: 400,
+          causes: [{ field: "start_at", message: "community already has an event at that time" }],
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Já existe um evento desta comunidade nesse horário"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
   });

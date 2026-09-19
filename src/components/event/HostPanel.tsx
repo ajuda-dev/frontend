@@ -61,7 +61,11 @@ export function HostPanel({
   const counterpartConfirmed = participants.some(
     (entry) => entry.role === inviteRole && entry.status === "CONFIRMED",
   );
-  const inviteBlocked = canManage && isMentoring && counterpartConfirmed;
+  const hasActiveSpeaker = participants.some(
+    (entry) =>
+      entry.role === "SPEAKER" && (entry.status === "REQUESTED" || entry.status === "CONFIRMED"),
+  );
+  const inviteBlocked = canManage && (isMentoring ? counterpartConfirmed : hasActiveSpeaker);
   const actionFailure =
     failure && (failure.key.startsWith("remove:") || failure.key === "cancel") ? failure : null;
   const detail = apiErrorDetail(error);
@@ -142,7 +146,7 @@ export function HostPanel({
                 ? "Você gerencia este evento como responsável pela comunidade ou pela moderação."
                 : isMentoring
                   ? `Você é o ${PARTICIPATION_ROLE_LABEL[myRole ?? "MENTOR"].toLowerCase()} desta mentoria. Convide ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} para completar as vagas.`
-                  : "Convide palestrantes e acompanhe as inscrições do evento."}
+                  : "Convide um palestrante e acompanhe as inscrições do evento."}
               {occupancy}
             </p>
           ) : occupancy ? (
@@ -159,8 +163,9 @@ export function HostPanel({
 
       {inviteBlocked ? (
         <p className="text-ink-muted text-sm">
-          Mentoria já tem {PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} — não é possível
-          convidar outro.
+          {isMentoring
+            ? `Mentoria já tem ${PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()} — não é possível convidar outro.`
+            : "Este evento já tem um palestrante. Para outro, crie um evento em outro horário."}
         </p>
       ) : null}
 

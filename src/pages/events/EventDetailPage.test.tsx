@@ -13,6 +13,7 @@ vi.mock("../../services/event", () => ({
   deleteEvent: vi.fn(),
   approveEvent: vi.fn(),
   rescheduleEvent: vi.fn(),
+  publishEvent: vi.fn(),
 }));
 
 vi.mock("../../services/eventUser", () => ({
@@ -24,7 +25,7 @@ vi.mock("../../services/eventUser", () => ({
   updateParticipantComment: vi.fn(),
 }));
 
-import { deleteEvent, findEventById, approveEvent, rescheduleEvent } from "../../services/event";
+import { deleteEvent, findEventById, approveEvent, publishEvent, rescheduleEvent } from "../../services/event";
 import {
   getParticipants,
   joinEvent,
@@ -36,6 +37,7 @@ const mockedFind = vi.mocked(findEventById);
 const mockedDelete = vi.mocked(deleteEvent);
 const mockedApprove = vi.mocked(approveEvent);
 const mockedReschedule = vi.mocked(rescheduleEvent);
+const mockedPublish = vi.mocked(publishEvent);
 const mockedParticipants = vi.mocked(getParticipants);
 const mockedJoinEvent = vi.mocked(joinEvent);
 const mockedUpdateStatus = vi.mocked(updateParticipantStatus);
@@ -617,7 +619,7 @@ describe("EventDetailPage", () => {
     await user.click(screen.getByRole("button", { name: "Reagendar" }));
     expect(
       screen.getByText(
-        "Ao reagendar, os palestrantes confirmados precisam aceitar o novo horário. Quem só se inscreveu continua confirmado.",
+        "Se o palestrante reagendar, quem organiza precisa aceitar o novo horário. Quem só se inscreveu continua confirmado.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Excluir evento" })).not.toBeInTheDocument();
@@ -849,5 +851,125 @@ describe("EventDetailPage", () => {
     expect((await screen.findAllByText("Combinado pelo chat")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Comentário").length).toBeGreaterThan(0);
     expect(screen.getByLabelText("Seu comentário")).toHaveValue("");
+  });
+
+  it("evento fechado mostra o badge e o aviso, sem inscrição", async () => {
+    seedSession("owner-1");
+    renderDetail({ event: { ...EVENT, visibility: "CLOSED" } });
+
+    expect(await screen.findByText("Fechado")).toBeInTheDocument();
+    expect(screen.getByText("Evento fechado")).toBeInTheDocument();
+    expect(screen.getByText(/use Tornar público para abrir as inscrições/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Participar" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tornar público" })).not.toBeInTheDocument();
+  });
+
+  it("Tornar público aparece com palestrante confirmado e publica o evento", async () => {
+    seedSession("owner-1");
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p-speaker",
+        event_id: "e1",
+        user_id: "u2",
+        role: "SPEAKER",
+        status: "CONFIRMED",
+        user: { id: "u2", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    mockedPublish.mockResolvedValue({ ...EVENT, visibility: "PUBLIC", status: "APPROVED" });
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, visibility: "CLOSED", status: "PENDING" } });
+
+    await user.click(await screen.findByRole("button", { name: "Tornar público" }));
+
+    expect(mockedPublish).toHaveBeenCalledWith("e1");
+    expect(await screen.findByRole("button", { name: "Participar" })).toBeInTheDocument();
+    expect(screen.queryByText("Fechado")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tornar público" })).not.toBeInTheDocument();
+  });
+
+  it("Tornar público some enquanto o organizador precisa aceitar o horário", async () => {
+    seedSession("owner-1");
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p-speaker",
+        event_id: "e1",
+        user_id: "u2",
+        role: "SPEAKER",
+        status: "CONFIRMED",
+        user: { id: "u2", name: "Bea", email: "bea@ajudadev.dev", role: "USER" },
+      },
+      {
+        id: "p-host",
+        event_id: "e1",
+        user_id: "owner-1",
+        role: "HOST",
+        status: "REQUESTED",
+        user: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    renderDetail({ event: { ...EVENT, visibility: "CLOSED" } });
+
+    expect(await screen.findByRole("button", { name: "Aceitar horário" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tornar público" })).not.toBeInTheDocument();
+  });
+
+  it("palestrante aceita convite mesmo com o evento fechado e pendente", async () => {
+    mockedFind.mockResolvedValue({ ...EVENT, visibility: "CLOSED", status: "PENDING" });
+    mockedParticipants.mockResolvedValue([
+      {
+        id: "p3",
+        event_id: "e1",
+        user_id: "u1",
+        role: "SPEAKER",
+        status: "REQUESTED",
+        user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+      },
+    ]);
+    mockedUpdateStatus.mockResolvedValue({
+      id: "p3",
+      event_id: "e1",
+      user_id: "u1",
+      role: "SPEAKER",
+      status: "CONFIRMED",
+      user: { id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" },
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: { ...EVENT, visibility: "CLOSED", status: "PENDING" } });
+
+    const accept = await screen.findByRole("button", { name: "Aceitar convite" });
+    expect(accept).toBeEnabled();
+    await user.click(accept);
+
+    expect(mockedUpdateStatus).toHaveBeenCalledWith("e1", "u1", "CONFIRMED");
+  });
+
+  it("reagendar em horário ocupado mostra o conflito no modal", async () => {
+    seedSession("owner-1");
+    mockedReschedule.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 400",
+      response: {
+        status: 400,
+        data: {
+          message: "Invalid event data",
+          code: 400,
+          causes: [{ field: "start_at", message: "community already has an event at that time" }],
+        },
+      },
+    });
+    const user = userEvent.setup();
+    renderDetail({ event: EVENT });
+
+    await user.click(await screen.findByRole("button", { name: "Reagendar" }));
+    fireEvent.change(screen.getByLabelText("Nova data e hora"), {
+      target: { value: futureLocalValue() },
+    });
+    await user.type(screen.getByLabelText("Motivo do reagendamento"), "Outro horário");
+    await user.click(screen.getByRole("button", { name: "Confirmar reagendamento" }));
+
+    expect(
+      await screen.findByText("Já existe um evento desta comunidade nesse horário"),
+    ).toBeInTheDocument();
   });
 });

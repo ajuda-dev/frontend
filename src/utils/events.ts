@@ -7,6 +7,17 @@ export function isEventApproved(event: Pick<EventItem, "status">): boolean {
   return !event.status || event.status === "APPROVED";
 }
 
+export function isEventPublic(event: Pick<EventItem, "category" | "visibility">): boolean {
+  if (event.category !== "COMMUNITY_EVENT") return true;
+  return !event.visibility || event.visibility === "PUBLIC";
+}
+
+export function isEventJoinable(
+  event: Pick<EventItem, "status" | "category" | "visibility">,
+): boolean {
+  return isEventApproved(event) && isEventPublic(event);
+}
+
 // Espelha complementaryRole do validador de convite: o convidado do 1:1 sempre recebe
 // o papel oposto ao de quem criou (event_user_validator.go).
 export function complementaryRole(role: CreatorRole): CreatorRole {
@@ -40,4 +51,21 @@ export function canRescheduleEvent(
   if (!myRow || myRow.status === "CANCELLED") return false;
   if (event.category === "MENTORING") return true;
   return myRow.role === "SPEAKER";
+}
+
+export function canPublishEvent(
+  event: Pick<EventItem, "category" | "visibility" | "status" | "owner" | "community">,
+  user: { id: string; role: UserRole } | null | undefined,
+  participants: { role: ParticipationRole; status: ParticipationStatus }[],
+): boolean {
+  if (event.category !== "COMMUNITY_EVENT") return false;
+  if (isEventPublic(event) || event.status === "REJECTED") return false;
+  if (!canManageEvent(event, user)) return false;
+  const speakerConfirmed = participants.some(
+    (entry) => entry.role === "SPEAKER" && entry.status === "CONFIRMED",
+  );
+  const hostRequested = participants.some(
+    (entry) => entry.role === "HOST" && entry.status === "REQUESTED",
+  );
+  return speakerConfirmed && !hostRequested;
 }

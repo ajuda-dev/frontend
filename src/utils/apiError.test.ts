@@ -128,6 +128,21 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage("event is not approved yet")).toBe(
       "Este evento ainda não foi aprovado pela comunidade",
     );
+    expect(translateApiMessage("event is not public yet")).toBe(
+      "Este evento ainda está fechado — as inscrições abrem quando for tornado público",
+    );
+    expect(translateApiMessage("community event allows only one speaker")).toBe(
+      "Este evento já tem um palestrante. Para outro, crie um evento em outro horário",
+    );
+    expect(translateApiMessage("community already has an event at that time")).toBe(
+      "Já existe um evento desta comunidade nesse horário",
+    );
+    expect(translateApiMessage("speaker must confirm the schedule first")).toBe(
+      "O palestrante precisa confirmar o horário antes de publicar",
+    );
+    expect(translateApiMessage("event owner must accept the new time")).toBe(
+      "Quem organiza precisa aceitar o novo horário antes de publicar",
+    );
     expect(translateApiMessage("only the invited user can accept or reject this invitation")).toBe(
       "Só quem recebeu o convite pode aceitar ou recusá-lo",
     );

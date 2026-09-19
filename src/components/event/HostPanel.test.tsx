@@ -371,4 +371,36 @@ describe("HostPanel", () => {
     expect(screen.queryByRole("button", { name: "Aceitar convite" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Recusar" })).not.toBeInTheDocument();
   });
+
+  it("evento de comunidade com palestrante ativo bloqueia outro convite", async () => {
+    mockedGet.mockResolvedValue([row({ user_id: "u2", role: "SPEAKER", status: "REQUESTED" })]);
+    renderPanel(event());
+
+    expect(
+      await screen.findByText(
+        "Este evento já tem um palestrante. Para outro, crie um evento em outro horário.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Convidar palestrante" })).toBeDisabled();
+  });
+
+  it("palestrante recusado libera um novo convite", async () => {
+    mockedGet.mockResolvedValue([row({ user_id: "u2", role: "SPEAKER", status: "REJECTED" })]);
+    renderPanel(event());
+
+    expect(await screen.findByRole("button", { name: "Convidar palestrante" })).toBeEnabled();
+    expect(
+      screen.queryByText(/Este evento já tem um palestrante/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("anfitrião confirmado não ocupa vaga; palestrante confirmado ocupa", async () => {
+    mockedGet.mockResolvedValue([
+      row({ user_id: "owner-1", role: "HOST", status: "CONFIRMED" }),
+      row({ user_id: "u2", role: "SPEAKER", status: "CONFIRMED" }),
+    ]);
+    renderPanel(event({ max_slots: 11 }));
+
+    expect(await screen.findByText(/1 de 11 vagas ocupadas/)).toBeInTheDocument();
+  });
 });

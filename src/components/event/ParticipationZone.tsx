@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { UseParticipantsResult } from "../../hooks/useParticipants";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
-import { isEventApproved } from "../../utils/events";
+import { isEventApproved, isEventJoinable, isEventPublic } from "../../utils/events";
 import { Alert } from "../ui/Alert";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
@@ -81,10 +81,14 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
   const zoneFailure = failure && ZONE_FAILURE_KEYS.includes(failure.key) ? failure : null;
   // Evento não aprovado: join e aceite de convite respondem 400 no backend, então a
   // UI avisa antes em vez de deixar o usuário bater no erro.
+  const joinable = isEventJoinable(event);
   const approved = isEventApproved(event);
+  const closed = !isEventPublic(event);
   const approvalNote = (
     <p className="text-ink-muted text-sm">
-      As inscrições abrem quando o evento for aprovado pela comunidade.
+      {closed
+        ? "As inscrições abrem quando o evento for tornado público."
+        : "As inscrições abrem quando o evento for aprovado pela comunidade."}
     </p>
   );
   const joinButton = (
@@ -260,8 +264,8 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                   {myRow ? <ParticipantComment entry={myRow} category={event.category} /> : null}
                 </div>
               ) : null}
-              <div className="flex flex-wrap gap-2">{approved ? joinButton : null}</div>
-              {!approved ? approvalNote : null}
+              <div className="flex flex-wrap gap-2">{joinable ? joinButton : null}</div>
+              {!joinable ? approvalNote : null}
             </div>
           ) : null}
 
@@ -318,7 +322,6 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                   <div className="flex flex-wrap gap-2">
                     <Button
                       size="sm"
-                      disabled={!approved}
                       loading={isPending("accept")}
                       onClick={() => void accept()}
                     >
@@ -334,7 +337,6 @@ export function ParticipationZone({ event, participation }: ParticipationZonePro
                     </Button>
                   </div>
                 )}
-                {!approved ? approvalNote : null}
               </div>
             ) : (
               <p className="text-ink-muted text-sm">Sua inscrição está pendente de confirmação.</p>

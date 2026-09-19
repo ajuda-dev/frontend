@@ -187,7 +187,8 @@ export function useParticipants(
   }, [participants, userId]);
 
   const confirmedCount = useMemo(
-    () => participants.filter((entry) => entry.status === "CONFIRMED").length,
+    () =>
+      participants.filter((entry) => entry.status === "CONFIRMED" && entry.role !== "HOST").length,
     [participants],
   );
 

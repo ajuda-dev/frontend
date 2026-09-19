@@ -4,6 +4,7 @@ import {
   type EventApprovalStatus,
   type EventCategory,
   type EventType,
+  type EventVisibility,
   type NotificationType,
   type ParticipationRole,
   type ParticipationStatus,
@@ -54,6 +55,11 @@ export const EVENT_APPROVAL_STATUS_LABEL: Record<EventApprovalStatus, string> = 
   PENDING: "Aguardando aprovação",
   APPROVED: "Aprovado",
   REJECTED: "Rejeitado",
+};
+
+export const EVENT_VISIBILITY_LABEL: Record<EventVisibility, string> = {
+  CLOSED: "Fechado",
+  PUBLIC: "Público",
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationType, string> = {
@@ -116,6 +122,11 @@ export const EVENT_APPROVAL_STATUS_COLOR: Record<EventApprovalStatus, BadgeTone>
   PENDING: "warning",
   APPROVED: "brand",
   REJECTED: "danger",
+};
+
+export const EVENT_VISIBILITY_COLOR: Record<EventVisibility, BadgeTone> = {
+  CLOSED: "warning",
+  PUBLIC: "brand",
 };
 
 export const NOTIFICATION_TYPE_COLOR: Record<NotificationType, BadgeTone> = {

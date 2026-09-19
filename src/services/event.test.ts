@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { EventItem, Pageable } from "../types/api";
 import { api } from "./api";
-import { createEvent, deleteEvent, findEventById, listEvents, approveEvent, rescheduleEvent } from "./event";
+import { createEvent, deleteEvent, findEventById, listEvents, approveEvent, publishEvent, rescheduleEvent } from "./event";
 
 // `isApiError` precisa ser o real (a implementação de findEventById depende dele
 // para mapear 404 → null); só a instância `api` é dublada.
@@ -401,5 +401,21 @@ describe("rescheduleEvent", () => {
       comment: "Novo horário",
     });
     expect(result).toEqual(updated);
+  });
+});
+
+describe("publishEvent", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("faz PUT em /event/:id/visibility com PUBLIC", async () => {
+    const published = { ...event("e1"), visibility: "PUBLIC" as const };
+    mockedPut.mockResolvedValue({ data: published });
+
+    const result = await publishEvent("e1");
+
+    expect(mockedPut).toHaveBeenCalledWith("/event/e1/visibility", { visibility: "PUBLIC" });
+    expect(result).toEqual(published);
   });
 });

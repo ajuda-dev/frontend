@@ -71,6 +71,17 @@ describe("useParticipants", () => {
     expect(result.current.confirmedCount).toBe(2);
   });
 
+  it("anfitrião confirmado não entra na contagem de vagas", async () => {
+    mockedGet.mockResolvedValue([
+      row({ id: "p1", user_id: "u1", role: "HOST", status: "CONFIRMED" }),
+      row({ id: "p2", user_id: "u2", role: "SPEAKER", status: "CONFIRMED" }),
+      row({ id: "p3", user_id: "u3", role: "ATTENDEE", status: "CONFIRMED" }),
+    ]);
+    const { result } = await renderParticipants("u1");
+
+    expect(result.current.confirmedCount).toBe(2);
+  });
+
   it("join não envia user_id (o backend usa o dono do token) e o refetch mostra CONFIRMED", async () => {
     mockedGet.mockResolvedValueOnce([]).mockResolvedValueOnce([row({ user_id: "u1" })]);
     mockedJoin.mockResolvedValue(row({ user_id: "u1" }));

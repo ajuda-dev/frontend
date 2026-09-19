@@ -16,13 +16,13 @@ import { PageSpinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
 import { useParticipants } from "../../hooks/useParticipants";
-import { deleteEvent, findEventById, rescheduleEvent } from "../../services/event";
+import { deleteEvent, findEventById, publishEvent, rescheduleEvent } from "../../services/event";
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
-import { apiErrorDetail, apiErrorMessage } from "../../utils/apiError";
-import { canManageEvent, canRescheduleEvent, isEventApproved } from "../../utils/events";
+import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import { canManageEvent, canPublishEvent, canRescheduleEvent, isEventApproved, isEventPublic } from "../../utils/events";
 import { formatAddress, formatDateTime } from "../../utils/format";
-import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL } from "../../utils/labels";
+import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL, EVENT_VISIBILITY_COLOR, EVENT_VISIBILITY_LABEL } from "../../utils/labels";
 import { canAtLeast } from "../../utils/roles";
 
 interface DetailLocationState {
@@ -67,6 +67,8 @@ export function EventDetailPage() {
   const [rescheduleLocalError, setRescheduleLocalError] = useState<string | null>(null);
   const [rescheduling, setRescheduling] = useState(false);
   const [rescheduleError, setRescheduleError] = useState<string | null>(null);
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
   const [rejectingInvite, setRejectingInvite] = useState(false);
   const [rejectComment, setRejectComment] = useState("");
   const [rejectLocalError, setRejectLocalError] = useState<string | null>(null);
@@ -198,11 +200,25 @@ export function EventDetailPage() {
       setConfirmingReschedule(false);
       setRescheduleComment("");
     } catch (caught) {
-      setRescheduleError(apiErrorMessage(caught));
+      const fields = apiErrorFields(caught);
+      setRescheduleError(fields.start_at ?? apiErrorMessage(caught));
     } finally {
       setRescheduling(false);
     }
   }, [id, refetchParticipants, rescheduleComment, rescheduleStartAt]);
+
+  const handlePublish = useCallback(async () => {
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const updated = await publishEvent(id);
+      setEvent(updated);
+    } catch (caught) {
+      setPublishError(apiErrorMessage(caught));
+    } finally {
+      setPublishing(false);
+    }
+  }, [id]);
 
   const openRejectForm = useCallback(() => {
     clearParticipationFailure();
@@ -338,6 +354,9 @@ export function EventDetailPage() {
   const isMentoring = event.category === "MENTORING";
   const speakerInvitePending =
     participation.myRow?.role === "SPEAKER" && participation.myRow?.status === "REQUESTED";
+  const hostSchedulePending =
+    participation.myRow?.role === "HOST" && participation.myRow?.status === "REQUESTED";
+  const scheduleInvitePending = speakerInvitePending || hostSchedulePending;
   // No 1:1 os dois lados veem a mesma lista (papel + status). Aceitar/recusar
   // fica na barra de ações, à esquerda de Reagendar; a zona de participação só
   // cobre comunidade e quem abriu um 1:1 sem convite. Convite de palestrante
@@ -345,9 +364,9 @@ export function EventDetailPage() {
   const mentoringListVisible =
     isMentoring && (canManage || participation.loading || Boolean(participation.myRow));
   const showHostPanel = canManage || mentoringListVisible;
-  const showZone = isMentoring ? !mentoringListVisible : !speakerInvitePending;
+  const showZone = isMentoring ? !mentoringListVisible : !scheduleInvitePending;
   const canRespondInvite =
-    (showHostPanel && participation.myRow?.status === "REQUESTED") || speakerInvitePending;
+    (showHostPanel && participation.myRow?.status === "REQUESTED") || scheduleInvitePending;
   const canEditOwnComment = Boolean(
     participation.myRow && participation.myRow.status !== "CANCELLED",
   );
@@ -366,8 +385,15 @@ export function EventDetailPage() {
   );
   const canApprove = isCommunityOwner || canAtLeast(user?.role, "MODERATOR");
   const approved = isEventApproved(event);
+  const eventPublic = isEventPublic(event);
+  const canPublish = canPublishEvent(event, user, participation.participants);
+  const inviteAcceptBlocked =
+    participation.myRow?.role !== "SPEAKER" &&
+    participation.myRow?.role !== "HOST" &&
+    !approved;
   const showApprovalPanel = canApprove && !approved;
   const showCreatorNotice = isOwner && !canApprove && !approved;
+  const showClosedNotice = canManage && !eventPublic && event.category === "COMMUNITY_EVENT";
 
   return (
     <div className="flex flex-col gap-6">
@@ -383,6 +409,9 @@ export function EventDetailPage() {
         </Badge>
         <Badge tone="ink-muted">{EVENT_TYPE_LABEL[event.type]}</Badge>
         <EventApprovalBadge event={event} />
+        {!eventPublic && event.category === "COMMUNITY_EVENT" ? (
+          <Badge tone={EVENT_VISIBILITY_COLOR.CLOSED}>{EVENT_VISIBILITY_LABEL.CLOSED}</Badge>
+        ) : null}
       </div>
 
       <Card className="flex flex-col gap-4">
@@ -465,6 +494,13 @@ export function EventDetailPage() {
         </Alert>
       ) : null}
 
+      {showClosedNotice ? (
+        <Alert variant="info" title="Evento fechado">
+          Só quem já está no evento, o responsável pela comunidade e a moderação veem esta página.
+          Quando o palestrante confirmar o horário, use Tornar público para abrir as inscrições.
+        </Alert>
+      ) : null}
+
       {showHostPanel ? (
         <HostPanel
           event={event}
@@ -477,6 +513,7 @@ export function EventDetailPage() {
       {showZone ? <ParticipationZone event={event} participation={participation} /> : null}
 
       {deleteError ? <Alert variant="error">{deleteError}</Alert> : null}
+      {publishError ? <Alert variant="error">{publishError}</Alert> : null}
 
       {canRespondInvite || canReschedule || canDelete ? (
         <div className="flex flex-col gap-3">
@@ -526,11 +563,11 @@ export function EventDetailPage() {
             ) : canRespondInvite ? (
               <>
                 <Button
-                  disabled={!approved}
+                  disabled={inviteAcceptBlocked}
                   loading={isParticipationPending("accept")}
                   onClick={() => void acceptInvite()}
                 >
-                  Aceitar convite
+                  {hostSchedulePending ? "Aceitar horário" : "Aceitar convite"}
                 </Button>
                 <Button
                   variant="ghost"
@@ -540,6 +577,11 @@ export function EventDetailPage() {
                   Recusar
                 </Button>
               </>
+            ) : null}
+            {canPublish ? (
+              <Button variant="secondary" loading={publishing} onClick={() => void handlePublish()}>
+                Tornar público
+              </Button>
             ) : null}
             {canReschedule ? (
               <Button variant="secondary" onClick={openRescheduleModal}>
@@ -553,7 +595,7 @@ export function EventDetailPage() {
             ) : null}
           </div>
 
-          {canRespondInvite && !approved ? (
+          {canRespondInvite && inviteAcceptBlocked ? (
             <p className="text-ink-muted text-sm">
               As inscrições abrem quando o evento for aprovado pela comunidade.
             </p>
@@ -628,7 +670,7 @@ export function EventDetailPage() {
             <p>Ao reagendar, você confirma o novo horário. A outra pessoa precisa aceitar de novo.</p>
           ) : (
             <p>
-              Ao reagendar, os palestrantes confirmados precisam aceitar o novo horário. Quem só se
+              Se o palestrante reagendar, quem organiza precisa aceitar o novo horário. Quem só se
               inscreveu continua confirmado.
             </p>
           )}

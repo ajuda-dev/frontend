@@ -216,6 +216,16 @@ describe("ParticipationZone", () => {
     expect(screen.queryByRole("button", { name: "Participar" })).not.toBeInTheDocument();
   });
 
+  it("evento CLOSED troca o botão Participar pela nota de publicação", async () => {
+    mockedGet.mockResolvedValue([]);
+    render(<Harness eventItem={event({ status: "APPROVED", visibility: "CLOSED" })} />);
+
+    expect(
+      await screen.findByText("As inscrições abrem quando o evento for tornado público."),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Participar" })).not.toBeInTheDocument();
+  });
+
   it("convite de mentoria em evento PENDING: aceitar desabilitado e recusar ativo", async () => {
     mockedGet.mockResolvedValue([row({ user_id: "u1", role: "MENTEE", status: "REQUESTED" })]);
     render(

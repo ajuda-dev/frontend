@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { EventItem } from "../types/api";
-import { canManageEvent, canRescheduleEvent, complementaryRole, isEventApproved } from "./events";
+import { canManageEvent, canPublishEvent, canRescheduleEvent, complementaryRole, isEventApproved, isEventJoinable, isEventPublic } from "./events";
 
 describe("isEventApproved", () => {
   it("trata status ausente como aprovado", () => {
@@ -140,6 +140,77 @@ describe("canRescheduleEvent", () => {
       true,
     );
     expect(canRescheduleEvent(communityEvent, guest, { status: "CANCELLED", role: "SPEAKER" })).toBe(
+      false,
+    );
+  });
+});
+
+describe("isEventPublic", () => {
+  it("mentoria e webinar são sempre públicos", () => {
+    expect(isEventPublic({ category: "MENTORING", visibility: "CLOSED" })).toBe(true);
+    expect(isEventPublic({ category: "WEBINAR" })).toBe(true);
+  });
+
+  it("COMMUNITY_EVENT legado sem visibility conta como público", () => {
+    expect(isEventPublic({ category: "COMMUNITY_EVENT" })).toBe(true);
+    expect(isEventPublic({ category: "COMMUNITY_EVENT", visibility: "PUBLIC" })).toBe(true);
+    expect(isEventPublic({ category: "COMMUNITY_EVENT", visibility: "CLOSED" })).toBe(false);
+  });
+});
+
+describe("isEventJoinable", () => {
+  it("exige aprovação e publicação", () => {
+    expect(isEventJoinable({ category: "COMMUNITY_EVENT", status: "APPROVED", visibility: "PUBLIC" })).toBe(
+      true,
+    );
+    expect(isEventJoinable({ category: "COMMUNITY_EVENT", status: "APPROVED", visibility: "CLOSED" })).toBe(
+      false,
+    );
+    expect(isEventJoinable({ category: "COMMUNITY_EVENT", status: "PENDING", visibility: "PUBLIC" })).toBe(
+      false,
+    );
+  });
+});
+
+describe("canPublishEvent", () => {
+  const owner = { id: "owner-1", role: "USER" as const };
+  const communityEvent: Pick<EventItem, "category" | "visibility" | "status" | "owner" | "community"> = {
+    category: "COMMUNITY_EVENT",
+    visibility: "CLOSED",
+    status: "APPROVED",
+    owner: { id: "owner-1", name: "Ana", email: "ana@ajudadev.dev", role: "USER" },
+    community: null,
+  };
+
+  it("libera quando há palestrante confirmado e o organizador já aceitou o horário", () => {
+    expect(
+      canPublishEvent(communityEvent, owner, [
+        { role: "SPEAKER", status: "CONFIRMED" },
+      ]),
+    ).toBe(true);
+  });
+
+  it("bloqueia enquanto o organizador precisa aceitar o novo horário", () => {
+    expect(
+      canPublishEvent(communityEvent, owner, [
+        { role: "SPEAKER", status: "CONFIRMED" },
+        { role: "HOST", status: "REQUESTED" },
+      ]),
+    ).toBe(false);
+  });
+
+  it("bloqueia evento já público, rejeitado ou sem palestrante confirmado", () => {
+    expect(
+      canPublishEvent({ ...communityEvent, visibility: "PUBLIC" }, owner, [
+        { role: "SPEAKER", status: "CONFIRMED" },
+      ]),
+    ).toBe(false);
+    expect(
+      canPublishEvent({ ...communityEvent, status: "REJECTED" }, owner, [
+        { role: "SPEAKER", status: "CONFIRMED" },
+      ]),
+    ).toBe(false);
+    expect(canPublishEvent(communityEvent, owner, [{ role: "SPEAKER", status: "REQUESTED" }])).toBe(
       false,
     );
   });

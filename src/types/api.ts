@@ -71,6 +71,8 @@ export interface EventItem {
   // Situação de aprovação do evento (dto.EventDto.status); o backend trata
   // vazio/ausente como aprovado (isEventApproved), por isso o campo é opcional.
   status?: EventApprovalStatus;
+  // PUBLIC/CLOSED; vazio/ausente em COMMUNITY_EVENT legado conta como público.
+  visibility?: EventVisibility;
   community?: Community | null;
   address?: Address | null;
   owner?: UserSummary | null;
@@ -255,6 +257,9 @@ export type SkillLevel = (typeof SKILL_LEVELS)[number];
 
 export const EVENT_APPROVAL_STATUSES = ["PENDING", "APPROVED", "REJECTED"] as const;
 export type EventApprovalStatus = (typeof EVENT_APPROVAL_STATUSES)[number];
+
+export const EVENT_VISIBILITIES = ["CLOSED", "PUBLIC"] as const;
+export type EventVisibility = (typeof EVENT_VISIBILITIES)[number];
 
 export const CREATOR_ROLES = ["MENTOR", "MENTEE"] as const;
 export type CreatorRole = (typeof CREATOR_ROLES)[number];

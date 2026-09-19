@@ -3,6 +3,7 @@ import {
   EVENT_APPROVAL_STATUSES,
   EVENT_CATEGORIES,
   EVENT_TYPES,
+  EVENT_VISIBILITIES,
   NOTIFICATION_TYPES,
   PARTICIPATION_ROLES,
   PARTICIPATION_STATUSES,
@@ -14,6 +15,8 @@ import {
   EVENT_APPROVAL_STATUS_LABEL,
   EVENT_CATEGORY_LABEL,
   EVENT_TYPE_LABEL,
+  EVENT_VISIBILITY_COLOR,
+  EVENT_VISIBILITY_LABEL,
   isInAppNotificationType,
   LABEL_COLORS,
   notificationAccentClass,
@@ -71,6 +74,17 @@ describe("labels pt-BR", () => {
     expect(EVENT_APPROVAL_STATUS_COLOR.PENDING).toBe("warning");
     expect(EVENT_APPROVAL_STATUS_COLOR.APPROVED).toBe("brand");
     expect(EVENT_APPROVAL_STATUS_COLOR.REJECTED).toBe("danger");
+  });
+
+  it("cobre as visibilidades de evento da comunidade", () => {
+    for (const visibility of EVENT_VISIBILITIES) {
+      expect(EVENT_VISIBILITY_LABEL[visibility]).toBeTruthy();
+      expect(EVENT_VISIBILITY_COLOR[visibility]).toBeTruthy();
+    }
+    expect(EVENT_VISIBILITY_LABEL.CLOSED).toBe("Fechado");
+    expect(EVENT_VISIBILITY_LABEL.PUBLIC).toBe("Público");
+    expect(EVENT_VISIBILITY_COLOR.CLOSED).toBe("warning");
+    expect(EVENT_VISIBILITY_COLOR.PUBLIC).toBe("brand");
   });
 
   it("LABEL_COLORS expõe a aprovação sem trocar a chave status (participação)", () => {

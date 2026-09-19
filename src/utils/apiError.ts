@@ -43,6 +43,7 @@ export const FIELD_LABELS: Record<string, string> = {
   event: "Evento",
   skill: "Habilidade",
   event_id: "Evento",
+  visibility: "Visibilidade",
   community_users: "Membros",
   event_users: "Participantes",
   // O backend usa camelCase em alguns causes (validação de uuid no controller).
@@ -155,6 +156,15 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "invalid event data": "Dados do evento inválidos",
   "invalid participation data": "Dados da participação inválidos",
   "event is not approved yet": "Este evento ainda não foi aprovado pela comunidade",
+  "event is not public yet": "Este evento ainda está fechado — as inscrições abrem quando for tornado público",
+  "community event allows only one speaker":
+    "Este evento já tem um palestrante. Para outro, crie um evento em outro horário",
+  "community already has an event at that time": "Já existe um evento desta comunidade nesse horário",
+  "speaker must confirm the schedule first": "O palestrante precisa confirmar o horário antes de publicar",
+  "event owner must accept the new time": "Quem organiza precisa aceitar o novo horário antes de publicar",
+  "rejected events cannot be published": "Eventos rejeitados não podem ser publicados",
+  "only community events can be published": "Só eventos da comunidade podem ser publicados",
+  "visibility must be PUBLIC": "A visibilidade precisa ser pública",
   "only the invited user can accept or reject this invitation":
     "Só quem recebeu o convite pode aceitar ou recusá-lo",
   "only the participant themselves can update this comment":

@@ -145,3 +145,8 @@ export async function approveEvent(
   const { data } = await api.put<EventItem>(`/event/${eventId}/approval`, { status });
   return data;
 }
+
+export async function publishEvent(eventId: string): Promise<EventItem> {
+  const { data } = await api.put<EventItem>(`/event/${eventId}/visibility`, { visibility: "PUBLIC" });
+  return data;
+}
