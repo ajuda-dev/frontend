@@ -648,7 +648,7 @@ describe("EventDetailPage", () => {
     seedSession("owner-1");
     renderDetail({ event: EVENT });
 
-    expect(await screen.findByRole("button", { name: "Reagendar" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Reagendar" })).toHaveClass("bg-warning");
     expect(screen.getByRole("button", { name: "Excluir evento" })).toBeInTheDocument();
   });
 
@@ -880,7 +880,9 @@ describe("EventDetailPage", () => {
     const user = userEvent.setup();
     renderDetail({ event: { ...EVENT, visibility: "CLOSED", status: "PENDING" } });
 
-    await user.click(await screen.findByRole("button", { name: "Tornar público" }));
+    const publishButton = await screen.findByRole("button", { name: "Tornar público" });
+    expect(publishButton).toHaveClass("bg-brand");
+    await user.click(publishButton);
 
     expect(mockedPublish).toHaveBeenCalledWith("e1");
     expect(await screen.findByRole("button", { name: "Participar" })).toBeInTheDocument();

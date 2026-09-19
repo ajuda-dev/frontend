@@ -579,12 +579,12 @@ export function EventDetailPage() {
               </>
             ) : null}
             {canPublish ? (
-              <Button variant="secondary" loading={publishing} onClick={() => void handlePublish()}>
+              <Button loading={publishing} onClick={() => void handlePublish()}>
                 Tornar público
               </Button>
             ) : null}
             {canReschedule ? (
-              <Button variant="secondary" onClick={openRescheduleModal}>
+              <Button variant="warning" onClick={openRescheduleModal}>
                 Reagendar
               </Button>
             ) : null}

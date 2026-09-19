@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from "react";
 import { InlineSpinner } from "./Spinner";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "warning";
 export type ButtonSize = "sm" | "md";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -15,6 +15,7 @@ const VARIANT_CLASSES: Record<ButtonVariant, string> = {
   secondary: "bg-surface-2 text-ink border border-line hover:border-brand",
   ghost: "border border-line text-ink hover:bg-surface-2",
   danger: "bg-danger text-bg hover:opacity-90",
+  warning: "bg-warning text-bg hover:opacity-90",
 };
 
 const SIZE_CLASSES: Record<ButtonSize, string> = {

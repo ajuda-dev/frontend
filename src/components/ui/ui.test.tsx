@@ -14,6 +14,11 @@ describe("Button", () => {
     expect(screen.getByRole("button", { name: "Excluir" })).toHaveClass("bg-danger");
   });
 
+  it("warning usa o token amarelo", () => {
+    render(<Button variant="warning">Reagendar</Button>);
+    expect(screen.getByRole("button", { name: "Reagendar" })).toHaveClass("bg-warning");
+  });
+
   it("em loading fica desabilitado e não dispara o clique", async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
