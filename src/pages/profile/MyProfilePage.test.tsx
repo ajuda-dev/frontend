@@ -85,7 +85,6 @@ function renderPage() {
         <Routes>
           <Route path="/perfil" element={<MyProfilePage />} />
           <Route path="/pessoas/:userId" element={<p>Perfil público</p>} />
-          <Route path="/skills" element={<p>Catálogo de skills</p>} />
         </Routes>
       </AuthProvider>
     </MemoryRouter>,
@@ -129,14 +128,16 @@ describe("MyProfilePage", () => {
     expect(screen.getByLabelText("Mudar nível")).toHaveValue("TEACH");
   });
 
-  it("seção vazia aponta para o catálogo", async () => {
+  it("seção vazia orienta a buscar ou cadastrar pelo formulário", async () => {
     renderPage();
 
     expect(await screen.findByText("Você ainda não cadastrou habilidades.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Descobrir skills no catálogo" })).toHaveAttribute(
-      "href",
-      "/skills",
-    );
+    expect(
+      screen.getByText(
+        "Busque uma habilidade acima. Se ela ainda não existir, você pode cadastrá-la e informar seu nível para aparecer na busca por pessoas.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Descobrir skills no catálogo" })).not.toBeInTheDocument();
   });
 
   it("não consulta o catálogo de habilidades antes de o usuário buscar", async () => {

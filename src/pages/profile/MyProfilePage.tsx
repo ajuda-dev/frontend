@@ -649,12 +649,7 @@ export function MyProfilePage() {
         {skills.length === 0 ? (
           <EmptyState
             title="Você ainda não cadastrou habilidades."
-            description="Escolha uma habilidade no catálogo e informe seu nível para aparecer na busca por pessoas."
-            action={
-              <Link to="/skills" className="text-brand text-sm hover:underline">
-                Descobrir skills no catálogo
-              </Link>
-            }
+            description="Busque uma habilidade acima. Se ela ainda não existir, você pode cadastrá-la e informar seu nível para aparecer na busca por pessoas."
           />
         ) : (
           <ul className="flex flex-col gap-2">

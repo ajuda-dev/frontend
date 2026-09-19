@@ -124,4 +124,11 @@ describe("AppRoutes", () => {
     renderAt("/agenda");
     expect(screen.getByRole("heading", { name: "Agenda" })).toBeInTheDocument();
   });
+
+  it("a rota /skills não existe mais e cai no 404", () => {
+    seedSession();
+    renderAt("/skills");
+    expect(screen.getByText("Página não encontrada.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Skills" })).not.toBeInTheDocument();
+  });
 });

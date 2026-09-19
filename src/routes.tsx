@@ -20,7 +20,6 @@ import { NewEventPage } from "./pages/events/NewEventPage";
 import { PeoplePage } from "./pages/people/PeoplePage";
 import { PersonProfilePage } from "./pages/people/PersonProfilePage";
 import { MyProfilePage } from "./pages/profile/MyProfilePage";
-import { SkillsPage } from "./pages/skills/SkillsPage";
 
 export function AppRoutes() {
   return (
@@ -46,7 +45,6 @@ export function AppRoutes() {
           <Route path="/eventos/novo" element={<NewEventPage />} />
           <Route path="/eventos/:id" element={<EventDetailPage />} />
           <Route path="/agenda" element={<MyAgendaPage />} />
-          <Route path="/skills" element={<SkillsPage />} />
           <Route path="/pessoas" element={<PeoplePage />} />
           <Route path="/pessoas/:userId" element={<PersonProfilePage />} />
           <Route path="/perfil" element={<MyProfilePage />} />
