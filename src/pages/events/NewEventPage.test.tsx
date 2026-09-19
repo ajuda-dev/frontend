@@ -20,6 +20,9 @@ vi.mock("../../services/community", () => ({
   listCommunities: vi.fn(),
   listUserCommunities: vi.fn(),
 }));
+vi.mock("../../services/user", () => ({ listUsers: vi.fn() }));
+vi.mock("../../services/skill", () => ({ listSkills: vi.fn() }));
+vi.mock("../../services/eventUser", () => ({ addParticipant: vi.fn() }));
 
 import { createAddress } from "../../services/address";
 import {
@@ -29,6 +32,9 @@ import {
   listUserCommunities,
 } from "../../services/community";
 import { createEvent } from "../../services/event";
+import { addParticipant } from "../../services/eventUser";
+import { listSkills } from "../../services/skill";
+import { listUsers } from "../../services/user";
 
 const mockedCreateAddress = vi.mocked(createAddress);
 const mockedCreateEvent = vi.mocked(createEvent);
@@ -36,6 +42,9 @@ const mockedFindCommunity = vi.mocked(findCommunityById);
 const mockedJoinCommunity = vi.mocked(joinCommunity);
 const mockedListCommunities = vi.mocked(listCommunities);
 const mockedListUserCommunities = vi.mocked(listUserCommunities);
+const mockedListUsers = vi.mocked(listUsers);
+const mockedListSkills = vi.mocked(listSkills);
+const mockedAddParticipant = vi.mocked(addParticipant);
 
 const COMMUNITY: Community = {
   id: "c1",
@@ -119,6 +128,15 @@ describe("NewEventPage", () => {
     mockedJoinCommunity.mockResolvedValue({ id: "m1", community_id: "c1", user_id: "u1" });
     mockedListCommunities.mockResolvedValue(emptyPage());
     mockedListUserCommunities.mockResolvedValue(emptyPage());
+    mockedListUsers.mockResolvedValue({ data: [], has_next: false });
+    mockedListSkills.mockResolvedValue({ data: [], has_next: false });
+    mockedAddParticipant.mockResolvedValue({
+      id: "p1",
+      event_id: "e1",
+      user_id: "u2",
+      role: "MENTEE",
+      status: "REQUESTED",
+    });
   });
 
   it("título e descrição vazios são barrados localmente sem chamar a API", async () => {
@@ -212,6 +230,160 @@ describe("NewEventPage", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Mentoria 1:1");
     expect(screen.getByText(/Vaga única/)).toBeInTheDocument();
     expect(screen.queryByLabelText("Vagas")).not.toBeInTheDocument();
+  });
+
+  it("MENTORING troca a comunidade pela busca de pessoas por nome ou habilidade", async () => {
+    mockedListUsers.mockResolvedValue({
+      data: [{ id: "u2", name: "Ana Souza", skills: [{ id: "s1", name: "GO" }] }],
+      has_next: false,
+    });
+    mockedListSkills.mockResolvedValue({ data: [{ id: "s1", name: "GO" }], has_next: false });
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(screen.getByText("Comunidade")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+
+    expect(screen.queryByText("Comunidade")).not.toBeInTheDocument();
+    expect(screen.getByText("Pessoa convidada")).toBeInTheDocument();
+    expect(screen.getByLabelText("Buscar por nome")).toBeInTheDocument();
+    expect(await screen.findByRole("radio", { name: /Ana Souza/ })).toBeInTheDocument();
+    expect(screen.getByRole("radio", { name: /Ana Souza/ }).closest("label")).toHaveTextContent(
+      "GO",
+    );
+    expect(screen.getByRole("radio", { name: "Sem convite agora" })).toBeChecked();
+  });
+
+  it("MENTORING não lista a pessoa logada como convidada", async () => {
+    mockedListUsers.mockResolvedValue({
+      data: [
+        { id: "u1", name: "Lucas Rocha", skills: [] },
+        { id: "u2", name: "Ana Souza", skills: [] },
+      ],
+      has_next: false,
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+
+    expect(await screen.findByRole("radio", { name: "Ana Souza" })).toBeInTheDocument();
+    expect(screen.queryByRole("radio", { name: "Lucas Rocha" })).not.toBeInTheDocument();
+  });
+
+  it("MENTORING com pessoa escolhida cria o 1:1 e convida no papel complementar", async () => {
+    mockedListUsers.mockResolvedValue({
+      data: [{ id: "u2", name: "Ana Souza", skills: [] }],
+      has_next: false,
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await user.click(await screen.findByRole("radio", { name: "Ana Souza" }));
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0]).toMatchObject({
+      category: "MENTORING",
+      creator_role: "MENTOR",
+    });
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
+    expect(mockedAddParticipant).toHaveBeenCalledWith("e1", { userId: "u2", role: "MENTEE" });
+    expect(mockedCreateEvent.mock.invocationCallOrder[0]).toBeLessThan(
+      mockedAddParticipant.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("MENTORING como mentorado convida a pessoa como mentor", async () => {
+    mockedListUsers.mockResolvedValue({
+      data: [{ id: "u2", name: "Ana Souza", skills: [] }],
+      has_next: false,
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await user.selectOptions(screen.getByLabelText("Meu papel nesta mentoria"), "MENTEE");
+    await user.click(await screen.findByRole("radio", { name: "Ana Souza" }));
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].creator_role).toBe("MENTEE");
+    expect(mockedAddParticipant).toHaveBeenCalledWith("e1", { userId: "u2", role: "MENTOR" });
+  });
+
+  it("MENTORING sem pessoa escolhida cria o 1:1 sem convite", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedAddParticipant).not.toHaveBeenCalled();
+  });
+
+  it("MENTORING ignora comunidade da URL e não envia community_id", async () => {
+    mockedFindCommunity.mockResolvedValue(COMMUNITY);
+    const user = userEvent.setup();
+    renderPage("/eventos/novo?community_id=c1");
+
+    expect(await screen.findByRole("radio", { name: /Comunidade de origem/ })).toBeChecked();
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    expect(screen.queryByText("Comunidade")).not.toBeInTheDocument();
+
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+    expect(mockedCreateEvent.mock.calls[0][0].community_id).toBeUndefined();
+    expect(mockedAddParticipant).not.toHaveBeenCalled();
+  });
+
+  it("convite que falha mantém o 1:1 criado e leva até ele", async () => {
+    mockedListUsers.mockResolvedValue({
+      data: [{ id: "u2", name: "Ana Souza", skills: [] }],
+      has_next: false,
+    });
+    mockedAddParticipant.mockRejectedValue({
+      isAxiosError: true,
+      message: "Request failed with status code 500",
+      response: { status: 500, data: { message: "internal server error", code: 500 } },
+    });
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    await user.click(await screen.findByRole("radio", { name: "Ana Souza" }));
+    await fillRequired(user);
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("O 1:1 foi criado, mas o convite para Ana Souza não foi enviado"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Erro interno no servidor")).toBeInTheDocument();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Criar evento" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ir para o 1:1" }));
+    expect(await screen.findByText("Detalhe do evento")).toBeInTheDocument();
+  });
+
+  it("voltar de MENTORING para evento comum restaura a comunidade", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "MENTORING");
+    expect(screen.getByText("Pessoa convidada")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Categoria"), "COMMUNITY_EVENT");
+    expect(screen.getByText("Comunidade")).toBeInTheDocument();
+    expect(screen.queryByText("Pessoa convidada")).not.toBeInTheDocument();
   });
 
   it("COMMUNITY_EVENT explica que o palestrante ocupa vaga e quem organiza não", async () => {

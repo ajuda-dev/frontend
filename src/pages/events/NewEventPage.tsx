@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router";
 import { AddressPicker } from "../../components/address/AddressPicker";
 import { EmailVerificationGate } from "../../components/auth/EmailVerificationGate";
 import { CommunityPicker } from "../../components/community/CommunityPicker";
+import { PersonPicker } from "../../components/people/PersonPicker";
 import { Alert } from "../../components/ui/Alert";
 import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
@@ -18,9 +19,18 @@ import { useAddresses } from "../../hooks/useAddresses";
 import { useMemberships } from "../../hooks/useMemberships";
 import { findCommunityById } from "../../services/community";
 import { createEvent } from "../../services/event";
+import { addParticipant } from "../../services/eventUser";
 import { EVENT_CATEGORIES, EVENT_TYPES, CREATOR_ROLES } from "../../types/api";
-import type { Address, Community, CreatorRole, EventCategory, EventType } from "../../types/api";
+import type {
+  Address,
+  Community,
+  CreatorRole,
+  EventCategory,
+  EventType,
+  UserWithSkills,
+} from "../../types/api";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
+import { complementaryRole } from "../../utils/events";
 import { toDateTimeLocal } from "../../utils/format";
 import {
   EVENT_CATEGORY_LABEL,
@@ -121,11 +131,20 @@ export function NewEventPage() {
   const [maxSlots, setMaxSlots] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [address, setAddress] = useState<Address | null>(null);
+  const [guest, setGuest] = useState<UserWithSkills | null>(null);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [detail, setDetail] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // O 1:1 nasce no primeiro POST: se o convite falhar depois, o id fica guardado
+  // para levar a pessoa até o evento criado em vez de deixar um 1:1 sem convite.
+  const [createdEventId, setCreatedEventId] = useState<string | null>(null);
+  const [inviteError, setInviteError] = useState<{ message: string; detail: string | null } | null>(
+    null,
+  );
 
+  const isMentoring = category === "MENTORING";
+  const inviteRole = complementaryRole(creatorRole);
   const showAddress = needsAddress(type);
   const showMeetingLink = allowsMeetingLink(type);
   const showMaxSlots = allowsMaxSlots(category);
@@ -154,8 +173,14 @@ export function NewEventPage() {
     setCategory(next);
     if (!allowsMaxSlots(next)) setMaxSlots("");
     // `creator_role` só vale em MENTORING: fora dela o valor volta ao padrão e a
-    // chave não é enviada (o backend responde 400 se ela vier).
-    if (next !== "MENTORING") setCreatorRole("MENTOR");
+    // chave não é enviada (o backend responde 400 se ela vier). Mentoria não leva
+    // comunidade — a seção vira busca de pessoa — e o convite some ao sair do 1:1.
+    if (next === "MENTORING") {
+      setCommunity(null);
+    } else {
+      setCreatorRole("MENTOR");
+      setGuest(null);
+    }
     setErrors((previous) => ({ ...previous, max_slots: undefined, creator_role: undefined }));
   }
 
@@ -199,6 +224,7 @@ export function NewEventPage() {
     if (Object.keys(localErrors).length > 0) return;
 
     setSubmitting(true);
+    let eventId: string | null = null;
     try {
       const created = await createEvent({
         title: title.trim(),
@@ -209,30 +235,39 @@ export function NewEventPage() {
         duration_min: Number(durationMin),
         meeting_link: showMeetingLink ? meetingLink : "",
         max_slots: showMaxSlots && maxSlots.trim() ? Number(maxSlots) : null,
-        community_id: community?.id,
+        community_id: isMentoring ? undefined : community?.id,
         address_id: showAddress && address ? address.id : undefined,
-        creator_role: category === "MENTORING" ? creatorRole : undefined,
+        creator_role: isMentoring ? creatorRole : undefined,
       });
+      eventId = created.id;
+      if (isMentoring && guest) {
+        await addParticipant(created.id, { userId: guest.id, role: inviteRole });
+      }
       // O 201 não traz owner/community/address aninhados: o detalhe busca pelo id.
       navigate(`/eventos/${created.id}`, { replace: true });
     } catch (error) {
-      const fields = apiErrorFields(error);
-      setErrors({
-        title: fields.title,
-        description: fields.description,
-        category: fields.category,
-        type: fields.type,
-        start_at: fields.start_at,
-        duration_min: fields.duration_min,
-        max_slots: fields.max_slots,
-        meeting_link: fields.meeting_link,
-        address_id: fields.address_id,
-        community_id: fields.community_id,
-        creator_role: fields.creator_role,
-      });
-      if (Object.keys(fields).length === 0) {
-        setFormError(apiErrorMessage(error));
-        setDetail(apiErrorDetail(error));
+      if (eventId && guest) {
+        setCreatedEventId(eventId);
+        setInviteError({ message: apiErrorMessage(error), detail: apiErrorDetail(error) });
+      } else {
+        const fields = apiErrorFields(error);
+        setErrors({
+          title: fields.title,
+          description: fields.description,
+          category: fields.category,
+          type: fields.type,
+          start_at: fields.start_at,
+          duration_min: fields.duration_min,
+          max_slots: fields.max_slots,
+          meeting_link: fields.meeting_link,
+          address_id: fields.address_id,
+          community_id: fields.community_id,
+          creator_role: fields.creator_role,
+        });
+        if (Object.keys(fields).length === 0) {
+          setFormError(apiErrorMessage(error));
+          setDetail(apiErrorDetail(error));
+        }
       }
     } finally {
       setSubmitting(false);
@@ -305,20 +340,24 @@ export function NewEventPage() {
             </Field>
           </div>
 
-          {category === "MENTORING" ? (
+          {isMentoring ? (
             <Alert variant="info" title="Mentoria 1:1">
               Você escolhe o seu papel: quem cria pode ser o mentor (padrão) ou o mentorado, e a
-              outra pessoa é convidada com o papel complementar. A API mantém duas posições (mentor
-              e mentorado).
+              outra pessoa é convidada com o papel complementar. Busque quem você quer convidar pelo
+              nome ou pela habilidade.
             </Alert>
           ) : null}
 
-          {category === "MENTORING" ? (
+          {isMentoring ? (
             <Field
               label="Meu papel nesta mentoria"
               htmlFor="creator_role"
               error={errors.creator_role}
-              hint="O convidado entra no papel complementar."
+              hint={
+                guest
+                  ? `O convite para ${guest.name} usa o papel complementar.`
+                  : "O convidado entra no papel complementar."
+              }
             >
               <Select
                 id="creator_role"
@@ -423,17 +462,50 @@ export function NewEventPage() {
             </Alert>
           ) : null}
 
+          {inviteError && guest ? (
+            <Alert
+              variant="error"
+              title={`O 1:1 foi criado, mas o convite para ${guest.name} não foi enviado`}
+            >
+              {inviteError.message}
+              {inviteError.detail ? <span className="block text-xs">{inviteError.detail}</span> : null}
+              <span className="block">Você pode convidar {guest.name} na página do 1:1.</span>
+            </Alert>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="submit" loading={submitting}>
-              Criar evento
-            </Button>
+            {createdEventId ? (
+              <Button type="button" onClick={() => navigate(`/eventos/${createdEventId}`, { replace: true })}>
+                Ir para o 1:1
+              </Button>
+            ) : (
+              <Button type="submit" loading={submitting}>
+                Criar evento
+              </Button>
+            )}
             <Link to="/eventos" className="text-brand text-sm hover:underline">
-              Cancelar
+              {createdEventId ? "Fechar" : "Cancelar"}
             </Link>
           </div>
         </form>
       </Card>
 
+      {isMentoring ? (
+        <Card className="flex flex-col gap-4">
+          <h2 className="text-ink text-base font-semibold">Pessoa convidada</h2>
+          <p className="text-ink-muted text-sm">
+            Busque pelo nome ou por uma habilidade do catálogo. O convite usa o papel complementar
+            ao seu ({PARTICIPATION_ROLE_LABEL[inviteRole].toLowerCase()}) e fica pendente até a
+            pessoa aceitar.
+          </p>
+          <PersonPicker
+            selected={guest}
+            onSelect={setGuest}
+            excludeIds={user?.id ? [user.id] : []}
+            allowEmpty
+          />
+        </Card>
+      ) : (
       <Card className="flex flex-col gap-4">
         <h2 className="text-ink text-base font-semibold">Comunidade</h2>
 
@@ -484,6 +556,7 @@ export function NewEventPage() {
           <CommunityPicker userId={user.id} selected={community} onSelect={setCommunity} />
         ) : null}
       </Card>
+      )}
 
       {showAddress ? (
         <Card className="flex flex-col gap-4">
