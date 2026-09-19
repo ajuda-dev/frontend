@@ -14,6 +14,7 @@ import { api, isApiError } from "./api";
 
 export interface ListEventsParams {
   page: number;
+  limit?: number;
   category?: EventCategory | "";
   type?: EventType | "";
   city?: string;
@@ -32,6 +33,7 @@ export interface ListEventsParams {
 
 export async function listEvents({
   page,
+  limit = 10,
   category,
   type,
   city,
@@ -43,7 +45,7 @@ export async function listEvents({
   status,
   signal,
 }: ListEventsParams): Promise<Pageable<EventItem>> {
-  const params: Record<string, string | number | boolean> = { page, limit: 10 };
+  const params: Record<string, string | number | boolean> = { page, limit };
   if (category) params.category = category;
   if (type) params.type = type;
   const trimmedCity = city?.trim();

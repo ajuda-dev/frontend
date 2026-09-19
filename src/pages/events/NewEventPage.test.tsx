@@ -319,6 +319,11 @@ describe("NewEventPage", () => {
     expect(new Date(payload.start_at).getTime()).toBeGreaterThan(Date.now());
   });
 
+  it("?start_at na URL pré-preenche data e hora", () => {
+    renderPage("/eventos/novo?start_at=2026-10-01T14:00");
+    expect(screen.getByLabelText("Data e hora")).toHaveValue("2026-10-01T14:00");
+  });
+
   it("?community_id na URL pré-seleciona a comunidade e envia o vínculo", async () => {
     mockedFindCommunity.mockResolvedValue(COMMUNITY);
     const user = userEvent.setup();

@@ -112,4 +112,21 @@ describe("AppLayout", () => {
     renderLayout();
     expect(screen.queryByRole("link", { name: "Confirmar e-mail" })).not.toBeInTheDocument();
   });
+
+  it("rota com fullBleed solta o max-w do conteúdo", () => {
+    seedSession();
+    render(
+      <MemoryRouter initialEntries={["/agenda"]}>
+        <AuthProvider>
+          <Routes>
+            <Route element={<AppLayout />}>
+              <Route path="/agenda" element={<p>Agenda full</p>} />
+            </Route>
+          </Routes>
+        </AuthProvider>
+      </MemoryRouter>,
+    );
+    expect(screen.getByText("Agenda full")).toBeInTheDocument();
+    expect(document.querySelector("main")).not.toHaveClass("max-w-5xl");
+  });
 });

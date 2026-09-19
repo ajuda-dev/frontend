@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import { Link, NavLink, Outlet, useNavigate } from "react-router";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { NotificationProvider } from "../../context/NotificationContext";
 import { useAuth } from "../../context/useAuth";
 import { USER_ROLE_LABEL } from "../../utils/labels";
@@ -11,6 +11,7 @@ import { visibleNavItems } from "./navItems";
 export function AppLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const fullBleed = useLocation().pathname === "/agenda";
   const [menuOpen, setMenuOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
@@ -29,9 +30,11 @@ export function AppLayout() {
 
   return (
     <NotificationProvider>
-      <div className="bg-bg text-ink flex min-h-svh flex-col">
+      <div className={`bg-bg text-ink flex flex-col ${fullBleed ? "h-svh overflow-hidden" : "min-h-svh"}`}>
       <header className="bg-surface border-line sticky top-0 z-40 border-b">
-        <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4 px-4 py-3">
+        <div
+          className={`mx-auto flex w-full items-center justify-between gap-4 px-4 py-3 ${fullBleed ? "" : "max-w-5xl"}`}
+        >
           <Link to="/" className="font-mono text-brand text-lg" onClick={() => setNavOpen(false)}>
             &lt;AJUDA-DEV/&gt;
           </Link>
@@ -124,7 +127,13 @@ export function AppLayout() {
 
       {user && !user.emailVerified ? <EmailVerificationBanner /> : null}
 
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+      <main
+        className={
+          fullBleed
+            ? "flex min-h-0 flex-1 flex-col px-3 py-3"
+            : "mx-auto w-full max-w-5xl flex-1 px-4 py-6"
+        }
+      >
         <Outlet />
       </main>
     </div>

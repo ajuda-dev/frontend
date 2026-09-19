@@ -21,6 +21,7 @@ import { createEvent } from "../../services/event";
 import { EVENT_CATEGORIES, EVENT_TYPES, CREATOR_ROLES } from "../../types/api";
 import type { Address, Community, CreatorRole, EventCategory, EventType } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
+import { toDateTimeLocal } from "../../utils/format";
 import {
   EVENT_CATEGORY_LABEL,
   EVENT_TYPE_LABEL,
@@ -47,6 +48,15 @@ function nowLocalInputValue(): string {
   const now = new Date();
   const offsetMs = now.getTimezoneOffset() * 60_000;
   return new Date(now.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
+function startAtFromQuery(raw: string | null): string {
+  const value = raw?.trim() ?? "";
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return value;
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return toDateTimeLocal(date);
 }
 
 function needsAddress(type: EventType): boolean {
@@ -106,7 +116,7 @@ export function NewEventPage() {
   const [category, setCategory] = useState<EventCategory>("COMMUNITY_EVENT");
   const [creatorRole, setCreatorRole] = useState<CreatorRole>("MENTOR");
   const [type, setType] = useState<EventType>("ONLINE");
-  const [startAt, setStartAt] = useState("");
+  const [startAt, setStartAt] = useState(() => startAtFromQuery(searchParams.get("start_at")));
   const [durationMin, setDurationMin] = useState("");
   const [maxSlots, setMaxSlots] = useState("");
   const [meetingLink, setMeetingLink] = useState("");

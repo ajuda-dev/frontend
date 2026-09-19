@@ -138,6 +138,17 @@ describe("listEvents", () => {
     });
   });
 
+  it("aceita limit customizado (grade da agenda pede páginas maiores)", async () => {
+    mockedGet.mockResolvedValue({ data: page([], false) });
+
+    await listEvents({ page: 2, userId: "u1", status: "CONFIRMED", limit: 50 });
+
+    expect(mockedGet).toHaveBeenCalledWith("/event", {
+      params: { page: 2, limit: 50, user_id: "u1", status: "CONFIRMED" },
+      signal: undefined,
+    });
+  });
+
   it("repassa o AbortSignal", async () => {
     mockedGet.mockResolvedValue({ data: page([], false) });
     const controller = new AbortController();
