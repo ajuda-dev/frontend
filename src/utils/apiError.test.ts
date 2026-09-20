@@ -242,6 +242,9 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage("skills limit reached")).toBe(
       "Você atingiu o limite de habilidades neste perfil",
     );
+    expect(translateApiMessage("created skills limit reached")).toBe(
+      "Você atingiu o limite de habilidades que pode cadastrar no catálogo",
+    );
     expect(translateApiMessage("too many community creations")).toBe(
       "Muitas criações de comunidade. Aguarde e tente de novo",
     );

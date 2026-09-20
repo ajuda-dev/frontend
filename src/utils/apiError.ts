@@ -84,6 +84,8 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "pending events limit reached": "Você atingiu o limite de eventos aguardando aprovação",
   "active events limit reached": "Você atingiu o limite de eventos ativos",
   "skills limit reached": "Você atingiu o limite de habilidades neste perfil",
+  "created skills limit reached":
+    "Você atingiu o limite de habilidades que pode cadastrar no catálogo",
   "email is not verified": EMAIL_VERIFICATION_REQUIRED_MESSAGE,
   "invalid user data": "Dados do usuário inválidos",
   "invalid community data": "Dados da comunidade inválidos",
