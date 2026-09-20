@@ -100,13 +100,19 @@ export function validateContactValue(key: string, value: string): string | null 
     return null;
   }
 
+  return httpUrlFieldError(value);
+}
+
+export function httpUrlFieldError(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
   if (trimmed.length > CONTACT_VALUE_MAX_LENGTH) return "O link deve ter no máximo 500 caracteres";
   if (!isValidHttpUrl(trimmed)) return "Informe um link http(s) válido (ex.: https://exemplo.com)";
   return null;
 }
 
 // Espelho best-effort do isValidHTTPURL do backend: o servidor é a palavra final.
-function isValidHttpUrl(value: string): boolean {
+export function isValidHttpUrl(value: string): boolean {
   let parsed: URL;
   try {
     parsed = new URL(value);

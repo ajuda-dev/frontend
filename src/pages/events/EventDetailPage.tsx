@@ -22,6 +22,7 @@ import { deleteEvent, findEventById, publishEvent, rescheduleEvent, updateEventM
 import { isApiError } from "../../services/api";
 import type { EventItem } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import { httpUrlFieldError, isValidHttpUrl } from "../../utils/contacts";
 import { canManageEvent, canPublishEvent, canRescheduleEvent, isEventApproved, isEventPublic } from "../../utils/events";
 import { formatAddress, formatDateTime } from "../../utils/format";
 import { EVENT_CATEGORY_COLOR, EVENT_CATEGORY_LABEL, EVENT_TYPE_LABEL, EVENT_VISIBILITY_COLOR, EVENT_VISIBILITY_LABEL } from "../../utils/labels";
@@ -243,17 +244,10 @@ export function EventDetailPage() {
 
   const handleSaveMeetingLink = useCallback(async () => {
     const trimmed = meetingLinkDraft.trim();
-    if (trimmed) {
-      try {
-        const parsed = new URL(trimmed);
-        if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-          setMeetingLinkLocalError("Informe um link http(s) válido (ex.: https://exemplo.com)");
-          return;
-        }
-      } catch {
-        setMeetingLinkLocalError("Informe um link http(s) válido (ex.: https://exemplo.com)");
-        return;
-      }
+    const linkError = httpUrlFieldError(trimmed);
+    if (linkError) {
+      setMeetingLinkLocalError(linkError);
+      return;
     }
     setSavingMeetingLink(true);
     setMeetingLinkError(null);
@@ -398,6 +392,8 @@ export function EventDetailPage() {
   const isOwner = Boolean(user && event.owner && event.owner.id === user.id);
   const isOnline = event.type === "ONLINE";
   const allowsMeetingLink = event.type === "ONLINE" || event.type === "HYBRID";
+  const meetingHref =
+    event.meeting_link && isValidHttpUrl(event.meeting_link) ? event.meeting_link : null;
   // Espelha canManageEvent do backend: criador, dono da comunidade ou ≥ MODERATOR.
   const canManage = canManageEvent(event, user);
   const canDelete = canManage;
@@ -503,9 +499,9 @@ export function EventDetailPage() {
 
         {allowsMeetingLink ? (
           <div className="flex flex-col gap-3">
-            {event.meeting_link ? (
+            {meetingHref ? (
               <a
-                href={event.meeting_link}
+                href={meetingHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-brand text-sm hover:underline"

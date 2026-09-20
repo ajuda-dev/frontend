@@ -143,6 +143,12 @@ describe("translateApiMessage", () => {
     expect(translateApiMessage("meeting_link is only allowed for ONLINE and HYBRID events")).toBe(
       "O link da reunião só vale em eventos online ou híbridos",
     );
+    expect(translateApiMessage("meeting_link must be a valid http or https url")).toBe(
+      "Informe um link http(s) válido (ex.: https://exemplo.com)",
+    );
+    expect(translateApiMessage("meeting_link must have at most 500 characters")).toBe(
+      "O link deve ter no máximo 500 caracteres",
+    );
     expect(translateApiMessage("event owner must accept the new time")).toBe(
       "Quem organiza precisa aceitar o novo horário antes de publicar",
     );

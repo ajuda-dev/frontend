@@ -30,6 +30,7 @@ import type {
   UserWithSkills,
 } from "../../types/api";
 import { apiErrorDetail, apiErrorMessage, apiErrorFields } from "../../utils/apiError";
+import { httpUrlFieldError } from "../../utils/contacts";
 import { complementaryRole } from "../../utils/events";
 import { toDateTimeLocal } from "../../utils/format";
 import {
@@ -214,6 +215,11 @@ export function NewEventPage() {
 
     if (showAddress && !address) {
       next.address_id = "Busque ou selecione o endereço do evento";
+    }
+
+    if (showMeetingLink) {
+      const linkError = httpUrlFieldError(meetingLink);
+      if (linkError) next.meeting_link = linkError;
     }
 
     return next;

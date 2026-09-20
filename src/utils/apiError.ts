@@ -169,6 +169,9 @@ const MESSAGE_TRANSLATIONS: Record<string, string> = {
   "visibility must be PUBLIC": "A visibilidade precisa ser pública",
   "meeting_link is only allowed for online and hybrid events":
     "O link da reunião só vale em eventos online ou híbridos",
+  "meeting_link must be a valid http or https url":
+    "Informe um link http(s) válido (ex.: https://exemplo.com)",
+  "meeting_link must have at most 500 characters": "O link deve ter no máximo 500 caracteres",
   "only the invited user can accept or reject this invitation":
     "Só quem recebeu o convite pode aceitar ou recusá-lo",
   "only the participant themselves can update this comment":

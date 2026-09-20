@@ -505,6 +505,23 @@ describe("NewEventPage", () => {
     expect(new Date(payload.start_at).getTime()).toBeGreaterThan(Date.now());
   });
 
+  it("ONLINE com javascript: no link é barrado localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await fillRequired(user);
+    fireEvent.change(screen.getByLabelText("Link do encontro"), {
+      target: { value: "javascript:alert(1)" },
+    });
+    await user.click(screen.getByRole("button", { name: "Criar evento" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedCreateEvent).not.toHaveBeenCalled();
+    expect(screen.queryByText("Detalhe do evento")).not.toBeInTheDocument();
+  });
+
   it("?start_at na URL pré-preenche data e hora", () => {
     renderPage("/eventos/novo?start_at=2026-10-01T14:00");
     expect(screen.getByLabelText("Data e hora")).toHaveValue("2026-10-01T14:00");

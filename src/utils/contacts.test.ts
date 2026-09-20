@@ -10,6 +10,7 @@ import {
   contactLabel,
   hiddenContactKeys,
   isContactLink,
+  isValidHttpUrl,
   photoUrl,
   toCommunityLinks,
   validateContactValue,
@@ -178,6 +179,21 @@ describe("validateContactValue", () => {
     expect(validateContactValue("phone", "(11) 99999-9999 ramal 12")).toBe(
       "O telefone deve ter no máximo 20 caracteres",
     );
+  });
+});
+
+describe("isValidHttpUrl", () => {
+  it("aceita http(s) com host", () => {
+    expect(isValidHttpUrl("https://meet.example.com/sala")).toBe(true);
+    expect(isValidHttpUrl("http://exemplo.com")).toBe(true);
+  });
+
+  it("recusa scheme inseguro, sem host ou vazio", () => {
+    expect(isValidHttpUrl("javascript:alert(1)")).toBe(false);
+    expect(isValidHttpUrl("data:text/html,x")).toBe(false);
+    expect(isValidHttpUrl("ftp://files.example.com/a")).toBe(false);
+    expect(isValidHttpUrl("https://")).toBe(false);
+    expect(isValidHttpUrl("")).toBe(false);
   });
 });
 

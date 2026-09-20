@@ -117,6 +117,37 @@ describe("ScheduleMentoringModal", () => {
     expect(mockedAdd).toHaveBeenCalledWith("e1", { userId: "u2", role: "MENTOR" });
   });
 
+  it("link javascript: é barrado localmente sem chamar a API", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText("Link do encontro"), {
+      target: { value: "javascript:alert(1)" },
+    });
+    await fillAndSubmit(user);
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedCreateEvent).not.toHaveBeenCalled();
+    expect(mockedAdd).not.toHaveBeenCalled();
+  });
+
+  it("link http(s) válido entra no payload do 1:1", async () => {
+    const user = userEvent.setup();
+    renderModal();
+
+    fireEvent.change(screen.getByLabelText("Link do encontro"), {
+      target: { value: "https://meet.example.com/x" },
+    });
+    await fillAndSubmit(user);
+
+    await waitFor(() => expect(onScheduled).toHaveBeenCalledWith("e1"));
+    expect(mockedCreateEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ meeting_link: "https://meet.example.com/x" }),
+    );
+  });
+
   it("sem data e hora nada é enviado para a API", async () => {
     const user = userEvent.setup();
     renderModal();

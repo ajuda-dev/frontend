@@ -4,6 +4,7 @@ import { addParticipant } from "../../services/eventUser";
 import { CREATOR_ROLES } from "../../types/api";
 import type { CreatorRole } from "../../types/api";
 import { apiErrorDetail, apiErrorFields, apiErrorMessage } from "../../utils/apiError";
+import { httpUrlFieldError } from "../../utils/contacts";
 import { complementaryRole } from "../../utils/events";
 import { PARTICIPATION_ROLE_LABEL } from "../../utils/labels";
 import { Alert } from "../ui/Alert";
@@ -82,6 +83,9 @@ export function ScheduleMentoringModal({ person, onClose, onScheduled }: Schedul
     if (!durationMin.trim() || !Number.isFinite(duration) || duration <= 0) {
       localErrors.duration_min = "Informe uma duração maior que zero";
     }
+
+    const linkError = httpUrlFieldError(meetingLink);
+    if (linkError) localErrors.meeting_link = linkError;
 
     setErrors(localErrors);
     if (Object.keys(localErrors).length > 0) return;

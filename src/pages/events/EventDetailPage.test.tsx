@@ -199,6 +199,16 @@ describe("EventDetailPage", () => {
     expect(screen.queryByRole("button", { name: "Incluir link" })).not.toBeInTheDocument();
   });
 
+  it("online com meeting_link javascript: não monta âncora nem ecoa o valor", async () => {
+    renderDetail({
+      event: { ...EVENT, type: "ONLINE", address: null, meeting_link: "javascript:alert(1)" },
+    });
+
+    expect(await screen.findByText("Link da reunião será divulgado.")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Acessar link da reunião" })).not.toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("javascript:");
+  });
+
   it("híbrido com meeting_link mostra o link da reunião", async () => {
     renderDetail({
       event: {
@@ -263,6 +273,25 @@ describe("EventDetailPage", () => {
       "href",
       "https://meet.example.com/novo",
     );
+  });
+
+  it("owner não salva meeting_link javascript:", async () => {
+    seedSession("owner-1");
+    const online = { ...EVENT, type: "ONLINE" as const, address: null };
+    mockedFind.mockResolvedValue(online);
+    const user = userEvent.setup();
+    renderDetail({ event: online });
+
+    await user.click(await screen.findByRole("button", { name: "Incluir link" }));
+    fireEvent.change(screen.getByLabelText("Link do encontro"), {
+      target: { value: "javascript:alert(1)" },
+    });
+    await user.click(screen.getByRole("button", { name: "Salvar link" }));
+
+    expect(
+      await screen.findByText("Informe um link http(s) válido (ex.: https://exemplo.com)"),
+    ).toBeInTheDocument();
+    expect(mockedUpdateMeetingLink).not.toHaveBeenCalled();
   });
 
   it("não-owner sem cargo não vê o botão de excluir", async () => {
