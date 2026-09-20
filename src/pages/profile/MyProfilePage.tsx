@@ -17,6 +17,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { PageSpinner } from "../../components/ui/Spinner";
 import { Textarea } from "../../components/ui/Textarea";
 import { useAuth } from "../../context/useAuth";
+import { useOnboarding } from "../../hooks/useOnboarding";
 import { assignSkillToUser } from "../../services/skill";
 import {
   getUserProfile,
@@ -67,6 +68,7 @@ function sameEntry(a: ContactDraft, b: ContactDraft): boolean {
 
 export function MyProfilePage() {
   const { user, updateProfile } = useAuth();
+  const { start: startOnboarding } = useOnboarding();
   const userId = user?.id ?? "";
   const nameFieldId = useId();
   const descriptionFieldId = useId();
@@ -417,6 +419,9 @@ export function MyProfilePage() {
             actions={
               <>
                 <Badge tone={USER_ROLE_COLOR[user.role]}>{USER_ROLE_LABEL[user.role]}</Badge>
+                <Button type="button" variant="ghost" size="sm" onClick={startOnboarding}>
+                  Ver o guia de novo
+                </Button>
                 <Link to={`/pessoas/${user.id}`} className="text-brand text-sm hover:underline">
                   Ver perfil público
                 </Link>

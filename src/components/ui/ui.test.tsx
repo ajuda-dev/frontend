@@ -130,4 +130,13 @@ describe("Modal", () => {
     await user.click(screen.getByTestId("modal-backdrop"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it("size lg aplica max-w-lg", () => {
+    render(
+      <Modal open title="Guia" onClose={() => {}} size="lg">
+        <p>Passo</p>
+      </Modal>,
+    );
+    expect(screen.getByRole("dialog")).toHaveClass("max-w-lg");
+  });
 });

@@ -15,7 +15,11 @@ vi.mock("../../services/notificationStream", () => ({
   openNotificationStream: vi.fn(() => vi.fn()),
 }));
 
-function seedSession(role: "USER" | "ADMIN" = "USER", emailVerified = true) {
+function seedSession(
+  role: "USER" | "ADMIN" = "USER",
+  emailVerified = true,
+  options: { onboardingSeen?: boolean } = {},
+) {
   localStorage.setItem(
     "ajudadev.user",
     JSON.stringify({
@@ -26,6 +30,9 @@ function seedSession(role: "USER" | "ADMIN" = "USER", emailVerified = true) {
       emailVerified,
     }),
   );
+  if (options.onboardingSeen !== false) {
+    localStorage.setItem("ajudadev.onboarding.u1", JSON.stringify({ seen: true }));
+  }
 }
 
 function renderLayout() {
@@ -111,6 +118,18 @@ describe("AppLayout", () => {
     seedSession("USER", true);
     renderLayout();
     expect(screen.queryByRole("link", { name: "Confirmar e-mail" })).not.toBeInTheDocument();
+  });
+
+  it("na primeira visita mostra o guia de boas-vindas", () => {
+    seedSession("USER", true, { onboardingSeen: false });
+    renderLayout();
+    expect(screen.getByRole("dialog", { name: "Bem-vindo ao AjudaDev" })).toBeInTheDocument();
+  });
+
+  it("não mostra o guia quando a chave já está marcada", () => {
+    seedSession();
+    renderLayout();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("rota com fullBleed solta o max-w do conteúdo", () => {

@@ -28,6 +28,7 @@ function seedSession() {
     "ajudadev.user",
     JSON.stringify({ id: "u1", name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
   );
+  localStorage.setItem("ajudadev.onboarding.u1", JSON.stringify({ seen: true }));
 }
 
 describe("AppRoutes", () => {

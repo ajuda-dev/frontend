@@ -2,7 +2,9 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { OnboardingTour } from "../../components/onboarding/OnboardingTour";
 import { AuthProvider } from "../../context/AuthContext";
+import { OnboardingProvider } from "../../context/OnboardingContext";
 import type { Pageable, Skill, SkillUser, UserProfile } from "../../types/api";
 import { MyProfilePage } from "./MyProfilePage";
 
@@ -76,16 +78,20 @@ function seedSession(id = "u1") {
     "ajudadev.user",
     JSON.stringify({ id, name: "Lucas Rocha", email: "lucas@ajudadev.dev", role: "USER" }),
   );
+  localStorage.setItem(`ajudadev.onboarding.${id}`, JSON.stringify({ seen: true }));
 }
 
 function renderPage() {
   return render(
     <MemoryRouter initialEntries={["/perfil"]}>
       <AuthProvider>
-        <Routes>
-          <Route path="/perfil" element={<MyProfilePage />} />
-          <Route path="/pessoas/:userId" element={<p>Perfil público</p>} />
-        </Routes>
+        <OnboardingProvider>
+          <OnboardingTour />
+          <Routes>
+            <Route path="/perfil" element={<MyProfilePage />} />
+            <Route path="/pessoas/:userId" element={<p>Perfil público</p>} />
+          </Routes>
+        </OnboardingProvider>
       </AuthProvider>
     </MemoryRouter>,
   );
@@ -113,11 +119,23 @@ describe("MyProfilePage", () => {
       "href",
       "/pessoas/u1",
     );
+    expect(screen.getByRole("button", { name: "Ver o guia de novo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Alterar senha" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Esqueci a senha" })).toHaveAttribute(
       "href",
       "/esqueci-senha",
     );
+  });
+
+  it("Ver o guia de novo reabre o passo a passo", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByRole("button", { name: "Ver o guia de novo" })).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Ver o guia de novo" }));
+    expect(screen.getByRole("dialog", { name: "Bem-vindo ao AjudaDev" })).toBeInTheDocument();
   });
 
   it("lista as habilidades com o nível de cada uma", async () => {

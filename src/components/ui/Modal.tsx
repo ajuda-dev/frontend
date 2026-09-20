@@ -2,15 +2,23 @@ import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { Button } from "./Button";
 
+type ModalSize = "md" | "lg";
+
+const SIZE_CLASSES: Record<ModalSize, string> = {
+  md: "max-w-md",
+  lg: "max-w-lg",
+};
+
 interface ModalProps {
   open: boolean;
   title: string;
   onClose: () => void;
   children?: ReactNode;
   footer?: ReactNode;
+  size?: ModalSize;
 }
 
-export function Modal({ open, title, onClose, children, footer }: ModalProps) {
+export function Modal({ open, title, onClose, children, footer, size = "md" }: ModalProps) {
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
 
@@ -41,7 +49,7 @@ export function Modal({ open, title, onClose, children, footer }: ModalProps) {
         aria-labelledby={titleId}
         tabIndex={-1}
         onClick={(event) => event.stopPropagation()}
-        className="bg-surface border-line w-full max-w-md rounded-lg border p-5 outline-none"
+        className={`bg-surface border-line w-full rounded-lg border p-5 outline-none ${SIZE_CLASSES[size]}`}
       >
         <h2 id={titleId} className="text-ink text-lg font-semibold">
           {title}
