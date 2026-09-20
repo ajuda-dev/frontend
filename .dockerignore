@@ -1,0 +1,13 @@
+.git
+.idea
+.vscode
+.env
+.env.*
+!.env.example
+node_modules
+dist
+coverage
+*.md
+*.log
+src/**/*.test.ts
+src/**/*.test.tsx
