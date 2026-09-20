@@ -416,15 +416,17 @@ export function MyProfilePage() {
           <PageHeader
             title={profile.name}
             description={profile.description || "Sem descrição."}
+            titleAccessory={
+              <Badge tone={USER_ROLE_COLOR[user.role]}>{USER_ROLE_LABEL[user.role]}</Badge>
+            }
             actions={
               <>
-                <Badge tone={USER_ROLE_COLOR[user.role]}>{USER_ROLE_LABEL[user.role]}</Badge>
-                <Button type="button" variant="ghost" size="sm" onClick={startOnboarding}>
-                  Ver o guia de novo
-                </Button>
                 <Link to={`/pessoas/${user.id}`} className="text-brand text-sm hover:underline">
                   Ver perfil público
                 </Link>
+                <Button type="button" variant="ghost" size="sm" onClick={startOnboarding}>
+                  Ver o guia de novo
+                </Button>
               </>
             }
           />
